@@ -8,12 +8,13 @@ export default async function GridPage() {
   }
 
   // Get unique products and channels
-  const products = Array.from(new Set(data.map((row) => row.product_name)))
-  const channels = Array.from(new Set(data.map((row) => row.channel)))
+const rows = data || []
+const products = Array.from(new Set(rows.map((row) => row.product_name)))
+const channels = Array.from(new Set(rows.map((row) => row.channel)))
 
   // Average margin % for a given product + channel combo, across all its orders
   function getMarginPercent(product: string, channel: string) {
-    const matches = data.filter((row) => row.product_name === product && row.channel === channel)
+    const matches = rows.filter((row) => row.product_name === product && row.channel === channel)
     if (matches.length === 0) return null
     const avg = matches.reduce((sum, row) => sum + row.margin_percent, 0) / matches.length
     return Math.round(avg * 10) / 10
@@ -21,7 +22,7 @@ export default async function GridPage() {
 
   // Total margin £ for a given product + channel combo, summed across all its orders
   function getMarginTotal(product: string, channel: string) {
-    const matches = data.filter((row) => row.product_name === product && row.channel === channel)
+    const matches = rows.filter((row) => row.product_name === product && row.channel === channel)
     if (matches.length === 0) return null
     return matches.reduce((sum, row) => sum + row.margin_pence, 0) / 100
   }

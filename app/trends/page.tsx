@@ -84,7 +84,7 @@ export default function TrendsPage() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value: number) => `£${value.toFixed(2)}`} />
+              <Tooltip formatter={(value) => `£${Number(value).toFixed(2)}`} />
               <Legend />
               <Line type="monotone" dataKey="Revenue" stroke="#2563eb" strokeWidth={2} />
               <Line type="monotone" dataKey="Margin" stroke="#16a34a" strokeWidth={2} />
