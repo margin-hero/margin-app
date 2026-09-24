@@ -141,6 +141,20 @@ export default function MappingsPage() {
     loadAll()
   }
 
+  async function deleteProduct(productId: string, listingCount: number) {
+    if (listingCount > 0) {
+      setStatus('This product still has channel listings — move or delete those first before removing the product.')
+      return
+    }
+    const { error } = await supabase.from('master_products').delete().eq('id', productId)
+    if (error) {
+      setStatus(`Error deleting product: ${error.message} (it may still have cost or shipping data attached — remove those on its edit page first.)`)
+      return
+    }
+    setStatus('Product deleted.')
+    loadAll()
+  }
+
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [editProductSku, setEditProductSku] = useState('')
   const [editProductName, setEditProductName] = useState('')
@@ -206,6 +220,14 @@ export default function MappingsPage() {
               >
                 Edit
               </button>
+              {product.platform_listings.length === 0 && (
+                <button
+                  onClick={() => deleteProduct(product.id, product.platform_listings.length)}
+                  style={{ fontSize: '12px', color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer', marginLeft: '8px' }}
+                >
+                  Delete empty product
+                </button>
+              )}
             </h3>
           )}
 

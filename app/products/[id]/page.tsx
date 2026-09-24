@@ -25,6 +25,11 @@ type ShippingRow = {
   courier_cost_pence: number
   vat_rate: number
   service_level: string
+  effective_from: string
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 export default function ProductDetailPage() {
@@ -39,10 +44,12 @@ export default function ProductDetailPage() {
   const [newComponentType, setNewComponentType] = useState('')
   const [newAmount, setNewAmount] = useState('')
   const [newVatRate, setNewVatRate] = useState('')
+  const [newEffectiveFrom, setNewEffectiveFrom] = useState(today())
   const [newQty, setNewQty] = useState('')
   const [newShippingCost, setNewShippingCost] = useState('')
   const [newShippingVat, setNewShippingVat] = useState('')
   const [newServiceLevel, setNewServiceLevel] = useState('standard')
+  const [newShippingEffectiveFrom, setNewShippingEffectiveFrom] = useState(today())
 
   const [editingCogsId, setEditingCogsId] = useState<string | null>(null)
   const [editComponentType, setEditComponentType] = useState('')
@@ -72,7 +79,7 @@ export default function ProductDetailPage() {
 
     const { data: shippingData } = await supabase
       .from('shipping_rules')
-      .select('id, qty, courier_cost_pence, vat_rate, service_level')
+      .select('id, qty, courier_cost_pence, vat_rate, service_level, effective_from')
       .eq('master_product_id', productId)
       .order('qty')
     setShipping(shippingData || [])
@@ -89,8 +96,8 @@ export default function ProductDetailPage() {
   }
 
   async function addCogsRow() {
-    if (!newComponentType || !newAmount || newVatRate === '') {
-      setStatus('Please enter a component type, amount, and VAT rate.')
+    if (!newComponentType || !newAmount || newVatRate === '' || !newEffectiveFrom) {
+      setStatus('Please enter a component type, amount, VAT rate, and effective date.')
       return
     }
     const { error } = await supabase.from('cogs_components').insert({
@@ -98,7 +105,7 @@ export default function ProductDetailPage() {
       component_type: newComponentType,
       amount_pence: Math.round(parseFloat(newAmount) * 100),
       vat_rate: parseFloat(newVatRate),
-      effective_from: '2020-01-01',
+      effective_from: newEffectiveFrom,
     })
     if (error) {
       setStatus(`Error adding cost: ${error.message}`)
@@ -107,6 +114,7 @@ export default function ProductDetailPage() {
     setNewComponentType('')
     setNewAmount('')
     setNewVatRate('')
+    setNewEffectiveFrom(today())
     setStatus('Cost added.')
     loadAll()
   }
@@ -143,8 +151,8 @@ export default function ProductDetailPage() {
   }
 
   async function addShippingRow() {
-    if (!newQty || !newShippingCost || newShippingVat === '') {
-      setStatus('Please enter a quantity, cost, and VAT rate.')
+    if (!newQty || !newShippingCost || newShippingVat === '' || !newShippingEffectiveFrom) {
+      setStatus('Please enter a quantity, cost, VAT rate, and effective date.')
       return
     }
     const { error } = await supabase.from('shipping_rules').insert({
@@ -153,6 +161,7 @@ export default function ProductDetailPage() {
       courier_cost_pence: Math.round(parseFloat(newShippingCost) * 100),
       vat_rate: parseFloat(newShippingVat),
       service_level: newServiceLevel,
+      effective_from: newShippingEffectiveFrom,
     })
     if (error) {
       setStatus(`Error adding shipping rule: ${error.message}`)
@@ -161,6 +170,7 @@ export default function ProductDetailPage() {
     setNewQty('')
     setNewShippingCost('')
     setNewShippingVat('')
+    setNewShippingEffectiveFrom(today())
     setStatus('Shipping rule added.')
     loadAll()
   }
@@ -280,7 +290,7 @@ export default function ProductDetailPage() {
           </tbody>
         </table>
 
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             placeholder="Type (e.g. cost_price, picking)"
             value={newComponentType}
@@ -298,6 +308,15 @@ export default function ProductDetailPage() {
             <option value="0">0% (VAT-free / labour / zero-rated)</option>
             <option value="0.20">20% (Standard rate)</option>
           </select>
+          <div>
+            <input
+              type="date"
+              value={newEffectiveFrom}
+              onChange={(e) => setNewEffectiveFrom(e.target.value)}
+              style={{ padding: '6px' }}
+            />
+            <div style={{ fontSize: '11px', color: '#888' }}>Effective from — today for a new price, or an earlier date if backfilling history</div>
+          </div>
           <button onClick={addCogsRow} style={{ padding: '6px 12px' }}>Add Cost</button>
         </div>
       </section>
@@ -311,6 +330,7 @@ export default function ProductDetailPage() {
               <th style={thStyle}>Cost</th>
               <th style={thStyle}>VAT Rate</th>
               <th style={thStyle}>Service Level</th>
+              <th style={thStyle}>Effective From</th>
               <th style={thStyle}></th>
             </tr>
           </thead>
@@ -336,6 +356,7 @@ export default function ProductDetailPage() {
                       <option value="express">Express</option>
                     </select>
                   </td>
+                  <td style={tdStyle}>{row.effective_from}</td>
                   <td style={tdStyle}>
                     <button onClick={() => saveShippingEdit(row.id)} style={{ marginRight: '8px' }}>Save</button>
                     <button onClick={() => setEditingShippingId(null)}>Cancel</button>
@@ -347,6 +368,7 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>£{(row.courier_cost_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
                   <td style={tdStyle}>{row.service_level}</td>
+                  <td style={tdStyle}>{row.effective_from}</td>
                   <td style={tdStyle}>
                     <button onClick={() => startEditShipping(row)} style={{ marginRight: '12px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}>
                       Edit
@@ -361,7 +383,11 @@ export default function ProductDetailPage() {
           </tbody>
         </table>
 
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <p style={{ color: '#666', fontSize: '13px' }}>
+          If the courier price genuinely changes, use <strong>Add Rule</strong> with today's date — past orders keep the old rate, future orders use the new one.
+          Use <strong>Edit</strong> on an existing row only to fix a mistake (it changes every order using that rule, past and future).
+        </p>
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             placeholder="Qty"
             value={newQty}
@@ -383,6 +409,15 @@ export default function ProductDetailPage() {
             <option value="standard">Standard</option>
             <option value="express">Express</option>
           </select>
+          <div>
+            <input
+              type="date"
+              value={newShippingEffectiveFrom}
+              onChange={(e) => setNewShippingEffectiveFrom(e.target.value)}
+              style={{ padding: '6px' }}
+            />
+            <div style={{ fontSize: '11px', color: '#888' }}>Effective from</div>
+          </div>
           <button onClick={addShippingRow} style={{ padding: '6px 12px' }}>Add Rule</button>
         </div>
       </section>
