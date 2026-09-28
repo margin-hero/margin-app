@@ -61,7 +61,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - **Amazon settlement:** multi-row per order; group by order-item-code, revenue = Principal + Tax, costs = ItemFees, use "Shipping label purchase" if present else `shipping_rules`. Refunds and SAFE-T reimbursements not yet handled.
 - **TikTok settlement:** one row per line item, uses TikTok numeric SKU IDs → translate via `tiktok_sku_catalog`.
 - **Mirakl:** Excel (.xlsx) settlement export, multi-row per order line; group by "Order line ID". Only sale transaction types are used (Order amount, Shipping charges, Commission and their tax rows). Refunds are skipped for now. Retailer picker lists platforms where `integration_type = 'mirakl'`.
-- Document each new channel in `docs/margin-hero-how-to-guide.md` (not yet added).
+- Document each new channel in `docs/margin-hero-how-to-guide.md`.
 
 ## Styling
 - Brand palette (from `/grid`):
@@ -71,4 +71,4 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `/grid` is the reference design; carry its visual language to other pages. Existing pages use inline styles rather than Tailwind classes.
 
 ## Roadmap
-See `docs/margin-saas-roadmap.md` (not yet added) (Phase 0 MVP → Phase 4 international).
+See `docs/margin-saas-roadmap.md` (Phase 0 MVP → Phase 4 international).
