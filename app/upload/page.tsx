@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { supabase } from '@/lib/supabase'
+import Nav from '@/components/Nav'
 
 type ParsedRow = {
   external_id: string
@@ -112,37 +113,75 @@ export default function UploadPage() {
     setStatus(messages.join(' '))
   }
 
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Upload Orders CSV</h1>
-      <input type="file" accept=".csv" onChange={handleFile} style={{ marginTop: '1rem' }} />
-      <p>{status}</p>
+  const pageStyle: React.CSSProperties = {
+    background: '#1A1A1A',
+    minHeight: '100vh',
+    padding: '2rem',
+    fontFamily: 'sans-serif',
+    color: '#fff',
+  }
+  const cardStyle: React.CSSProperties = {
+    background: '#232323',
+    borderRadius: '12px',
+    border: '0.5px solid #333',
+    padding: '20px',
+    marginTop: '1.5rem',
+  }
+  const thStyle: React.CSSProperties = { padding: '6px 8px', textAlign: 'left', color: '#888', fontWeight: 500, fontSize: '13px', borderBottom: '0.5px solid #333', whiteSpace: 'nowrap' }
+  const tdStyle: React.CSSProperties = { padding: '6px 8px', color: '#eee', fontSize: '13px', borderBottom: '0.5px solid #2e2e2e' }
+  const buttonStyle: React.CSSProperties = {
+    marginTop: '1rem',
+    padding: '8px 16px',
+    background: '#DCFF00',
+    color: '#1A1A1A',
+    border: 'none',
+    borderRadius: '6px',
+    fontWeight: 500,
+    fontSize: '14px',
+    cursor: 'pointer',
+  }
 
-      {rows.length > 0 && (
-        <>
-          <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '1rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #ccc', textAlign: 'left' }}>
-                {Object.keys(rows[0]).map((key) => (
-                  <th key={key} style={{ padding: '6px' }}>{key}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                  {Object.values(row).map((val, j) => (
-                    <td key={j} style={{ padding: '6px' }}>{val}</td>
+  return (
+    <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
+      <Nav />
+      <div style={pageStyle}>
+        <span style={{ fontSize: '18px', fontWeight: 500 }}>Upload Orders CSV</span>
+        <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Generic CSV import. Review the parsed rows, then confirm.</p>
+
+        <div style={cardStyle}>
+          <input type="file" accept=".csv" onChange={handleFile} style={{ color: '#bbb', fontSize: '13px' }} />
+          {status && <p style={{ color: '#bbb', fontSize: '13px', margin: '14px 0 0' }}>{status}</p>}
+        </div>
+
+        {rows.length > 0 && (
+          <div style={cardStyle}>
+            <p style={{ fontSize: '13px', color: '#888', margin: '0 0 14px' }}>Preview ({rows.length} rows)</p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <thead>
+                  <tr>
+                    {Object.keys(rows[0]).map((key) => (
+                      <th key={key} style={thStyle}>{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i}>
+                      {Object.values(row).map((val, j) => (
+                        <td key={j} style={tdStyle}>{val}</td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={handleImport} style={{ marginTop: '1rem', padding: '8px 16px' }}>
-            Confirm Import
-          </button>
-        </>
-      )}
+                </tbody>
+              </table>
+            </div>
+            <button onClick={handleImport} style={buttonStyle}>
+              Confirm Import
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
