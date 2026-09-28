@@ -84,7 +84,7 @@ export default function TikTokImportPage() {
       ;(window as any).__tiktokOrders = normalized
       setStatus(
         `Parsed ${normalized.length} order lines. Skipped ${refundsSkipped} refund-only rows (handled later). ` +
-        (noMatch > 0 ? `${noMatch} rows had no catalog match — using raw SKU ID for those, update your catalog and re-import to fix.` : 'All SKUs matched your catalog.')
+        (noMatch > 0 ? `WARNING: ${noMatch} rows had no catalog match. Do NOT confirm yet — upload an up-to-date catalog on the TikTok Catalog page first, then choose this file again. Confirming now would create products named after TikTok's numeric IDs, and fixing it later would double-count those sales.` : 'All SKUs matched your catalog.')
       )
     }
     reader.readAsBinaryString(file)
@@ -113,7 +113,7 @@ export default function TikTokImportPage() {
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
       <h1>TikTok Settlement Report Import</h1>
-      <p style={{ color: '#666' }}>First pass: standard sales only (refund rows are skipped for now). Upload your catalog mapping first if you haven't already.</p>
+      <p style={{ color: '#666' }}>First pass: standard sales only (refund rows are skipped for now). Upload your catalog mapping first, and don't confirm an import if any SKUs are unmatched.</p>
       <input type="file" accept=".xlsx" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>
 
