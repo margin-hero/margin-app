@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { loadStores, Store } from '@/lib/stores'
-import Nav from '@/components/Nav'
 
 type Platform = { id: string; name: string }
 
@@ -96,7 +95,6 @@ export default function StoresPage() {
 
   return (
     <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
-      <Nav />
       <div style={pageStyle}>
         <span style={{ fontSize: '18px', fontWeight: 500 }}>Stores</span>
         <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import Nav from '@/components/Nav'
 
 type MarginRow = {
   channel: string
@@ -94,7 +93,6 @@ export default function ChannelOverviewPage() {
 
   return (
     <div style={{ background: '#1A1A1A', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' }}>
-      <Nav />
       <div style={{ padding: '2rem' }}>
         <p style={{ color: '#888', fontSize: '13px', marginTop: 0, marginBottom: '4px' }}>Overview</p>
         <h1 style={{ margin: '0 0 16px', fontSize: '22px' }}>Channel performance</h1>

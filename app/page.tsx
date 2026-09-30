@@ -1,23 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-
-// Palette: lime + near-black/olive greys inspired by landonorris.com,
-// with the app's bright red / green kept for losing / winning margin.
-const lime = '#D2FF00'
-const green = '#39FF6A'
-const red = '#FF4C4C'
-const bg = '#111112'
-const panel = '#1B1C19'
-const panelRaised = '#23251F'
-const border = '#2E3029'
-const text = '#EBEEE0'
-const muted = '#9A9D8F'
-const dim = '#5E6158'
-
-const font = 'var(--font-mona), Arial, sans-serif'
-// Extra-wide, extra-heavy cut of Mona Sans for headlines
-const display: React.CSSProperties = { fontFamily: font, fontStretch: '125%', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.01em' }
+import { lime, green, red, bg, panel, panelRaised, border, text, muted, dim, font, display } from '@/lib/theme'
 
 // "live" = import already works in the app. Update as new importers ship.
 const CHANNELS: { name: string; live: boolean }[] = [

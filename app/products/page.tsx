@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import Nav from '@/components/Nav'
 
 type Product = {
   id: string
@@ -47,7 +46,6 @@ export default function ProductsPage() {
 
   return (
     <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
-      <Nav />
       <div style={pageStyle}>
         <span style={{ fontSize: '18px', fontWeight: 500 }}>Products</span>
         <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Master products and their default VAT rate. Open a product to edit its costs.</p>

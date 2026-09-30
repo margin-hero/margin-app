@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import Nav from '@/components/Nav'
 
 type MarginRow = {
   master_product_id: string
@@ -126,7 +125,6 @@ export default function SkuDetailPage() {
 
   return (
     <div style={pageStyle}>
-      <Nav />
       <div style={{ padding: '2rem' }}>
         <p style={{ color: '#888', fontSize: '13px', marginTop: 0, marginBottom: '4px' }}>SKU × channel detail</p>
         <h1 style={{ margin: '0 0 16px', fontSize: '22px' }}>Gross vs Net profit, by SKU and channel</h1>

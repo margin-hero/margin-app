@@ -54,7 +54,8 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 ## Code structure
 - `lib/supabase.ts`: shared Supabase client
 - `lib/importEngine.ts`: shared SKU-matching / dedupe / insert logic. All platform importers must reuse this, not duplicate it. Known exception: `/upload` (generic CSV) still has its own dedupe/insert and should be moved onto importEngine at some point.
-- `components/Nav.tsx`: shared nav (Dashboards / Import / Manage groups)
+- `components/Nav.tsx`: collapsible left sidebar (Dashboards / Import / Manage groups). Rendered for every page by `components/AppShell.tsx` in `app/layout.tsx` (skipped on the public homepage `/`), so pages must NOT include `<Nav />` themselves. Add new pages to `NAV_GROUPS` with a `lucide-react` icon.
+- `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
 - Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/mappings`, `/products`, `/products/[id]`
 - `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
 

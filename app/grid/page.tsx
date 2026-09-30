@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import Nav from '@/components/Nav'
 
 export default async function GridPage() {
   const { data, error } = await supabase.from('sku_channel_margins').select('*')
@@ -65,7 +64,6 @@ export default async function GridPage() {
 
   return (
     <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
-      <Nav />
       <div style={pageStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
         <span style={{ fontSize: '20px', color: '#DCFF00' }}>↗</span>

@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { supabase } from '@/lib/supabase'
-import Nav from '@/components/Nav'
 
 type ParsedRow = {
   external_id: string
@@ -143,7 +142,6 @@ export default function UploadPage() {
 
   return (
     <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
-      <Nav />
       <div style={pageStyle}>
         <span style={{ fontSize: '18px', fontWeight: 500 }}>Upload Orders CSV</span>
         <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Generic CSV import. Review the parsed rows, then confirm.</p>
