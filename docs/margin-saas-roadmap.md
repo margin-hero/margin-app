@@ -51,6 +51,22 @@ This is where the product actually becomes usable daily, so the dashboard work m
 - **Dashboard performance at scale**: dashboards currently download every order line (in 1,000-row pages via `lib/fetchAll.ts`) and add them up in the browser. Fine for tens of thousands of lines; before sellers have hundreds of thousands, move the totals into the database (aggregated views or Postgres functions grouped by product × store × date) so pages download summaries, not raw rows.
 - **Date-tracked VAT registration per store**: `vat_registered` is currently a simple yes/no on `stores`, so ticking it recalculates *all* of that store's past orders as if it had always been registered. Store it with an `effective_from` date (same pattern as `cogs_components` / `shipping_rules`) so orders before the registration date keep the non-registered treatment. Useful when a new brand launches unregistered and registers later.
 
+**Costs build-out (the crux of margin; do in this order)**
+
+Manage menu target: Stores · Products · Mappings · Catalog Import · Costs · Shipping · Overheads.
+
+Costs behave in three different ways, and the model needs all three:
+1. **Per unit.** Landed cost, most WEEE compliance fees. These scale with quantity (how `cogs_components` works today).
+2. **Per order / per parcel.** Box, pick & pack fee, label. Charged once per order however many units it holds. Not modelled yet: entering these as product costs wrongly multiplies them by quantity, which distorts bundles and multi-quantity orders.
+3. **Per period.** Wages, rent, business rates, utilities, subscriptions, the annual WEEE registration fee. Shared out across products at reporting time (default: each product's share of revenue; alternatives: share of units or orders).
+
+Steps:
+1. **Costs overview + missing-costs warning.** One table of every product's current costs, flagging products whose orders have no product cost (they silently show ~100% margin), including costs dated *after* some orders that need backdating. Warning banner on dashboards.
+2. **Fixed cost types + per-order costs.** Replace free-text `component_type` with a fixed list (landed cost, pick & pack, packaging, WEEE, other…) so reports can break costs down by type; add per-order costs (per the modelling point above).
+3. **Bulk cost import.** Same style as Catalog Import: CSV/XLSX, adds only, dated, deliberate VAT rate per row (no default).
+4. **Shipping rate cards.** Define a courier service once ("Evri small parcel = £2.95", per-quantity and bundle prices) and assign products to it, instead of per-product shipping rows. Price change = one edit, dated. Also decide the fallback when an order quantity has no matching rate.
+5. **Overheads + allocation.** `overhead_costs` (name, amount, period) and the allocation rule above, subtracted in Net Profit only (never Gross).
+
 **Dashboard (priority)**
 - **Overview page**: total revenue, total margin, margin %, order count — filterable by date range, defaulting to "last 7 days" and "this month"
 - **SKU × channel comparison view**: the standardised SKU as rows, platforms as columns, margin % per cell — this is your headline differentiator over single-platform tools like Sellerboard, so it deserves real design attention, not a bolted-on table

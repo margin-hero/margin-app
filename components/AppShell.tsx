@@ -2,7 +2,10 @@
 
 import { usePathname } from 'next/navigation'
 import Nav from '@/components/Nav'
+import MissingCostsBanner from '@/components/MissingCostsBanner'
 import { bg } from '@/lib/theme'
+
+const DASHBOARDS = ['/grid', '/channel-overview', '/sku-detail', '/margins', '/trends']
 
 // Wraps every app page with the sidebar. The public homepage ("/") is left as-is.
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -13,7 +16,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: bg }}>
       <Nav />
-      <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+      <main style={{ flex: 1, minWidth: 0 }}>
+        {/* key = re-check on every dashboard visit, so it clears once costs are fixed */}
+        {DASHBOARDS.includes(pathname) && <MissingCostsBanner key={pathname} />}
+        {children}
+      </main>
     </div>
   )
 }
