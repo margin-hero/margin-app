@@ -42,6 +42,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 
 ## Key tables / views
 - `tenants`, `master_products`, `platform_listings`
+- `stores`: one shop on one platform (e.g. two TikTok shops for different brands). Holds `vat_registered` (the views use this, not `tenants.vat_registered`). `platform_listings.store_id` is required; a trigger copies `platform_id` from the store. Importers pick a store via `components/StorePicker.tsx` and call `importOrdersForStore`. `shipping_rules.store_id` is optional (null = all stores; a store-specific rule wins). `tiktok_sku_catalog` is per store.
 - `platforms`: `integration_type` (e.g. `'mirakl'`) is how importers find their platforms
 - `order_line_items`: unique on `(platform_listing_id, external_id)` for dedupe on re-uploads
 - `cogs_components`, `shipping_rules`
@@ -59,7 +60,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 
 ## Platform import notes
 - **Amazon settlement:** multi-row per order; group by order-item-code, revenue = Principal + Tax, costs = ItemFees, use "Shipping label purchase" if present else `shipping_rules`. Refunds and SAFE-T reimbursements not yet handled.
-- **TikTok settlement:** one row per line item, uses TikTok numeric SKU IDs → translate via `tiktok_sku_catalog`.
+- **TikTok settlement:** one row per line item, uses TikTok numeric SKU IDs → translate via `tiktok_sku_catalog`. Revenue = "Net sales" (already net of seller discounts and same-row refunds); rows with Net sales <= 0 are skipped. "VAT" column is 0 for UK-established sellers (only filled when TikTok collects VAT). Fee VAT = 1/6 of Fees excluding affiliate commission / seller-funded promotion columns.
 - **Mirakl:** Excel (.xlsx) settlement export, multi-row per order line; group by "Order line ID". Only sale transaction types are used (Order amount, Shipping charges, Commission and their tax rows). Refunds are skipped for now. Retailer picker lists platforms where `integration_type = 'mirakl'`.
 - Document each new channel in `docs/margin-hero-how-to-guide.md`.
 

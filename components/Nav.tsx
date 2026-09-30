@@ -27,6 +27,7 @@ const NAV_GROUPS = [
   {
     label: 'Manage',
     links: [
+      { href: '/stores', label: 'Stores' },
       { href: '/products', label: 'Products' },
       { href: '/mappings', label: 'Mappings' },
     ],

@@ -8,6 +8,8 @@ All the import pages are under **Import** in the menu at the top of the screen.
 
 ## Before you start: things that apply to every channel
 
+**Set up your stores first.** Go to **Manage → Stores** and add one store for each shop you sell through. If you have more than one shop on the same marketplace (for example three TikTok shops for different brands, or Amazon UK and Amazon FR), add each one as its own store. Every import page asks which store the file is from, and the dashboards show each store separately under its store name. Each store also has its own **VAT registered** setting, so a new brand that isn't VAT registered yet can sit alongside your registered ones.
+
 **You can upload the same file twice without any harm.** Margin Hero remembers which orders it has already imported and skips them. If your reports overlap (for example, two weekly reports that share a day), just upload both.
 
 **Always check the preview before you confirm.** After you pick a file, Margin Hero shows you the first 20 orders it found. Nothing is saved until you click **Confirm Import**. When you confirm, *all* the orders in the file are imported, not just the 20 in the preview.
@@ -88,9 +90,10 @@ You only need to do this again when you launch new products on TikTok. Re-upload
 > **Why this matters:** if you confirm with unmatched products, Margin Hero creates products named after TikTok's long numbers. Fixing the catalog afterwards and re-importing won't tidy those up. You'd end up with the same sales counted twice, once under the number and once under your real SKU. Always fix the catalog *before* confirming.
 
 ### What Margin Hero takes from the report
-- **Sale price:** gross sales for the item.
-- **VAT:** the VAT shown on the row.
-- **Fees:** TikTok's fees.
+- **Sale price:** "Net sales" for the item. That's the price after any discounts you funded yourself and after any refund shown on the same row. Discounts TikTok pays for don't reduce your sale price.
+- **Fully refunded orders are left out.** If an order was refunded in full, it isn't imported. If the refund appears on a later row, the original sale is still counted for now (see "Refunds aren't imported yet" above).
+- **VAT on the sale:** TikTok only shows VAT here when it collects the VAT itself (mostly for overseas sellers). For UK sellers it's usually £0. *(Coming soon: Margin Hero will work out the VAT from each product's VAT rate when this is £0. Until then, TikTok margins for VAT-registered sellers may look higher than they really are.)*
+- **Fees:** all of TikTok's fees. TikTok's own fees (commission, shipping service fee, Smart Promotion fee and so on) are treated as including 20% VAT. Affiliate commission paid to creators is treated as having no VAT.
 - **Shipping cost:** the shipping amount from the report if there is one, otherwise the shipping costs you've set up for that product.
 
 ---

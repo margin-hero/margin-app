@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { Store } from './stores'
 
 export type NormalizedOrder = {
   sku: string
@@ -21,35 +22,23 @@ export type ImportResult = {
   errors: string[]
 }
 
-// Shared by every platform importer: given a platform name and a list of already-parsed
-// orders in our standard shape, this handles SKU matching, auto-creating unrecognised
-// products, dedupe against existing orders, and the actual insert.
+// Shared by every platform importer: given the store the file belongs to and a list of
+// already-parsed orders in our standard shape, this handles SKU matching, auto-creating
+// unrecognised products, dedupe against existing orders, and the actual insert.
 // Each platform's import page only needs to handle turning its own raw export into
 // NormalizedOrder[] — everything after that is identical and lives here once.
-export async function importOrdersForPlatform(
-  platformName: string,
+export async function importOrdersForStore(
+  store: Store,
   orders: NormalizedOrder[],
   onProgress?: (message: string) => void
 ): Promise<ImportResult> {
   const result: ImportResult = { imported: 0, skippedDuplicates: 0, skippedNoSku: [], errors: [] }
 
-  onProgress?.('Looking up platform...')
-  const { data: platform, error: platformError } = await supabase
-    .from('platforms')
-    .select('id')
-    .eq('name', platformName)
-    .single()
-
-  if (platformError || !platform) {
-    result.errors.push(`Platform "${platformName}" not found: ${platformError?.message || 'no match'}`)
-    return result
-  }
-
   onProgress?.('Loading existing listings...')
   const { data: listings, error: listingsError } = await supabase
     .from('platform_listings')
     .select('id, platform_sku')
-    .eq('platform_id', platform.id)
+    .eq('store_id', store.id)
 
   if (listingsError) {
     result.errors.push(`Error loading listings: ${listingsError.message}`)
@@ -63,24 +52,14 @@ export async function importOrdersForPlatform(
 
   if (newSkus.length > 0) {
     onProgress?.(`Creating ${newSkus.length} new products for unrecognised SKUs...`)
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('name', 'Test Store')
-      .single()
-
-    if (tenantError || !tenant) {
-      result.errors.push(`Error looking up tenant: ${tenantError?.message || 'not found'}`)
-      return result
-    }
 
     // Check if any of these SKUs already exist as a master product's standard_sku
-    // (e.g. the same seller SKU text used across two different platforms) —
+    // (e.g. the same seller SKU text used across two different stores) —
     // reuse that product instead of creating a duplicate.
     const { data: existingProducts, error: existingProductsError } = await supabase
       .from('master_products')
       .select('id, standard_sku')
-      .eq('tenant_id', tenant.id)
+      .eq('tenant_id', store.tenant_id)
       .in('standard_sku', newSkus)
 
     if (existingProductsError) {
@@ -96,7 +75,7 @@ export async function importOrdersForPlatform(
       if (!productId) {
         const { data: newProduct, error: productError } = await supabase
           .from('master_products')
-          .insert({ tenant_id: tenant.id, standard_sku: sku, name: sku })
+          .insert({ tenant_id: store.tenant_id, standard_sku: sku, name: sku })
           .select('id')
           .single()
 
@@ -109,7 +88,7 @@ export async function importOrdersForPlatform(
 
       const { data: newListing, error: listingError } = await supabase
         .from('platform_listings')
-        .insert({ master_product_id: productId, platform_id: platform.id, platform_sku: sku })
+        .insert({ master_product_id: productId, store_id: store.id, platform_id: store.platform_id, platform_sku: sku })
         .select('id')
         .single()
 

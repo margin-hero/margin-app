@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import Papa from 'papaparse'
-import { importOrdersForPlatform, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { Store } from '@/lib/stores'
+import StorePicker from '@/components/StorePicker'
 
 type AmazonRow = {
   'transaction-type': string
@@ -26,6 +28,7 @@ export default function AmazonImportPage() {
   const [status, setStatus] = useState<string>('')
   const [preview, setPreview] = useState<NormalizedOrder[]>([])
   const [allOrders, setAllOrders] = useState<NormalizedOrder[]>([])
+  const [store, setStore] = useState<Store | null>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -108,8 +111,12 @@ export default function AmazonImportPage() {
       setStatus('No parsed data to import.')
       return
     }
+    if (!store) {
+      setStatus('Please choose which store this file is from first.')
+      return
+    }
 
-    const result = await importOrdersForPlatform('Amazon UK', allOrders, setStatus)
+    const result = await importOrdersForStore(store, allOrders, setStatus)
 
     if (result.errors.length > 0) {
       setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
@@ -126,6 +133,7 @@ export default function AmazonImportPage() {
     <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
       <h1>Amazon Settlement Report Import</h1>
       <p style={{ color: '#666' }}>First pass: standard sales only (Refunds and SAFE-T reimbursements are skipped for now).</p>
+      <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} value={store} onChange={setStore} />
       <input type="file" accept=".csv" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>
 

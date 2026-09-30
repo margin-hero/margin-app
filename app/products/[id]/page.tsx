@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { loadStores, Store } from '@/lib/stores'
 
 type Product = {
   id: string
@@ -26,6 +27,7 @@ type ShippingRow = {
   vat_rate: number
   service_level: string
   effective_from: string
+  store_id: string | null
 }
 
 function today(): string {
@@ -39,6 +41,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [cogs, setCogs] = useState<CogsRow[]>([])
   const [shipping, setShipping] = useState<ShippingRow[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [status, setStatus] = useState('')
 
   const [newComponentType, setNewComponentType] = useState('')
@@ -50,6 +53,7 @@ export default function ProductDetailPage() {
   const [newShippingVat, setNewShippingVat] = useState('')
   const [newServiceLevel, setNewServiceLevel] = useState('standard')
   const [newShippingEffectiveFrom, setNewShippingEffectiveFrom] = useState(today())
+  const [newShippingStoreId, setNewShippingStoreId] = useState('')
 
   const [editingCogsId, setEditingCogsId] = useState<string | null>(null)
   const [editComponentType, setEditComponentType] = useState('')
@@ -61,6 +65,7 @@ export default function ProductDetailPage() {
   const [editShippingCost, setEditShippingCost] = useState('')
   const [editShippingVat, setEditShippingVat] = useState('')
   const [editServiceLevel, setEditServiceLevel] = useState('standard')
+  const [editShippingStoreId, setEditShippingStoreId] = useState('')
 
   async function loadAll() {
     const { data: productData } = await supabase
@@ -79,10 +84,12 @@ export default function ProductDetailPage() {
 
     const { data: shippingData } = await supabase
       .from('shipping_rules')
-      .select('id, qty, courier_cost_pence, vat_rate, service_level, effective_from')
+      .select('id, qty, courier_cost_pence, vat_rate, service_level, effective_from, store_id')
       .eq('master_product_id', productId)
       .order('qty')
     setShipping(shippingData || [])
+
+    setStores(await loadStores())
   }
 
   useEffect(() => {
@@ -162,6 +169,7 @@ export default function ProductDetailPage() {
       vat_rate: parseFloat(newShippingVat),
       service_level: newServiceLevel,
       effective_from: newShippingEffectiveFrom,
+      store_id: newShippingStoreId || null,
     })
     if (error) {
       setStatus(`Error adding shipping rule: ${error.message}`)
@@ -181,6 +189,7 @@ export default function ProductDetailPage() {
     setEditShippingCost((row.courier_cost_pence / 100).toString())
     setEditShippingVat(row.vat_rate.toString())
     setEditServiceLevel(row.service_level)
+    setEditShippingStoreId(row.store_id || '')
   }
 
   async function saveShippingEdit(id: string) {
@@ -191,6 +200,7 @@ export default function ProductDetailPage() {
         courier_cost_pence: Math.round(parseFloat(editShippingCost) * 100),
         vat_rate: parseFloat(editShippingVat),
         service_level: editServiceLevel,
+        store_id: editShippingStoreId || null,
       })
       .eq('id', id)
     if (error) {
@@ -326,6 +336,7 @@ export default function ProductDetailPage() {
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
+              <th style={thStyle}>Store</th>
               <th style={thStyle}>Qty</th>
               <th style={thStyle}>Cost</th>
               <th style={thStyle}>VAT Rate</th>
@@ -338,6 +349,14 @@ export default function ProductDetailPage() {
             {shipping.map((row) =>
               editingShippingId === row.id ? (
                 <tr key={row.id} style={{ borderBottom: '1px solid #eee', background: '#fafafa' }}>
+                  <td style={tdStyle}>
+                    <select value={editShippingStoreId} onChange={(e) => setEditShippingStoreId(e.target.value)} style={{ padding: '4px' }}>
+                      <option value="">All stores</option>
+                      {stores.map((st) => (
+                        <option key={st.id} value={st.id}>{st.name}</option>
+                      ))}
+                    </select>
+                  </td>
                   <td style={tdStyle}>
                     <input value={editQty} onChange={(e) => setEditQty(e.target.value)} style={{ ...inputStyle, width: '50px' }} />
                   </td>
@@ -364,6 +383,7 @@ export default function ProductDetailPage() {
                 </tr>
               ) : (
                 <tr key={row.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={tdStyle}>{row.store_id ? stores.find((st) => st.id === row.store_id)?.name : 'All stores'}</td>
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.courier_cost_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
@@ -386,8 +406,15 @@ export default function ProductDetailPage() {
         <p style={{ color: '#666', fontSize: '13px' }}>
           If the courier price genuinely changes, use <strong>Add Rule</strong> with today's date — past orders keep the old rate, future orders use the new one.
           Use <strong>Edit</strong> on an existing row only to fix a mistake (it changes every order using that rule, past and future).
+          A rule for a specific store (e.g. Amazon FR) overrides the <strong>All stores</strong> rule for that store's orders.
         </p>
         <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select value={newShippingStoreId} onChange={(e) => setNewShippingStoreId(e.target.value)} style={{ padding: '6px' }}>
+                      <option value="">All stores</option>
+                      {stores.map((st) => (
+                        <option key={st.id} value={st.id}>{st.name}</option>
+                      ))}
+                    </select>
           <input
             placeholder="Qty"
             value={newQty}

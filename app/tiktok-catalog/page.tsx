@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
+import { Store } from '@/lib/stores'
+import StorePicker from '@/components/StorePicker'
 
 export default function TikTokCatalogPage() {
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState<{ skuId: string; sellerSku: string }[]>([])
+  const [store, setStore] = useState<Store | null>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -70,39 +73,35 @@ export default function TikTokCatalogPage() {
       return
     }
 
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('name', 'Test Store')
-      .single()
-
-    if (tenantError || !tenant) {
-      setStatus(`Error looking up tenant: ${tenantError?.message || 'not found'}`)
+    if (!store) {
+      setStatus('Please choose which TikTok store this catalog belongs to first.')
       return
     }
 
     const rows = mapping.map((m) => ({
-      tenant_id: tenant.id,
+      tenant_id: store.tenant_id,
+      store_id: store.id,
       sku_id: m.skuId,
       seller_sku: m.sellerSku,
     }))
 
     const { error } = await supabase
       .from('tiktok_sku_catalog')
-      .upsert(rows, { onConflict: 'tenant_id,sku_id' })
+      .upsert(rows, { onConflict: 'store_id,sku_id' })
 
     if (error) {
       setStatus(`Error saving catalog: ${error.message}`)
       return
     }
 
-    setStatus(`Saved ${rows.length} SKU mappings. You can now import TikTok settlement reports.`)
+    setStatus(`Saved ${rows.length} SKU mappings for ${store.name}. You can now import its TikTok settlement reports.`)
   }
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
       <h1>TikTok SKU Catalog Mapping</h1>
-      <p style={{ color: '#666' }}>Upload your TikTok product catalog export once, to teach the system which SKU ID matches which of your Seller SKUs. Re-upload only when new products launch.</p>
+      <p style={{ color: '#666' }}>Upload each TikTok shop's product catalog export once, to teach the system which SKU ID matches which of your Seller SKUs. Re-upload only when new products launch.</p>
+      <StorePicker platformFilter={(p) => p.name === 'TikTok'} value={store} onChange={setStore} />
       <input type="file" accept=".xlsx" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>
 

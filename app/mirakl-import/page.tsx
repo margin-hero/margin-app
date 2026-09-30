@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import * as XLSX from 'xlsx'
-import { supabase } from '@/lib/supabase'
-import { importOrdersForPlatform, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { Store } from '@/lib/stores'
+import StorePicker from '@/components/StorePicker'
 
 function parseMiraklDate(dateStr: string): string {
   // "09/07/2026 - 21:45:52" -> "2026-07-09"
@@ -13,30 +14,17 @@ function parseMiraklDate(dateStr: string): string {
 }
 
 export default function MiraklImportPage() {
-  const [platforms, setPlatforms] = useState<{ id: string; name: string }[]>([])
-  const [selectedPlatform, setSelectedPlatform] = useState('')
+  const [store, setStore] = useState<Store | null>(null)
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState<NormalizedOrder[]>([])
   const [allOrders, setAllOrders] = useState<NormalizedOrder[]>([])
   const [skippedRefunds, setSkippedRefunds] = useState(0)
 
-  useEffect(() => {
-    async function loadPlatforms() {
-      const { data } = await supabase
-        .from('platforms')
-        .select('id, name')
-        .eq('integration_type', 'mirakl')
-        .order('name')
-      setPlatforms(data || [])
-    }
-    loadPlatforms()
-  }, [])
-
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!selectedPlatform) {
-      setStatus('Please select which retailer this export is from first.')
+    if (!store) {
+      setStatus('Please select which store this export is from first.')
       return
     }
 
@@ -103,7 +91,11 @@ export default function MiraklImportPage() {
       setStatus('No parsed data to import.')
       return
     }
-    const result = await importOrdersForPlatform(selectedPlatform, allOrders, setStatus)
+    if (!store) {
+      setStatus('Please select which store this export is from first.')
+      return
+    }
+    const result = await importOrdersForStore(store, allOrders, setStatus)
 
     if (result.errors.length > 0) {
       setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
@@ -121,15 +113,7 @@ export default function MiraklImportPage() {
       <h1>Mirakl Marketplace Import</h1>
       <p style={{ color: '#666' }}>Used for B&Q, The Range, Debenhams, and Tesco — same underlying report format, different retailer.</p>
 
-      <div style={{ marginTop: '1rem' }}>
-        <label style={{ marginRight: '8px' }}>Retailer:</label>
-        <select value={selectedPlatform} onChange={(e) => setSelectedPlatform(e.target.value)} style={{ padding: '6px' }}>
-          <option value="">Select...</option>
-          {platforms.map((p) => (
-            <option key={p.id} value={p.name}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+      <StorePicker platformFilter={(p) => p.integration_type === 'mirakl'} value={store} onChange={setStore} />
 
       <input type="file" accept=".xlsx,.csv" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>

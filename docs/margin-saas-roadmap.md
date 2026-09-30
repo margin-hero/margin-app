@@ -16,6 +16,13 @@
 
 ---
 
+## Before real customers (blockers — don't launch without these)
+
+- **Supabase Auth + real RLS policies.** Currently deferred: there's one test tenant, looked up by name (`'Test Store'`). Every tenant-scoped table needs policies, including `stores`, `tiktok_sku_catalog`, `master_products`, `platform_listings`, `order_line_items`, `cogs_components`, `shipping_rules`, and the `order_margins` / `sku_channel_margins` views. Replace every `'Test Store'` lookup with the logged-in user's tenant.
+- **Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.** Right now it matches SKUs against *every* listing in the database, not just one store's. With one test tenant that's harmless. With real tenants, an order could be attached to another seller's product or the wrong store. It also has its own copy of the dedupe/insert logic, which should be shared.
+
+---
+
 ## Phase 0 — MVP (CSV-based, single platform proof of concept)
 
 **Goal**: prove the margin calculation is correct end-to-end for one seller, one platform.
@@ -41,6 +48,7 @@ This is where the product actually becomes usable daily, so the dashboard work m
 - CSV import for eBay, Mirakl retailers, OnBuy, Temu, TikTok — one parser + column mapping per platform
 - `ad_spend` import (manual or CSV) for ACOS/TACOS
 - Per-product VAT/tax rates (zero-rated handling)
+- **Date-tracked VAT registration per store**: `vat_registered` is currently a simple yes/no on `stores`, so ticking it recalculates *all* of that store's past orders as if it had always been registered. Store it with an `effective_from` date (same pattern as `cogs_components` / `shipping_rules`) so orders before the registration date keep the non-registered treatment. Useful when a new brand launches unregistered and registers later.
 
 **Dashboard (priority)**
 - **Overview page**: total revenue, total margin, margin %, order count — filterable by date range, defaulting to "last 7 days" and "this month"
@@ -112,6 +120,7 @@ Push notifications require either a native/installed app or web push — this is
 ## Phase 4 — v3 (international expansion)
 
 - New `platforms` rows per marketplace (Amazon DE/FR/ES, Walmart US) — no schema change, just data
+- **Non-GBP stores (e.g. Amazon FR in EUR)**: stores can already be created on any platform, but all import and margin maths assumes GBP. Needed: importers record each order's real `currency_code` (column already exists on `order_line_items`, defaults to GBP), COGS/shipping costs can be in a different currency from the sale, and the views convert to the tenant's reporting currency before summing (never sum mixed currencies). Store-specific shipping rules already support a different courier cost per country.
 - Exchange rate capture per transaction (`exchange_rate_to_tenant_currency`, `rate_date`) for accurate historical reporting
 - Additional `tax_regimes` (US sales tax, EU VAT variants)
 - Reporting currency toggle: consolidated tenant-currency view vs per-market breakdown
