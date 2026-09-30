@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
-import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
+import CreateProductsToggle from '@/components/CreateProductsToggle'
 
 function parseMiraklDate(dateStr: string): string {
   // "09/07/2026 - 21:45:52" -> "2026-07-09"
@@ -15,6 +16,7 @@ function parseMiraklDate(dateStr: string): string {
 
 export default function MiraklImportPage() {
   const [store, setStore] = useState<Store | null>(null)
+  const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState<NormalizedOrder[]>([])
   const [allOrders, setAllOrders] = useState<NormalizedOrder[]>([])
@@ -95,17 +97,8 @@ export default function MiraklImportPage() {
       setStatus('Please select which store this export is from first.')
       return
     }
-    const result = await importOrdersForStore(store, allOrders, setStatus)
-
-    if (result.errors.length > 0) {
-      setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
-      return
-    }
-
-    setStatus(
-      `Done. Imported ${result.imported} new order lines. Skipped ${result.skippedDuplicates} already-imported. ` +
-      `${result.skippedNoSku.length} rows had no matching SKU after product creation attempt.`
-    )
+    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus })
+    setStatus(describeImportResult(result, store))
   }
 
   return (
@@ -114,6 +107,7 @@ export default function MiraklImportPage() {
       <p style={{ color: '#666' }}>Used for B&Q, The Range, Debenhams, and Tesco — same underlying report format, different retailer.</p>
 
       <StorePicker platformFilter={(p) => p.integration_type === 'mirakl'} value={store} onChange={setStore} />
+      <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
 
       <input type="file" accept=".xlsx,.csv" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>

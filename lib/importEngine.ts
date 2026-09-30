@@ -19,21 +19,33 @@ export type NormalizedOrder = {
 export type ImportResult = {
   imported: number
   skippedDuplicates: number
-  skippedNoSku: string[]
+  skippedNoSku: string[] // one entry per order line held back because its SKU isn't mapped
+  unmappedSkus: string[] // the distinct SKUs behind skippedNoSku
+  autoLinked: string[] // SKUs linked automatically because they exactly match a product's standard SKU
+  createdProducts: string[] // SKUs that got a brand-new product (only when createUnknownSkus is on)
   errors: string[]
 }
 
+export type ImportOptions = {
+  // false (default): SKUs that aren't mapped in this store are held back and listed,
+  // so the product list stays clean. true: create a new product for each one.
+  createUnknownSkus?: boolean
+}
+
 // Shared by every platform importer: given the store the file belongs to and a list of
-// already-parsed orders in our standard shape, this handles SKU matching, auto-creating
-// unrecognised products, dedupe against existing orders, and the actual insert.
+// already-parsed orders in our standard shape, this handles SKU matching, unmapped SKUs
+// (held back, or auto-created if asked), dedupe against existing orders, and the insert.
 // Each platform's import page only needs to handle turning its own raw export into
 // NormalizedOrder[] — everything after that is identical and lives here once.
 export async function importOrdersForStore(
   store: Store,
   orders: NormalizedOrder[],
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
+  options: ImportOptions = {}
 ): Promise<ImportResult> {
-  const result: ImportResult = { imported: 0, skippedDuplicates: 0, skippedNoSku: [], errors: [] }
+  const result: ImportResult = {
+    imported: 0, skippedDuplicates: 0, skippedNoSku: [], unmappedSkus: [], autoLinked: [], createdProducts: [], errors: [],
+  }
 
   onProgress?.('Loading existing listings...')
   const { data: listings, error: listingsError } = await fetchAll((from, to) =>
@@ -56,11 +68,10 @@ export async function importOrdersForStore(
   const newSkus = uniqueSkus.filter((sku) => !skuToListingId.has(sku))
 
   if (newSkus.length > 0) {
-    onProgress?.(`Creating ${newSkus.length} new products for unrecognised SKUs...`)
+    onProgress?.(`Checking ${newSkus.length} SKUs not yet mapped in this store...`)
 
-    // Check if any of these SKUs already exist as a master product's standard_sku
-    // (e.g. the same seller SKU text used across two different stores) —
-    // reuse that product instead of creating a duplicate.
+    // If a SKU exactly matches a master product's standard_sku (e.g. the same seller
+    // SKU used across two stores), link it to that product — no new product needed.
     // Checked in batches: a very long list of SKUs won't fit in one request
     const existingProductBySku = new Map<string, string>()
     for (let i = 0; i < newSkus.length; i += 200) {
@@ -80,7 +91,14 @@ export async function importOrdersForStore(
     for (const sku of newSkus) {
       let productId = existingProductBySku.get(sku)
 
-      if (!productId) {
+      if (!productId && !options.createUnknownSkus) {
+        result.unmappedSkus.push(sku) // held back: the orders are skipped below
+        continue
+      }
+
+      if (productId) {
+        result.autoLinked.push(sku)
+      } else {
         const { data: newProduct, error: productError } = await supabase
           .from('master_products')
           .insert({ tenant_id: store.tenant_id, standard_sku: sku, name: sku })
@@ -92,6 +110,7 @@ export async function importOrdersForStore(
           continue
         }
         productId = newProduct.id
+        result.createdProducts.push(sku)
       }
 
       const { data: newListing, error: listingError } = await supabase
@@ -169,4 +188,30 @@ export async function importOrdersForStore(
   }
 
   return result
+}
+
+// One consistent summary message for every import page.
+export function describeImportResult(result: ImportResult, store: Store): string {
+  if (result.errors.length > 0) {
+    return `Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`
+  }
+  const parts = [
+    `Done. Imported ${result.imported} new order lines into ${store.name}.`,
+    `Skipped ${result.skippedDuplicates} already-imported.`,
+  ]
+  if (result.autoLinked.length) {
+    parts.push(`Linked ${result.autoLinked.length} SKU(s) to existing products with the same SKU.`)
+  }
+  if (result.createdProducts.length) {
+    parts.push(`Created ${result.createdProducts.length} new product(s) — add their costs in Products.`)
+  }
+  if (result.unmappedSkus.length) {
+    const shown = result.unmappedSkus.slice(0, 20).join(', ')
+    const more = result.unmappedSkus.length > 20 ? ` and ${result.unmappedSkus.length - 20} more` : ''
+    parts.push(
+      `HELD BACK ${result.skippedNoSku.length} order line(s) because ${result.unmappedSkus.length} SKU(s) aren't mapped in this store: ${shown}${more}. ` +
+      `Map them (Catalog Import or Mappings), then upload the same file again — already-imported orders won't be duplicated.`
+    )
+  }
+  return parts.join(' ')
 }

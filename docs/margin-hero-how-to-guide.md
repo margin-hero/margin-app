@@ -16,17 +16,42 @@ All the import pages are under **Import** in the menu at the top of the screen.
 
 **Refunds aren't imported yet.** At the moment Margin Hero only imports sales. Refunds, returns and reimbursements (such as Amazon SAFE-T claims) are skipped. That means your margin figures show what you made on sales, before any refunds.
 
-**New products are created for you.** If a report has a SKU that Margin Hero hasn't seen before, it adds it as a new product automatically, using the SKU as the product name. After importing:
+**Set up your products before importing sales (recommended).** Use **Manage → Catalog Import** to load all your products and their SKU in each store in one go (see the section below). Then every sales import matches cleanly.
 
-1. Go to **Manage → Products**.
-2. Find any new products and click **Edit costs →**.
-3. Add your product cost, and any other costs, for each one.
+**SKUs that aren't mapped yet are held back.** If a sales report has a SKU that isn't mapped in that store, those orders are skipped and the SKUs are listed after the import. Map them (Catalog Import or **Manage → Mappings**), then upload the same file again. Orders that already went in won't be duplicated. Two exceptions:
+- If the store's SKU exactly matches one of your products' standard SKUs, it's linked to that product automatically.
+- If you tick **Create new products for SKUs that aren't mapped yet** on the import page, each unknown SKU becomes a new product named after the SKU, for you to tidy up later.
 
-Until you do this, those products will look like they have 100% margin, because Margin Hero doesn't know what they cost you.
+**Add costs for every product.** Go to **Manage → Products**, click **Edit costs →** and add the product cost and any other costs. Until you do, a product looks like it has 100% margin, because Margin Hero doesn't know what it costs you.
 
 **Make sure your costs start early enough.** Each cost has a date it applies from. A cost only counts for orders on or after that date. If you're importing older sales, set the cost's start date to before your oldest order, or those orders will show no cost.
 
 **Bundles and multipacks:** if one sale on a marketplace is really several units (for example a 3-pack), set this up in **Manage → Mappings** by changing "units per sale". Margin Hero then counts the right product cost and shipping for each sale.
+
+---
+
+## Setting up products: Catalog Import
+
+**Page:** Manage → **Catalog Import**
+**File type:** CSV or Excel (.xlsx). Click **Download template** on the page for an example.
+
+Use this to add products and their SKU in each store, all at once, before importing sales. The file has **one row per product per store**. A product sold in three stores takes three rows.
+
+| Column | What to put in it | Example |
+|---|---|---|
+| `standard_sku` | Your own SKU for the product. This is how Margin Hero groups it across stores. | `MUG-01` |
+| `name` | The product name | `Blue Mug` |
+| `store` | The store name, exactly as it appears on **Manage → Stores** | `Amazon UK` |
+| `store_sku` | The SKU that store's sales reports use for this product. For TikTok, use your **Seller SKU**, not TikTok's numeric ID. | `AMZ-MUG-01` |
+| `units_per_sale` | Optional. For bundles: how many units one sale contains. Leave empty for 1. | `2` |
+
+To add a product without any store yet, fill in `standard_sku` and `name` and leave `store` and `store_sku` empty.
+
+**What happens:**
+1. Choose your file. Margin Hero checks it against what you already have and shows what it will add, plus any problem rows.
+2. Click **Confirm import**. Problem rows are skipped; everything else is added.
+
+Catalog Import **only adds**. It never changes or deletes existing products or mappings. If a store SKU is already mapped to a different product, or has a different units per sale, that row is listed as a problem and left alone, so you can decide what's right in **Manage → Mappings**. Re-uploading the same file is safe: rows already set up are simply counted as "already set up".
 
 ---
 
@@ -133,7 +158,7 @@ Use this for a store that doesn't have its own import page yet, such as **Argos*
 **File type:** CSV or Excel (.xlsx). Only the first sheet of an Excel file is read.
 
 ### Before you start
-Make sure the store exists in **Manage → Stores**. Like the other import pages, any SKU Margin Hero hasn't seen before in that store is **added as a new product automatically**, so double-check your SKUs are spelled consistently. `MUG-BLUE-01` and `mug-blue-01` would become two different products.
+Make sure the store exists in **Manage → Stores**, and ideally set up its products with **Catalog Import**. Like the other import pages, orders with SKUs that aren't mapped in that store are held back and listed. SKUs must match exactly: `MUG-BLUE-01` and `mug-blue-01` are different SKUs.
 
 ### How to lay out your file
 Your file needs these column headings in the first row, spelled exactly like this:

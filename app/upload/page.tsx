@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import Papa from 'papaparse'
-import * as XLSX from 'xlsx'
-import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { readSpreadsheet } from '@/lib/readSpreadsheet'
+import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
+import CreateProductsToggle from '@/components/CreateProductsToggle'
 import { lime, red, muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton } from '@/lib/theme'
 
 type ParsedRow = {
@@ -21,48 +21,21 @@ type ParsedRow = {
 
 const pence = (pounds: string) => Math.round((parseFloat(pounds) || 0) * 100)
 
-// Excel stores dates as serial numbers (e.g. 46279) — turn those back into YYYY-MM-DD,
-// and turn every other cell into plain text so both file types look the same.
-function excelCellToText(key: string, value: unknown): string {
-  if (key === 'order_date' && typeof value === 'number') {
-    const d = XLSX.SSF.parse_date_code(value)
-    return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
-  }
-  return String(value ?? '').trim()
-}
-
 export default function UploadPage() {
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [orders, setOrders] = useState<NormalizedOrder[]>([])
   const [invalidRows, setInvalidRows] = useState<number[]>([])
   const [store, setStore] = useState<Store | null>(null)
+  const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
   const [status, setStatus] = useState('')
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (/\.xlsx?$/i.test(file.name)) {
-      // Excel: read the first sheet
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const workbook = XLSX.read(event.target?.result, { type: 'array' })
-        const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        const raw: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-        const rows = raw.map((r) =>
-          Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim(), excelCellToText(k.trim(), v)]))
-        ) as ParsedRow[]
-        processRows(rows)
-      }
-      reader.readAsArrayBuffer(file)
-    } else {
-      // CSV: Papa keeps every cell as the exact text in the file (e.g. SKU "00123" stays "00123")
-      Papa.parse<ParsedRow>(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => processRows(results.data),
-      })
-    }
+    readSpreadsheet(file, ['order_date'])
+      .then((rows) => processRows(rows as ParsedRow[]))
+      .catch((err) => setStatus(`Could not read that file: ${err?.message || err}`))
   }
 
   function processRows(parsedRows: ParsedRow[]) {
@@ -106,17 +79,8 @@ export default function UploadPage() {
       return
     }
 
-    const result = await importOrdersForStore(store, orders, setStatus)
-
-    if (result.errors.length > 0) {
-      setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
-      return
-    }
-
-    setStatus(
-      `Done. Imported ${result.imported} new order lines into ${store.name}. Skipped ${result.skippedDuplicates} already-imported.` +
-      (invalidRows.length ? ` ${invalidRows.length} invalid row(s) were not imported.` : '')
-    )
+    const result = await importOrdersForStore(store, orders, setStatus, { createUnknownSkus })
+    setStatus(describeImportResult(result, store))
   }
 
   return (
@@ -129,6 +93,7 @@ export default function UploadPage() {
 
       <div style={cardStyle}>
         <StorePicker platformFilter={() => true} value={store} onChange={setStore} />
+        <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
         <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px' }} />
         {status && <p style={{ color: invalidRows.length ? red : lime, fontSize: '14px', fontWeight: 600, margin: '16px 0 0' }}>{status}</p>}
       </div>

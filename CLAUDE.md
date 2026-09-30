@@ -55,9 +55,12 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `lib/supabase.ts`: shared Supabase client
 - `lib/importEngine.ts`: shared SKU-matching / dedupe / insert logic. All platform importers must reuse this, not duplicate it (including `/upload`, the generic CSV importer).
 - `components/Nav.tsx`: collapsible left sidebar (Dashboards / Import / Manage groups). Rendered for every page by `components/AppShell.tsx` in `app/layout.tsx` (skipped on the public homepage `/`), so pages must NOT include `<Nav />` themselves. Add new pages to `NAV_GROUPS` with a `lucide-react` icon.
+- `importEngine` holds back orders whose SKU isn't mapped in the store (listed via `describeImportResult`) unless `createUnknownSkus` is set (tick-box `components/CreateProductsToggle.tsx` on each import page). A store SKU that exactly matches a product's `standard_sku` is still linked automatically.
+- `/catalog-import`: bulk products + store mappings from CSV/XLSX (one row per listing). Only adds, never changes or deletes; clashes are reported as problems.
+- `lib/readSpreadsheet.ts`: shared CSV/XLSX reader (Papa for CSV to keep exact text, SheetJS for Excel with date-cell conversion). Use it for new file importers.
 - `lib/fetchAll.ts`: Supabase silently caps results at 1,000 rows. Any query that can return more (orders, listings, products, catalogs) must go through `fetchAll` with an `.order()` on a unique column + `.range(from, to)`.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
-- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/mappings`, `/products`, `/products/[id]`
+- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/mappings`, `/products`, `/products/[id]`
 - `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
 
 ## Platform import notes

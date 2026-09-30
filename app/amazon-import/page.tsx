@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Papa from 'papaparse'
-import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
+import CreateProductsToggle from '@/components/CreateProductsToggle'
 
 type AmazonRow = {
   'transaction-type': string
@@ -29,6 +30,7 @@ export default function AmazonImportPage() {
   const [preview, setPreview] = useState<NormalizedOrder[]>([])
   const [allOrders, setAllOrders] = useState<NormalizedOrder[]>([])
   const [store, setStore] = useState<Store | null>(null)
+  const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -116,17 +118,8 @@ export default function AmazonImportPage() {
       return
     }
 
-    const result = await importOrdersForStore(store, allOrders, setStatus)
-
-    if (result.errors.length > 0) {
-      setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
-      return
-    }
-
-    setStatus(
-      `Done. Imported ${result.imported} new order lines. Skipped ${result.skippedDuplicates} already-imported. ` +
-      `${result.skippedNoSku.length} rows had no matching SKU after product creation attempt.`
-    )
+    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus })
+    setStatus(describeImportResult(result, store))
   }
 
   return (
@@ -134,6 +127,7 @@ export default function AmazonImportPage() {
       <h1>Amazon Settlement Report Import</h1>
       <p style={{ color: '#666' }}>First pass: standard sales only (Refunds and SAFE-T reimbursements are skipped for now).</p>
       <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} value={store} onChange={setStore} />
+      <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
       <input type="file" accept=".csv" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>
 

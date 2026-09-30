@@ -4,9 +4,10 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
+import CreateProductsToggle from '@/components/CreateProductsToggle'
 
 function parseTikTokDate(dateStr: string): string {
   // "2026/08/24" -> "2026-08-24"
@@ -36,6 +37,7 @@ export default function TikTokImportPage() {
   const [unmatchedCount, setUnmatchedCount] = useState(0)
   const [skippedRefundCount, setSkippedRefundCount] = useState(0)
   const [store, setStore] = useState<Store | null>(null)
+  const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
 
   // Parsed rows were matched against one store's catalog, so switching store means re-reading the file
   function changeStore(newStore: Store | null) {
@@ -132,7 +134,7 @@ export default function TikTokImportPage() {
       ;(window as any).__tiktokOrders = normalized
       setStatus(
         `Parsed ${normalized.length} order lines. Skipped ${refundsSkipped} fully refunded or refund-only rows (refunds are handled later).` +
-        (noMatch > 0 ? `WARNING: ${noMatch} rows had no catalog match. Do NOT confirm yet — upload an up-to-date catalog on the TikTok Catalog page first, then choose this file again. Confirming now would create products named after TikTok's numeric IDs, and fixing it later would double-count those sales.` : 'All SKUs matched your catalog.')
+        (noMatch > 0 ? `WARNING: ${noMatch} rows had no catalog match. Best fix: upload an up-to-date catalog on the TikTok Catalog page, then choose this file again. If you confirm now anyway, those rows are held back (don't tick "Create new products" here, or you'll get products named after TikTok's numeric IDs).` : 'All SKUs matched your catalog.')
       )
     }
     reader.readAsBinaryString(file)
@@ -149,17 +151,8 @@ export default function TikTokImportPage() {
       return
     }
 
-    const result = await importOrdersForStore(store, orders, setStatus)
-
-    if (result.errors.length > 0) {
-      setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
-      return
-    }
-
-    setStatus(
-      `Done. Imported ${result.imported} new order lines. Skipped ${result.skippedDuplicates} already-imported. ` +
-      `${result.skippedNoSku.length} rows had no matching SKU after product creation attempt.`
-    )
+    const result = await importOrdersForStore(store, orders, setStatus, { createUnknownSkus })
+    setStatus(describeImportResult(result, store))
   }
 
   return (
@@ -167,6 +160,7 @@ export default function TikTokImportPage() {
       <h1>TikTok Settlement Report Import</h1>
       <p style={{ color: '#666' }}>First pass: standard sales only (refund rows are skipped for now). Upload your catalog mapping first, and don't confirm an import if any SKUs are unmatched.</p>
       <StorePicker platformFilter={(p) => p.name === 'TikTok'} value={store} onChange={changeStore} />
+      <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
       <input type="file" accept=".xlsx" onChange={handleFile} style={{ marginTop: '1rem' }} />
       <p>{status}</p>
 
