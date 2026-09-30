@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 import { loadStores, Store } from '@/lib/stores'
 
 type Listing = {
@@ -42,10 +43,14 @@ export default function MappingsPage() {
   const [editProductId, setEditProductId] = useState('')
 
   async function loadAll() {
-    const { data: productData } = await supabase
-      .from('master_products')
-      .select('id, standard_sku, name, platform_listings(id, store_id, platform_sku, units_per_sale, stores(name))')
-      .order('standard_sku')
+    const { data: productData } = await fetchAll((from, to) =>
+      supabase
+        .from('master_products')
+        .select('id, standard_sku, name, platform_listings(id, store_id, platform_sku, units_per_sale, stores(name))')
+        .order('standard_sku')
+        .order('id')
+        .range(from, to)
+    )
     setProducts((productData as any) || [])
 
     setStores(await loadStores())

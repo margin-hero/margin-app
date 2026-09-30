@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
@@ -62,10 +63,14 @@ export default function TikTokImportPage() {
       const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
 
       // Load the saved SKU ID -> Seller SKU catalog
-      const { data: catalogRows, error: catalogError } = await supabase
-        .from('tiktok_sku_catalog')
-        .select('sku_id, seller_sku')
-        .eq('store_id', store.id)
+      const { data: catalogRows, error: catalogError } = await fetchAll((from, to) =>
+        supabase
+          .from('tiktok_sku_catalog')
+          .select('sku_id, seller_sku')
+          .eq('store_id', store.id)
+          .order('sku_id')
+          .range(from, to)
+      )
 
       if (catalogError) {
         setStatus(`Error loading SKU catalog: ${catalogError.message}`)

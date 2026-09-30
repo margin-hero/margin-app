@@ -1,11 +1,14 @@
 import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 
 export default async function MarginsPage() {
   // Render on every visit so this shows live data, not a snapshot from build time
   await connection()
 
-  const { data, error } = await supabase.from('order_margins').select('*')
+  const { data, error } = await fetchAll((from, to) =>
+    supabase.from('order_margins').select('*').order('order_line_item_id').range(from, to)
+  )
 
   if (error) {
     return <div style={{ padding: '2rem' }}>Error: {error.message}</div>

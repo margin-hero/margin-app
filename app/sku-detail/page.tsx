@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 
 type MarginRow = {
   master_product_id: string
@@ -51,15 +52,19 @@ export default function SkuDetailPage() {
   async function load() {
     setLoading(true)
 
-    const { data: rows } = await supabase
-      .from('order_margins')
-      .select('master_product_id, product_name, channel, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence')
-      .gte('order_date', dateFrom)
-      .lte('order_date', dateTo)
+    const { data: rows } = await fetchAll((from, to) =>
+      supabase
+        .from('order_margins')
+        .select('master_product_id, product_name, channel, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence')
+        .gte('order_date', dateFrom)
+        .lte('order_date', dateTo)
+        .order('order_line_item_id')
+        .range(from, to)
+    )
 
-    const { data: products } = await supabase
-      .from('master_products')
-      .select('id, standard_sku')
+    const { data: products } = await fetchAll((from, to) =>
+      supabase.from('master_products').select('id, standard_sku').order('id').range(from, to)
+    )
 
     const skuMap = new Map((products || []).map((p) => [p.id, p.standard_sku]))
 

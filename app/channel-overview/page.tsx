@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 
 type MarginRow = {
   channel: string
@@ -40,11 +41,15 @@ export default function ChannelOverviewPage() {
 
   async function load() {
     setLoading(true)
-    const { data: rows } = await supabase
-      .from('order_margins')
-      .select('channel, effective_qty, revenue_pence, product_cost_pence, margin_pence')
-      .gte('order_date', dateFrom)
-      .lte('order_date', dateTo)
+    const { data: rows } = await fetchAll((from, to) =>
+      supabase
+        .from('order_margins')
+        .select('channel, effective_qty, revenue_pence, product_cost_pence, margin_pence')
+        .gte('order_date', dateFrom)
+        .lte('order_date', dateTo)
+        .order('order_line_item_id')
+        .range(from, to)
+    )
 
     const byChannel = new Map<string, MarginRow[]>()
     for (const row of (rows || []) as MarginRow[]) {

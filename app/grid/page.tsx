@@ -1,5 +1,6 @@
 import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 import { lime, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
 
 type Cell = { revenuePence: number; marginPence: number }
@@ -8,9 +9,13 @@ export default async function GridPage() {
   // Render on every visit so the grid shows live data, not a snapshot from build time
   await connection()
 
-  const { data, error } = await supabase
-    .from('order_margins')
-    .select('master_product_id, product_name, channel, revenue_pence, margin_pence')
+  const { data, error } = await fetchAll((from, to) =>
+    supabase
+      .from('order_margins')
+      .select('master_product_id, product_name, channel, revenue_pence, margin_pence')
+      .order('order_line_item_id')
+      .range(from, to)
+  )
 
   if (error) {
     return <div style={{ ...pageStyle, color: red }}>Error: {error.message}</div>

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { Store } from './stores'
+import { fetchAll } from './fetchAll'
 
 export type NormalizedOrder = {
   sku: string
@@ -35,10 +36,14 @@ export async function importOrdersForStore(
   const result: ImportResult = { imported: 0, skippedDuplicates: 0, skippedNoSku: [], errors: [] }
 
   onProgress?.('Loading existing listings...')
-  const { data: listings, error: listingsError } = await supabase
-    .from('platform_listings')
-    .select('id, platform_sku')
-    .eq('store_id', store.id)
+  const { data: listings, error: listingsError } = await fetchAll((from, to) =>
+    supabase
+      .from('platform_listings')
+      .select('id, platform_sku')
+      .eq('store_id', store.id)
+      .order('id')
+      .range(from, to)
+  )
 
   if (listingsError) {
     result.errors.push(`Error loading listings: ${listingsError.message}`)
@@ -56,18 +61,21 @@ export async function importOrdersForStore(
     // Check if any of these SKUs already exist as a master product's standard_sku
     // (e.g. the same seller SKU text used across two different stores) —
     // reuse that product instead of creating a duplicate.
-    const { data: existingProducts, error: existingProductsError } = await supabase
-      .from('master_products')
-      .select('id, standard_sku')
-      .eq('tenant_id', store.tenant_id)
-      .in('standard_sku', newSkus)
+    // Checked in batches: a very long list of SKUs won't fit in one request
+    const existingProductBySku = new Map<string, string>()
+    for (let i = 0; i < newSkus.length; i += 200) {
+      const { data: existingProducts, error: existingProductsError } = await supabase
+        .from('master_products')
+        .select('id, standard_sku')
+        .eq('tenant_id', store.tenant_id)
+        .in('standard_sku', newSkus.slice(i, i + 200))
 
-    if (existingProductsError) {
-      result.errors.push(`Error checking existing products: ${existingProductsError.message}`)
-      return result
+      if (existingProductsError) {
+        result.errors.push(`Error checking existing products: ${existingProductsError.message}`)
+        return result
+      }
+      existingProducts.forEach((p) => existingProductBySku.set(p.standard_sku, p.id))
     }
-
-    const existingProductBySku = new Map(existingProducts.map((p) => [p.standard_sku, p.id]))
 
     for (const sku of newSkus) {
       let productId = existingProductBySku.get(sku)
@@ -129,8 +137,10 @@ export async function importOrdersForStore(
   onProgress?.('Checking for already-imported orders...')
   const chunkSize = 500
   const existingKeys = new Set<string>()
-  for (let i = 0; i < candidateRows.length; i += chunkSize) {
-    const chunk = candidateRows.slice(i, i + chunkSize)
+  // Smaller batches here so each lookup stays well under Supabase's 1,000-row limit
+  const lookupSize = 200
+  for (let i = 0; i < candidateRows.length; i += lookupSize) {
+    const chunk = candidateRows.slice(i, i + lookupSize)
     const { data: existing, error: existingError } = await supabase
       .from('order_line_items')
       .select('platform_listing_id, external_id')

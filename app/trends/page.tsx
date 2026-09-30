@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from 'recharts'
 
 type MarginRow = {
@@ -19,9 +20,13 @@ export default function TrendsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: rows, error } = await supabase
-        .from('order_margins')
-        .select('product_name, order_date, revenue_pence, margin_pence')
+      const { data: rows, error } = await fetchAll((from, to) =>
+        supabase
+          .from('order_margins')
+          .select('product_name, order_date, revenue_pence, margin_pence')
+          .order('order_line_item_id')
+          .range(from, to)
+      )
 
       if (error) {
         console.error(error)

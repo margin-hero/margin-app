@@ -48,6 +48,7 @@ This is where the product actually becomes usable daily, so the dashboard work m
 - CSV import for eBay, Mirakl retailers, OnBuy, Temu, TikTok — one parser + column mapping per platform
 - `ad_spend` import (manual or CSV) for ACOS/TACOS
 - Per-product VAT/tax rates (zero-rated handling)
+- **Dashboard performance at scale**: dashboards currently download every order line (in 1,000-row pages via `lib/fetchAll.ts`) and add them up in the browser. Fine for tens of thousands of lines; before sellers have hundreds of thousands, move the totals into the database (aggregated views or Postgres functions grouped by product × store × date) so pages download summaries, not raw rows.
 - **Date-tracked VAT registration per store**: `vat_registered` is currently a simple yes/no on `stores`, so ticking it recalculates *all* of that store's past orders as if it had always been registered. Store it with an `effective_from` date (same pattern as `cogs_components` / `shipping_rules`) so orders before the registration date keep the non-registered treatment. Useful when a new brand launches unregistered and registers later.
 
 **Dashboard (priority)**

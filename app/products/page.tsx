@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
 
 type Product = {
   id: string
@@ -17,10 +18,14 @@ export default function ProductsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from('master_products')
-        .select('id, standard_sku, name, vat_rate')
-        .order('standard_sku')
+      const { data } = await fetchAll((from, to) =>
+        supabase
+          .from('master_products')
+          .select('id, standard_sku, name, vat_rate')
+          .order('standard_sku')
+          .order('id')
+          .range(from, to)
+      )
       setProducts(data || [])
       setLoading(false)
     }
