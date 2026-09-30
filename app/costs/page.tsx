@@ -145,6 +145,8 @@ export default function CostsPage() {
       <p style={pageIntro}>
         Every product&apos;s current costs in one place. A product with no cost price looks far more profitable than it is,
         so anything flagged here is making your margins look better than they really are.
+        Add costs one product at a time with <strong>Edit costs</strong>, or many at once with{' '}
+        <Link href="/cost-import" style={{ color: lime, fontWeight: 700 }}>Cost Import</Link>.
       </p>
 
       <div style={cardStyle}>

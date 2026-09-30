@@ -55,6 +55,30 @@ Catalog Import **only adds**. It never changes or deletes existing products or m
 
 ---
 
+## Adding costs in bulk: Cost Import
+
+**Page:** Manage → **Cost Import**
+**File type:** CSV or Excel (.xlsx). Click **Download template** on the page for an example.
+
+One row per cost. The products must already exist (add them with Catalog Import first).
+
+| Column | What to put in it | Example |
+|---|---|---|
+| `standard_sku` | The product's standard SKU | `RAKE-3` |
+| `cost_type` | One of the cost types listed on the page, e.g. `Landed cost (all-in)`, `Product cost (supplier price)`, `Inbound freight`, `Pick & pack` | `Pick & pack` |
+| `description` | Optional. Use it to tell apart two costs of the same type, e.g. two "Other" costs | `Tissue paper` |
+| `amount` | The cost in pounds, **including any VAT you pay** | `0.85` |
+| `vat_rate` | `0`, `5` or `20`. Required: there's no default, because VAT differs per cost (imports and in-house labour are usually 0%) | `20` |
+| `effective_from` | The date the cost starts, written `2026-01-01`. Date it on or before the oldest order it should apply to. | `2026-01-01` |
+
+**Landed cost:** either enter one **Landed cost (all-in)**, or break it down into **Product cost**, **Inbound freight** and **Import duty**. Don't do both for the same product, or it's counted twice. Margin Hero will warn you if you do.
+
+**Per unit vs per order:** per-unit costs are multiplied by the quantity sold. Per-order costs (Pick & pack, Outer box / mailer, Other per-order cost) are charged once per order line.
+
+Cost Import **only adds** costs. If a row has the same product, cost type, description and date as an existing cost but a different amount, it's listed as a problem and left alone. To fix a mistake, use **Edit costs** on the product. For a genuine price change, add a new row with the new date, so older orders keep the old cost.
+
+---
+
 ## Amazon
 
 **Page:** Import → **Amazon**

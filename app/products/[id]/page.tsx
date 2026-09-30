@@ -249,7 +249,8 @@ export default function ProductDetailPage() {
           style={{ padding: '6px' }}
         >
           <option value="0">0% (VAT-free / zero-rated)</option>
-          <option value="0.20">20% (Standard rate)</option>
+          <option value="0.05">5% (Reduced rate)</option>
+          <option value="0.2">20% (Standard rate)</option>
         </select>
       </section>
 
@@ -308,7 +309,8 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>
                     <select value={editVatRate} onChange={(e) => setEditVatRate(e.target.value)} style={{ padding: '4px' }}>
                       <option value="0">0%</option>
-                      <option value="0.20">20%</option>
+                      <option value="0.05">5%</option>
+                      <option value="0.2">20%</option>
                     </select>
                   </td>
                   <td style={tdStyle}>{row.effective_from}</td>
@@ -372,7 +374,8 @@ export default function ProductDetailPage() {
           <select value={newVatRate} onChange={(e) => setNewVatRate(e.target.value)} style={{ padding: '6px' }}>
             <option value="">Select VAT rate...</option>
             <option value="0">0% (VAT-free / labour / zero-rated)</option>
-            <option value="0.20">20% (Standard rate)</option>
+            <option value="0.05">5% (Reduced rate)</option>
+            <option value="0.2">20% (Standard rate)</option>
           </select>
           <div>
             <input
@@ -427,7 +430,7 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>
                     <select value={editShippingVat} onChange={(e) => setEditShippingVat(e.target.value)} style={{ padding: '4px' }}>
                       <option value="0">0%</option>
-                      <option value="0.20">20%</option>
+                      <option value="0.2">20%</option>
                     </select>
                   </td>
                   <td style={tdStyle}>
@@ -491,7 +494,7 @@ export default function ProductDetailPage() {
           <select value={newShippingVat} onChange={(e) => setNewShippingVat(e.target.value)} style={{ padding: '6px' }}>
             <option value="">Select VAT rate...</option>
             <option value="0">0%</option>
-            <option value="0.20">20%</option>
+            <option value="0.2">20%</option>
           </select>
           <select value={newServiceLevel} onChange={(e) => setNewServiceLevel(e.target.value)} style={{ padding: '6px' }}>
             <option value="standard">Standard</option>

@@ -58,11 +58,12 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `components/Nav.tsx`: collapsible left sidebar (Dashboards / Import / Manage groups). Rendered for every page by `components/AppShell.tsx` in `app/layout.tsx` (skipped on the public homepage `/`), so pages must NOT include `<Nav />` themselves. Add new pages to `NAV_GROUPS` with a `lucide-react` icon.
 - `importEngine` holds back orders whose SKU isn't mapped in the store (listed via `describeImportResult`) unless `createUnknownSkus` is set (tick-box `components/CreateProductsToggle.tsx` on each import page). A store SKU that exactly matches a product's `standard_sku` is still linked automatically.
 - `/catalog-import`: bulk products + store mappings from CSV/XLSX (one row per listing). Only adds, never changes or deletes; clashes are reported as problems.
+- `/cost-import`: bulk costs from CSV/XLSX (one row per cost; cost_type by label or code; vat_rate and effective_from required, no defaults). Adds only: a different amount for the same product/type/description/date is reported, never overwritten.
 - `/costs`: overview of every product's current costs; flags products whose orders have £0 product cost (missing or not-backdated costs) and £0 shipping. `components/MissingCostsBanner.tsx` shows the same warning above dashboards (via AppShell).
 - `lib/readSpreadsheet.ts`: shared CSV/XLSX reader (Papa for CSV to keep exact text, SheetJS for Excel with date-cell conversion). Use it for new file importers.
 - `lib/fetchAll.ts`: Supabase silently caps results at 1,000 rows. Any query that can return more (orders, listings, products, catalogs) must go through `fetchAll` with an `.order()` on a unique column + `.range(from, to)`.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
-- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/mappings`, `/products`, `/products/[id]`
+- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/mappings`, `/products`, `/products/[id]`
 - `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
 
 ## Platform import notes
