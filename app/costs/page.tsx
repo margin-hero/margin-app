@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
+import { loadCostTypes, hasDoubleCountRisk } from '@/lib/costTypes'
 import { lime, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
 
 type ProductCosts = {
   id: string
   sku: string
   name: string
-  costPricePence: number | null // current cost price (as entered, inc. VAT)
-  otherPence: number // current other per-unit costs combined
-  futureCostFrom: string | null // cost price exists but only starts in the future
+  landedPence: number | null // current landed cost: all-in, or product cost + freight + duty (as entered, inc. VAT)
+  otherUnitPence: number // current other per-unit costs combined
+  perOrderPence: number // current per-order costs combined
+  futureCostFrom: string | null // a landed cost exists but only starts in the future
+  doubleCount: boolean // all-in landed cost AND its parts are both in effect
   shippingRules: number
   ordersNoCost: number // order lines where product cost came out as £0
   earliestNoCost: string | null
@@ -30,10 +33,11 @@ export default function CostsPage() {
   useEffect(() => {
     async function load() {
       const today = new Date().toISOString().slice(0, 10)
-      const [products, cogs, shipping, noCost, noShipping] = await Promise.all([
+      const [costTypes, products, cogs, shipping, noCost, noShipping] = await Promise.all([
+        loadCostTypes(),
         fetchAll((from, to) => supabase.from('master_products').select('id, standard_sku, name').order('id').range(from, to)),
         fetchAll((from, to) =>
-          supabase.from('cogs_components').select('master_product_id, component_type, amount_pence, effective_from').order('id').range(from, to)
+          supabase.from('cogs_components').select('master_product_id, component_type, description, amount_pence, effective_from').order('id').range(from, to)
         ),
         fetchAll((from, to) => supabase.from('shipping_rules').select('master_product_id').order('id').range(from, to)),
         fetchAll((from, to) =>
@@ -50,19 +54,23 @@ export default function CostsPage() {
         return
       }
 
-      // Current cost per product per cost type = the latest one already in effect today
-      const current = new Map<string, Map<string, { amount: number; from: string }>>()
-      const earliestCostPrice = new Map<string, string>()
+      const typeByCode = new Map(costTypes.map((t) => [t.code, t]))
+
+      // Current costs per product = the latest row per (type, description) already in
+      // effect today — the same rule the margin calculation uses
+      const current = new Map<string, Map<string, { type: string; amount: number; from: string }>>()
+      const earliestLanded = new Map<string, string>()
       for (const c of cogs.data) {
-        if (c.component_type === 'cost_price') {
-          const prev = earliestCostPrice.get(c.master_product_id)
-          if (!prev || c.effective_from < prev) earliestCostPrice.set(c.master_product_id, c.effective_from)
+        if (typeByCode.get(c.component_type)?.in_gross) {
+          const prev = earliestLanded.get(c.master_product_id)
+          if (!prev || c.effective_from < prev) earliestLanded.set(c.master_product_id, c.effective_from)
         }
         if (c.effective_from > today) continue
-        const byType = current.get(c.master_product_id) || new Map()
-        const prev = byType.get(c.component_type)
-        if (!prev || c.effective_from > prev.from) byType.set(c.component_type, { amount: c.amount_pence, from: c.effective_from })
-        current.set(c.master_product_id, byType)
+        const byKey = current.get(c.master_product_id) || new Map()
+        const key = `${c.component_type}|${c.description || ''}`
+        const prev = byKey.get(key)
+        if (!prev || c.effective_from > prev.from) byKey.set(key, { type: c.component_type, amount: c.amount_pence, from: c.effective_from })
+        current.set(c.master_product_id, byKey)
       }
 
       const count = (list: { master_product_id: string }[]) => {
@@ -81,18 +89,27 @@ export default function CostsPage() {
 
       setRows(
         products.data.map((p) => {
-          const byType = current.get(p.id)
-          const costPrice = byType?.get('cost_price')?.amount ?? null
-          let other = 0
-          byType?.forEach((v, type) => { if (type !== 'cost_price') other += v.amount })
-          const firstCost = earliestCostPrice.get(p.id) || null
+          let landed: number | null = null
+          let otherUnit = 0
+          let perOrder = 0
+          const activeTypes: string[] = []
+          current.get(p.id)?.forEach((v) => {
+            const t = typeByCode.get(v.type)
+            activeTypes.push(v.type)
+            if (t?.in_gross) landed = (landed ?? 0) + v.amount
+            else if (t?.basis === 'per_order') perOrder += v.amount
+            else otherUnit += v.amount
+          })
+          const firstLanded = earliestLanded.get(p.id) || null
           return {
             id: p.id,
             sku: p.standard_sku,
             name: p.name,
-            costPricePence: costPrice,
-            otherPence: other,
-            futureCostFrom: costPrice === null && firstCost && firstCost > today ? firstCost : null,
+            landedPence: landed,
+            otherUnitPence: otherUnit,
+            perOrderPence: perOrder,
+            futureCostFrom: landed === null && firstLanded && firstLanded > today ? firstLanded : null,
+            doubleCount: hasDoubleCountRisk(activeTypes),
             shippingRules: shippingCounts.get(p.id) || 0,
             ordersNoCost: noCostCounts.get(p.id) || 0,
             earliestNoCost: earliestNoCost.get(p.id) || null,
@@ -105,7 +122,7 @@ export default function CostsPage() {
     load()
   }, [])
 
-  const needsAttention = (r: ProductCosts) => r.costPricePence === null || r.ordersNoCost > 0 || r.ordersNoShipping > 0
+  const needsAttention = (r: ProductCosts) => r.landedPence === null || r.doubleCount || r.ordersNoCost > 0 || r.ordersNoShipping > 0
   const problemCount = rows.filter(needsAttention).length
   const shown = rows
     .filter((r) => !onlyProblems || needsAttention(r))
@@ -115,7 +132,7 @@ export default function CostsPage() {
   function costAdvice(r: ProductCosts) {
     if (r.ordersNoCost === 0) return null
     // A cost exists but starts after some orders → it needs backdating, not adding
-    if (r.costPricePence !== null || r.futureCostFrom) {
+    if (r.landedPence !== null || r.futureCostFrom) {
       return `${r.ordersNoCost} order line(s) before the cost starts: backdate it to ${r.earliestNoCost} or earlier`
     }
     return `${r.ordersNoCost} order line(s) have no product cost (showing inflated margin)`
@@ -147,13 +164,14 @@ export default function CostsPage() {
         )}
         {shown.length > 0 && (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '760px' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '860px' }}>
               <thead>
                 <tr>
                   <th style={thStyle}>SKU</th>
                   <th style={thStyle}>Name</th>
-                  <th style={thStyle}>Cost price</th>
-                  <th style={thStyle}>Other unit costs</th>
+                  <th style={thStyle}>Landed cost</th>
+                  <th style={thStyle}>Other per unit</th>
+                  <th style={thStyle}>Per order</th>
                   <th style={thStyle}>Shipping rules</th>
                   <th style={thStyle}>Needs attention</th>
                   <th style={thStyle}></th>
@@ -166,17 +184,19 @@ export default function CostsPage() {
                     <tr key={r.id}>
                       <td style={{ ...tdStyle, fontWeight: 700 }}>{r.sku}</td>
                       <td style={tdStyle}>{r.name}</td>
-                      <td style={{ ...tdStyle, color: r.costPricePence === null ? red : text }}>
-                        {r.costPricePence !== null ? pounds(r.costPricePence) : r.futureCostFrom ? `Starts ${r.futureCostFrom}` : 'Missing'}
+                      <td style={{ ...tdStyle, color: r.landedPence === null ? red : text }}>
+                        {r.landedPence !== null ? pounds(r.landedPence) : r.futureCostFrom ? `Starts ${r.futureCostFrom}` : 'Missing'}
                       </td>
-                      <td style={{ ...tdStyle, color: r.otherPence ? text : dim }}>{r.otherPence ? pounds(r.otherPence) : '—'}</td>
+                      <td style={{ ...tdStyle, color: r.otherUnitPence ? text : dim }}>{r.otherUnitPence ? pounds(r.otherUnitPence) : '—'}</td>
+                      <td style={{ ...tdStyle, color: r.perOrderPence ? text : dim }}>{r.perOrderPence ? pounds(r.perOrderPence) : '—'}</td>
                       <td style={{ ...tdStyle, color: r.shippingRules ? text : dim }}>{r.shippingRules || '—'}</td>
                       <td style={{ ...tdStyle, fontSize: '13px' }}>
                         {advice && <div style={{ color: red }}>{advice}</div>}
+                        {r.doubleCount && <div style={{ color: red }}>All-in landed cost AND product cost / freight / duty in effect: possible double count</div>}
                         {r.ordersNoShipping > 0 && (
                           <div style={{ color: lime }}>{r.ordersNoShipping} order line(s) with £0 shipping: add a shipping rule for that quantity</div>
                         )}
-                        {!advice && !r.ordersNoShipping && r.costPricePence === null && <div style={{ color: red }}>No cost price yet</div>}
+                        {!advice && r.landedPence === null && <div style={{ color: red }}>No landed / product cost yet</div>}
                         {!needsAttention(r) && <span style={{ color: dim }}>—</span>}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>

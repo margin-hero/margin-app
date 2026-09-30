@@ -29,7 +29,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - All money is stored and calculated in **integer pence** (`*_pence` columns). Watch for fractional-penny rounding in VAT splits.
 - **Aggregation:** sum totals first, THEN derive percentages from the totals. Never average per-order percentages.
 - `margin_percent` uses **net revenue** as the denominator.
-- **Gross Profit** = revenue minus landed product cost only (`product_cost_pence`).
+- **Gross Profit** = revenue minus landed product cost only (`product_cost_pence` = every `cost_types` row with `in_gross`: all-in landed cost, or product cost + inbound freight + import duty).
 - **Net Profit** = revenue minus everything: product cost, other costs, fees, shipping (`total_cost_pence`). Future overhead allocation (wages/rent) will also subtract from Net.
 - Two VAT modes: VAT registered (net figures throughout) vs not registered (VAT is an irrecoverable cost). VAT rate is per product, not flat. `tax_regime_id` exists for future international taxes.
 - Landed cost from third-country imports and in-house picking/packing carry **0% VAT**, not the 20% default.
@@ -46,6 +46,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `platforms`: shared across tenants, added by migration only (no UI, to avoid duplicates). `integration_type` (e.g. `'mirakl'`) is how importers find their platforms; `'csv'` = no dedicated importer, orders come in via `/upload` (e.g. Argos, Shopify)
 - `order_line_items`: unique on `(platform_listing_id, external_id)` for dedupe on re-uploads
 - `cogs_components`, `shipping_rules`
+- `cost_types`: fixed list (migration-only) that `cogs_components.component_type` must reference. `basis` = `per_unit` (× effective_qty) or `per_order` (once per order line; there's no order grouping yet, so a multi-product order is charged per line). `in_gross` = landed cost. `cogs_components.description` is optional; "latest cost wins" applies per (type, description). Per-order costs appear in `other_cost_pence` and separately as `per_order_cost_pence`.
 - `tiktok_sku_catalog`: maps TikTok numeric SKU IDs → seller SKUs
 - `order_margins` (view): revenue_pence, product_cost_pence, total_cost_pence, margin_pence, margin_percent, price_per_unit_pence, etc.
 - `sku_channel_margins` (view): per SKU x channel margins. No longer used by any page (`/grid` reads `order_margins` and aggregates itself)

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { loadStores, Store } from '@/lib/stores'
+import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 
 type Product = {
   id: string
@@ -15,6 +16,7 @@ type Product = {
 type CogsRow = {
   id: string
   component_type: string
+  description: string | null
   amount_pence: number
   vat_rate: number
   effective_from: string
@@ -42,9 +44,11 @@ export default function ProductDetailPage() {
   const [cogs, setCogs] = useState<CogsRow[]>([])
   const [shipping, setShipping] = useState<ShippingRow[]>([])
   const [stores, setStores] = useState<Store[]>([])
+  const [costTypes, setCostTypes] = useState<CostType[]>([])
   const [status, setStatus] = useState('')
 
   const [newComponentType, setNewComponentType] = useState('')
+  const [newDescription, setNewDescription] = useState('')
   const [newAmount, setNewAmount] = useState('')
   const [newVatRate, setNewVatRate] = useState('')
   const [newEffectiveFrom, setNewEffectiveFrom] = useState(today())
@@ -57,6 +61,7 @@ export default function ProductDetailPage() {
 
   const [editingCogsId, setEditingCogsId] = useState<string | null>(null)
   const [editComponentType, setEditComponentType] = useState('')
+  const [editDescription, setEditDescription] = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editVatRate, setEditVatRate] = useState('')
 
@@ -77,9 +82,10 @@ export default function ProductDetailPage() {
 
     const { data: cogsData } = await supabase
       .from('cogs_components')
-      .select('id, component_type, amount_pence, vat_rate, effective_from')
+      .select('id, component_type, description, amount_pence, vat_rate, effective_from')
       .eq('master_product_id', productId)
       .order('component_type')
+      .order('effective_from')
     setCogs(cogsData || [])
 
     const { data: shippingData } = await supabase
@@ -90,6 +96,7 @@ export default function ProductDetailPage() {
     setShipping(shippingData || [])
 
     setStores(await loadStores())
+    setCostTypes(await loadCostTypes())
   }
 
   useEffect(() => {
@@ -104,12 +111,13 @@ export default function ProductDetailPage() {
 
   async function addCogsRow() {
     if (!newComponentType || !newAmount || newVatRate === '' || !newEffectiveFrom) {
-      setStatus('Please enter a component type, amount, VAT rate, and effective date.')
+      setStatus('Please choose a cost type and enter an amount, VAT rate, and effective date.')
       return
     }
     const { error } = await supabase.from('cogs_components').insert({
       master_product_id: productId,
       component_type: newComponentType,
+      description: newDescription.trim() || null,
       amount_pence: Math.round(parseFloat(newAmount) * 100),
       vat_rate: parseFloat(newVatRate),
       effective_from: newEffectiveFrom,
@@ -119,6 +127,7 @@ export default function ProductDetailPage() {
       return
     }
     setNewComponentType('')
+    setNewDescription('')
     setNewAmount('')
     setNewVatRate('')
     setNewEffectiveFrom(today())
@@ -129,6 +138,7 @@ export default function ProductDetailPage() {
   function startEditCogs(row: CogsRow) {
     setEditingCogsId(row.id)
     setEditComponentType(row.component_type)
+    setEditDescription(row.description || '')
     setEditAmount((row.amount_pence / 100).toString())
     setEditVatRate(row.vat_rate.toString())
   }
@@ -138,6 +148,7 @@ export default function ProductDetailPage() {
       .from('cogs_components')
       .update({
         component_type: editComponentType,
+        description: editDescription.trim() || null,
         amount_pence: Math.round(parseFloat(editAmount) * 100),
         vat_rate: parseFloat(editVatRate),
       })
@@ -243,7 +254,17 @@ export default function ProductDetailPage() {
       </section>
 
       <section style={{ marginTop: '2rem' }}>
-        <h2>Cost Components (COGS)</h2>
+        <h2>Costs</h2>
+        <p style={{ color: '#666', fontSize: '13px' }}>
+          <strong>Per unit</strong> costs are multiplied by the quantity sold (bundles included). <strong>Per order</strong> costs, like a box or pick &amp; pack,
+          are charged once per order line. <strong>Landed cost</strong> types (all-in, or product cost + freight + duty) count in Gross Profit; everything counts in Net.
+          Two costs of the same type both apply if they have different descriptions.
+        </p>
+        {hasDoubleCountRisk(cogs.filter((c) => c.effective_from <= today()).map((c) => c.component_type)) && (
+          <p style={{ color: '#dc2626', fontSize: '14px', fontWeight: 600 }}>
+            ⚠ This product has an all-in landed cost AND product cost / freight / duty in effect. If the all-in figure already includes those, they&apos;re being counted twice.
+          </p>
+        )}
         <p style={{ color: '#666', fontSize: '13px' }}>
           <strong>Edit</strong> corrects a mistake — it changes margin for every order using this cost, past and future.
           To reflect a genuine price change from today onward while keeping historical accuracy, use <strong>Add Cost</strong> below instead of editing.
@@ -252,6 +273,7 @@ export default function ProductDetailPage() {
           <thead>
             <tr>
               <th style={thStyle}>Type</th>
+              <th style={thStyle}>Description</th>
               <th style={thStyle}>Amount</th>
               <th style={thStyle}>VAT Rate</th>
               <th style={thStyle}>Effective From</th>
@@ -263,7 +285,22 @@ export default function ProductDetailPage() {
               editingCogsId === row.id ? (
                 <tr key={row.id} style={{ borderBottom: '1px solid #eee', background: '#fafafa' }}>
                   <td style={tdStyle}>
-                    <input value={editComponentType} onChange={(e) => setEditComponentType(e.target.value)} style={inputStyle} />
+                    <select value={editComponentType} onChange={(e) => setEditComponentType(e.target.value)} style={{ padding: '4px' }}>
+                      <option value="">Select cost type...</option>
+                      <optgroup label="Per unit (× quantity sold)">
+                        {costTypes.filter((t) => t.basis === 'per_unit').map((t) => (
+                          <option key={t.code} value={t.code}>{t.label}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Per order (once per order line)">
+                        {costTypes.filter((t) => t.basis === 'per_order').map((t) => (
+                          <option key={t.code} value={t.code}>{t.label}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                  </td>
+                  <td style={tdStyle}>
+                    <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Optional" style={inputStyle} />
                   </td>
                   <td style={tdStyle}>
                     <input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={inputStyle} />
@@ -282,7 +319,13 @@ export default function ProductDetailPage() {
                 </tr>
               ) : (
                 <tr key={row.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={tdStyle}>{row.component_type}</td>
+                  <td style={tdStyle}>
+                    {costTypes.find((t) => t.code === row.component_type)?.label || row.component_type}
+                    <span style={{ color: '#888', fontSize: '12px', marginLeft: '6px' }}>
+                      {costTypes.find((t) => t.code === row.component_type)?.basis === 'per_order' ? 'per order' : 'per unit'}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>{row.description || ''}</td>
                   <td style={tdStyle}>£{(row.amount_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
                   <td style={tdStyle}>{row.effective_from}</td>
@@ -301,11 +344,24 @@ export default function ProductDetailPage() {
         </table>
 
         <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <select value={newComponentType} onChange={(e) => setNewComponentType(e.target.value)} style={{ padding: '6px' }}>
+            <option value="">Select cost type...</option>
+            <optgroup label="Per unit (× quantity sold)">
+              {costTypes.filter((t) => t.basis === 'per_unit').map((t) => (
+                <option key={t.code} value={t.code}>{t.label}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Per order (once per order line)">
+              {costTypes.filter((t) => t.basis === 'per_order').map((t) => (
+                <option key={t.code} value={t.code}>{t.label}</option>
+              ))}
+            </optgroup>
+          </select>
           <input
-            placeholder="Type (e.g. cost_price, picking)"
-            value={newComponentType}
-            onChange={(e) => setNewComponentType(e.target.value)}
-            style={{ padding: '6px', width: '180px' }}
+            placeholder="Description (optional)"
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+            style={{ padding: '6px', width: '170px' }}
           />
           <input
             placeholder="Amount £"
@@ -329,6 +385,11 @@ export default function ProductDetailPage() {
           </div>
           <button onClick={addCogsRow} style={{ padding: '6px 12px' }}>Add Cost</button>
         </div>
+        {newComponentType && (
+          <p style={{ color: '#666', fontSize: '13px', marginTop: '8px' }}>
+            {costTypes.find((t) => t.code === newComponentType)?.description}
+          </p>
+        )}
       </section>
 
       <section style={{ marginTop: '2rem' }}>

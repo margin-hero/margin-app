@@ -61,8 +61,8 @@ Costs behave in three different ways, and the model needs all three:
 3. **Per period.** Wages, rent, business rates, utilities, subscriptions, the annual WEEE registration fee. Shared out across products at reporting time (default: each product's share of revenue; alternatives: share of units or orders).
 
 Steps:
-1. **Costs overview + missing-costs warning.** One table of every product's current costs, flagging products whose orders have no product cost (they silently show ~100% margin), including costs dated *after* some orders that need backdating. Warning banner on dashboards.
-2. **Fixed cost types + per-order costs.** Replace free-text `component_type` with a fixed list (landed cost, pick & pack, packaging, WEEE, other…) so reports can break costs down by type; add per-order costs (per the modelling point above).
+1. ✅ **Costs overview + missing-costs warning.** (Done 2026-09-30.) One table of every product's current costs, flagging products whose orders have no product cost (they silently show ~100% margin), including costs dated *after* some orders that need backdating. Warning banner on dashboards.
+2. ✅ **Fixed cost types + per-order costs.** (Done 2026-09-30: `cost_types` table, all-in landed cost or broken down, per-order charged once per order *line*. Later: store the order number on each line so a multi-product order is charged its box once.) Replace free-text `component_type` with a fixed list (landed cost, pick & pack, packaging, WEEE, other…) so reports can break costs down by type; add per-order costs (per the modelling point above).
 3. **Bulk cost import.** Same style as Catalog Import: CSV/XLSX, adds only, dated, deliberate VAT rate per row (no default).
 4. **Shipping rate cards.** Define a courier service once ("Evri small parcel = £2.95", per-quantity and bundle prices) and assign products to it, instead of per-product shipping rows. Price change = one edit, dated. Also decide the fallback when an order quantity has no matching rate.
 5. **Overheads + allocation.** `overhead_costs` (name, amount, period) and the allocation rule above, subtracted in Net Profit only (never Gross).
