@@ -19,7 +19,7 @@
 ## Before real customers (blockers — don't launch without these)
 
 - **Supabase Auth + real RLS policies.** Currently deferred: there's one test tenant, looked up by name (`'Test Store'`). Every tenant-scoped table needs policies, including `stores`, `tiktok_sku_catalog`, `master_products`, `platform_listings`, `order_line_items`, `cogs_components`, `shipping_rules`, and the `order_margins` / `sku_channel_margins` views. Replace every `'Test Store'` lookup with the logged-in user's tenant.
-- **Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.** Right now it matches SKUs against *every* listing in the database, not just one store's. With one test tenant that's harmless. With real tenants, an order could be attached to another seller's product or the wrong store. It also has its own copy of the dedupe/insert logic, which should be shared.
+- ~~**Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.**~~ Done 2026-09-30.
 
 ---
 

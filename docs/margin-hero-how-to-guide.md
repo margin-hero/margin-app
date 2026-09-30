@@ -16,7 +16,7 @@ All the import pages are under **Import** in the menu at the top of the screen.
 
 **Refunds aren't imported yet.** At the moment Margin Hero only imports sales. Refunds, returns and reimbursements (such as Amazon SAFE-T claims) are skipped. That means your margin figures show what you made on sales, before any refunds.
 
-**New products are created for you (except on the generic CSV upload).** If a report has a SKU that Margin Hero hasn't seen before, it adds it as a new product automatically, using the SKU as the product name. After importing:
+**New products are created for you.** If a report has a SKU that Margin Hero hasn't seen before, it adds it as a new product automatically, using the SKU as the product name. After importing:
 
 1. Go to **Manage → Products**.
 2. Find any new products and click **Edit costs →**.
@@ -127,16 +127,13 @@ The **transaction / accounting export** from that retailer's seller portal, save
 
 ## Generic CSV upload (any other channel)
 
-Use this for a channel that doesn't have its own import page yet. You make the CSV yourself, for example in Excel or Google Sheets, then save it as CSV.
+Use this for a store that doesn't have its own import page yet, such as **Argos** or **Shopify**. You make the CSV yourself, for example in Excel or Google Sheets, then save it as CSV.
 
 **Page:** Import → **CSV Upload**
 **File type:** CSV
 
-### Important: set up your products first
-Unlike the other import pages, the CSV upload **doesn't create new products for you**. Any row with a SKU Margin Hero doesn't recognise is skipped. So before you upload:
-
-1. Go to **Manage → Mappings**.
-2. Make sure every product in your file exists, and has a listing on the right channel using exactly the same SKU as in your CSV.
+### Before you start
+Make sure the store exists in **Manage → Stores**. Like the other import pages, any SKU Margin Hero hasn't seen before in that store is **added as a new product automatically**, so double-check your SKUs are spelled consistently. `MUG-BLUE-01` and `mug-blue-01` would become two different products.
 
 ### How to lay out your file
 Your file needs these column headings in the first row, spelled exactly like this:
@@ -159,10 +156,11 @@ Tips:
 
 ### Steps
 1. Go to **Import → CSV Upload**.
-2. Choose your CSV file.
-3. Check the preview. It shows every row exactly as it was read from your file.
-4. Click **Confirm Import**.
-5. Read the message. It tells you how many orders were imported, and lists any that were skipped because they'd already been imported or because the SKU wasn't recognised. If SKUs were skipped, add them in **Manage → Mappings** and upload the same file again. Orders that already went in won't be duplicated.
+2. Choose which **store** the file is for.
+3. Choose your CSV file.
+4. Check the preview. It shows every row exactly as it was read from your file. Rows that can't be imported (missing order number, SKU or quantity, or a date not written as `2026-09-14`) are greyed out and listed by spreadsheet row number, so you can fix them.
+5. Click **Confirm Import**.
+6. Read the message. It tells you how many orders were imported and how many were skipped because they'd already been imported. Fix any invalid rows and upload the same file again. Orders that already went in won't be duplicated.
 
 ### Shipping
 The CSV has no shipping column, so Margin Hero uses the shipping costs you've set up for each product.

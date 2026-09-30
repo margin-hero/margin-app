@@ -43,7 +43,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 ## Key tables / views
 - `tenants`, `master_products`, `platform_listings`
 - `stores`: one shop on one platform (e.g. two TikTok shops for different brands). Holds `vat_registered` (the views use this, not `tenants.vat_registered`). `platform_listings.store_id` is required; a trigger copies `platform_id` from the store. Importers pick a store via `components/StorePicker.tsx` and call `importOrdersForStore`. `shipping_rules.store_id` is optional (null = all stores; a store-specific rule wins). `tiktok_sku_catalog` is per store.
-- `platforms`: `integration_type` (e.g. `'mirakl'`) is how importers find their platforms
+- `platforms`: shared across tenants, added by migration only (no UI, to avoid duplicates). `integration_type` (e.g. `'mirakl'`) is how importers find their platforms; `'csv'` = no dedicated importer, orders come in via `/upload` (e.g. Argos, Shopify)
 - `order_line_items`: unique on `(platform_listing_id, external_id)` for dedupe on re-uploads
 - `cogs_components`, `shipping_rules`
 - `tiktok_sku_catalog`: maps TikTok numeric SKU IDs → seller SKUs
@@ -53,7 +53,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 
 ## Code structure
 - `lib/supabase.ts`: shared Supabase client
-- `lib/importEngine.ts`: shared SKU-matching / dedupe / insert logic. All platform importers must reuse this, not duplicate it. Known exception: `/upload` (generic CSV) still has its own dedupe/insert and should be moved onto importEngine at some point.
+- `lib/importEngine.ts`: shared SKU-matching / dedupe / insert logic. All platform importers must reuse this, not duplicate it (including `/upload`, the generic CSV importer).
 - `components/Nav.tsx`: collapsible left sidebar (Dashboards / Import / Manage groups). Rendered for every page by `components/AppShell.tsx` in `app/layout.tsx` (skipped on the public homepage `/`), so pages must NOT include `<Nav />` themselves. Add new pages to `NAV_GROUPS` with a `lucide-react` icon.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
 - Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/mappings`, `/products`, `/products/[id]`

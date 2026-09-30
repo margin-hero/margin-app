@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import Papa from 'papaparse'
-import { supabase } from '@/lib/supabase'
+import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
+import { Store } from '@/lib/stores'
+import StorePicker from '@/components/StorePicker'
+import { lime, red, muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton } from '@/lib/theme'
 
 type ParsedRow = {
   external_id: string
@@ -15,9 +18,14 @@ type ParsedRow = {
   fees_vat_pounds: string
 }
 
+const pence = (pounds: string) => Math.round((parseFloat(pounds) || 0) * 100)
+
 export default function UploadPage() {
   const [rows, setRows] = useState<ParsedRow[]>([])
-  const [status, setStatus] = useState<string>('')
+  const [orders, setOrders] = useState<NormalizedOrder[]>([])
+  const [invalidRows, setInvalidRows] = useState<number[]>([])
+  const [store, setStore] = useState<Store | null>(null)
+  const [status, setStatus] = useState('')
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -27,159 +35,103 @@ export default function UploadPage() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
+        const normalized: NormalizedOrder[] = []
+        const invalid: number[] = []
+        results.data.forEach((row, i) => {
+          const qty = parseInt(row.qty)
+          // Rows without an order number, SKU, valid date or quantity can't be imported safely
+          if (!row.external_id?.trim() || !row.platform_sku?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.order_date?.trim() || '') || !(qty > 0)) {
+            invalid.push(i + 2) // +2 = spreadsheet row number (header is row 1)
+            return
+          }
+          normalized.push({
+            sku: row.platform_sku.trim(),
+            externalId: row.external_id.trim(),
+            orderDate: row.order_date.trim(),
+            qty,
+            salePriceGrossPence: pence(row.sale_price_pounds),
+            saleVatPence: pence(row.sale_vat_pounds),
+            feesGrossPence: pence(row.fees_pounds),
+            feesVatPence: pence(row.fees_vat_pounds),
+            actualShippingCostPence: null, // no shipping column — uses your shipping rules
+          })
+        })
         setRows(results.data)
-        setStatus(`Parsed ${results.data.length} rows — review below, then confirm.`)
+        setOrders(normalized)
+        setInvalidRows(invalid)
+        setStatus(
+          `Parsed ${normalized.length} rows — review below, then confirm.` +
+          (invalid.length ? ` ${invalid.length} row(s) can't be imported (missing order number, SKU, quantity, or date not written as YYYY-MM-DD): spreadsheet row ${invalid.join(', ')}.` : '')
+        )
       },
     })
   }
 
   async function handleImport() {
-    setStatus('Importing...')
-
-    // Look up platform_listing_id for each row based on platform_sku
-    const { data: listings, error: listingsError } = await supabase
-      .from('platform_listings')
-      .select('id, platform_sku')
-
-    if (listingsError) {
-      setStatus(`Error looking up listings: ${listingsError.message}`)
+    if (!store) {
+      setStatus('Please choose which store this file is from first.')
+      return
+    }
+    if (orders.length === 0) {
+      setStatus('No valid rows to import.')
       return
     }
 
-    const skuToListingId = new Map(listings.map((l) => [l.platform_sku, l.id]))
+    const result = await importOrdersForStore(store, orders, setStatus)
 
-    const candidateRows = []
-    const skippedSkus: string[] = []
-
-    for (const row of rows) {
-      const listingId = skuToListingId.get(row.platform_sku)
-      if (!listingId) {
-        skippedSkus.push(row.platform_sku)
-        continue
-      }
-      candidateRows.push({
-        platform_listing_id: listingId,
-        external_id: row.external_id,
-        order_date: row.order_date,
-        qty: parseInt(row.qty),
-        sale_price_gross_pence: Math.round(parseFloat(row.sale_price_pounds) * 100),
-        sale_vat_pence: Math.round(parseFloat(row.sale_vat_pounds) * 100),
-        fees_gross_pence: Math.round(parseFloat(row.fees_pounds) * 100),
-        fees_vat_pence: Math.round(parseFloat(row.fees_vat_pounds) * 100),
-      })
-    }
-
-    // Check which of these (platform_listing_id, external_id) pairs already exist
-    const { data: existing, error: existingError } = await supabase
-      .from('order_line_items')
-      .select('platform_listing_id, external_id')
-      .in('platform_listing_id', candidateRows.map((r) => r.platform_listing_id))
-
-    if (existingError) {
-      setStatus(`Error checking for duplicates: ${existingError.message}`)
+    if (result.errors.length > 0) {
+      setStatus(`Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`)
       return
     }
 
-    const existingKeys = new Set(existing.map((e) => `${e.platform_listing_id}|${e.external_id}`))
-
-    const newRows = candidateRows.filter(
-      (r) => !existingKeys.has(`${r.platform_listing_id}|${r.external_id}`)
+    setStatus(
+      `Done. Imported ${result.imported} new order lines into ${store.name}. Skipped ${result.skippedDuplicates} already-imported.` +
+      (invalidRows.length ? ` ${invalidRows.length} invalid row(s) were not imported.` : '')
     )
-    const duplicateExternalIds = candidateRows
-      .filter((r) => existingKeys.has(`${r.platform_listing_id}|${r.external_id}`))
-      .map((r) => r.external_id)
-
-    let insertedCount = 0
-    if (newRows.length > 0) {
-      const { error: insertError } = await supabase
-        .from('order_line_items')
-        .insert(newRows)
-
-      if (insertError) {
-        setStatus(`Import error: ${insertError.message}`)
-        return
-      }
-      insertedCount = newRows.length
-    }
-
-    const messages = [`Imported ${insertedCount} new order(s).`]
-    if (duplicateExternalIds.length) {
-      messages.push(`Skipped ${duplicateExternalIds.length} already-imported order(s): ${duplicateExternalIds.join(', ')}`)
-    }
-    if (skippedSkus.length) {
-      messages.push(`Skipped unknown SKUs: ${skippedSkus.join(', ')}`)
-    }
-    setStatus(messages.join(' '))
-  }
-
-  const pageStyle: React.CSSProperties = {
-    background: '#1A1A1A',
-    minHeight: '100vh',
-    padding: '2rem',
-    fontFamily: 'sans-serif',
-    color: '#fff',
-  }
-  const cardStyle: React.CSSProperties = {
-    background: '#232323',
-    borderRadius: '12px',
-    border: '0.5px solid #333',
-    padding: '20px',
-    marginTop: '1.5rem',
-  }
-  const thStyle: React.CSSProperties = { padding: '6px 8px', textAlign: 'left', color: '#888', fontWeight: 500, fontSize: '13px', borderBottom: '0.5px solid #333', whiteSpace: 'nowrap' }
-  const tdStyle: React.CSSProperties = { padding: '6px 8px', color: '#eee', fontSize: '13px', borderBottom: '0.5px solid #2e2e2e' }
-  const buttonStyle: React.CSSProperties = {
-    marginTop: '1rem',
-    padding: '8px 16px',
-    background: '#DCFF00',
-    color: '#1A1A1A',
-    border: 'none',
-    borderRadius: '6px',
-    fontWeight: 500,
-    fontSize: '14px',
-    cursor: 'pointer',
   }
 
   return (
-    <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
-      <div style={pageStyle}>
-        <span style={{ fontSize: '18px', fontWeight: 500 }}>Upload Orders CSV</span>
-        <p style={{ color: '#888', fontSize: '13px', marginTop: '4px' }}>Generic CSV import. Review the parsed rows, then confirm.</p>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Import</p>
+      <h1 style={pageTitle}>CSV Upload</h1>
+      <p style={pageIntro}>
+        For any store without its own import page (e.g. Argos, Shopify). Choose the store, pick your file, review the rows, then confirm.
+      </p>
 
+      <div style={cardStyle}>
+        <StorePicker platformFilter={() => true} value={store} onChange={setStore} />
+        <input type="file" accept=".csv" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px' }} />
+        {status && <p style={{ color: invalidRows.length ? red : lime, fontSize: '14px', fontWeight: 600, margin: '16px 0 0' }}>{status}</p>}
+      </div>
+
+      {rows.length > 0 && (
         <div style={cardStyle}>
-          <input type="file" accept=".csv" onChange={handleFile} style={{ color: '#bbb', fontSize: '13px' }} />
-          {status && <p style={{ color: '#bbb', fontSize: '13px', margin: '14px 0 0' }}>{status}</p>}
-        </div>
-
-        {rows.length > 0 && (
-          <div style={cardStyle}>
-            <p style={{ fontSize: '13px', color: '#888', margin: '0 0 14px' }}>Preview ({rows.length} rows)</p>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead>
-                  <tr>
-                    {Object.keys(rows[0]).map((key) => (
-                      <th key={key} style={thStyle}>{key}</th>
+          <p style={cardTitle}>Preview ({rows.length} rows)</p>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead>
+                <tr>
+                  {Object.keys(rows[0]).map((key) => (
+                    <th key={key} style={{ ...thStyle, whiteSpace: 'nowrap' }}>{key}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} style={invalidRows.includes(i + 2) ? { opacity: 0.4 } : undefined}>
+                    {Object.values(row).map((val, j) => (
+                      <td key={j} style={{ ...tdStyle, fontSize: '13px' }}>{val}</td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i}>
-                      {Object.values(row).map((val, j) => (
-                        <td key={j} style={tdStyle}>{val}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button onClick={handleImport} style={buttonStyle}>
-              Confirm Import
-            </button>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
+            Confirm import
+          </button>
+        </div>
+      )}
     </div>
   )
 }
