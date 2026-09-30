@@ -1,7 +1,7 @@
 import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { lime, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
+import { amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
 
 type Cell = { revenuePence: number; marginPence: number }
 
@@ -98,7 +98,7 @@ export default async function GridPage() {
           <p style={{ ...cardTitle, margin: 0 }}>Net margin %</p>
           <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
             <span><span style={{ color: red }}>●</span> under 10%</span>
-            <span><span style={{ color: lime }}>●</span> 10–20%</span>
+            <span><span style={{ color: amber }}>●</span> 10–20%</span>
             <span><span style={{ color: green }}>●</span> 20%+</span>
           </div>
         </div>

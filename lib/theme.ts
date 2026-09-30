@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react'
 export const lime = '#D2FF00'
 export const green = '#39FF6A'
 export const red = '#FF4C4C'
+export const amber = '#FFB020'
 export const bg = '#111112'
 export const panel = '#1B1C19'
 export const panelRaised = '#23251F'
@@ -31,10 +32,11 @@ export const inputStyle: CSSProperties = { padding: '9px 14px', background: bg, 
 export const primaryButton: CSSProperties = { background: lime, color: bg, border: 'none', borderRadius: '999px', padding: '9px 20px', fontSize: '13px', fontWeight: 800, fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.04em', cursor: 'pointer' }
 export const linkButton: CSSProperties = { color: lime, border: 'none', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700, fontFamily: font }
 
-// Margin % colour tiers: under 10% red, 10–20% lime, 20%+ green. null = no sales.
+// Margin % colour tiers (red / amber / green): under 10% red, 10–20% amber, 20%+ green. null = no sales.
+// Lime is kept for the brand accent only, never for margin.
 export function marginTier(margin: number | null) {
   if (margin === null) return { bg: 'transparent', fg: dim }
   if (margin < 10) return { bg: 'rgba(255,76,76,0.16)', fg: red }
-  if (margin < 20) return { bg: 'rgba(210,255,0,0.13)', fg: lime }
+  if (margin < 20) return { bg: 'rgba(255,176,32,0.15)', fg: amber }
   return { bg: 'rgba(57,255,106,0.16)', fg: green }
 }

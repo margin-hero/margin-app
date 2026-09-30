@@ -88,6 +88,11 @@ Top to bottom: summary metric cards (revenue, net margin, margin %, order count)
 
 Design decisions to make before/during build:
 
+- **User-set margin colour ranges (red / amber / green).** Currently hardcoded at under 10% red, 10–20% amber, 20%+ green (`marginTier()` in `lib/theme.ts`). Build in stages:
+  1. **Overall (first):** a tenant setting for the two cut-offs (e.g. red below 12%, green from 25%), used by every dashboard and the grid.
+  2. **Per store (later):** override for a store where margins are naturally different (e.g. TikTok with high fees).
+  3. **Per product (future):** override for individual products, e.g. a high-volume commodity line that's healthy at 8%.
+  Most specific wins: product → store → overall.
 - **Colour thresholds are per-tenant, not hardcoded** — a 10% margin might be fine for a high-volume commodity product, bad for a niche one. Let tenants set their own green/amber/red cutoffs.
 - **Empty cells ("—") are an expansion signal** — a SKU not listed on a channel could later become a soft CTA ("not yet listed here").
 - **Grid needs sort/filter** — by lowest margin, by channel, by category — to stay useful once a tenant has more than a handful of SKUs.

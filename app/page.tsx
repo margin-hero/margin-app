@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { lime, green, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier } from '@/lib/theme'
+import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier } from '@/lib/theme'
 
 // "live" = import already works in the app. Update as new importers ship.
 const CHANNELS: { name: string; live: boolean }[] = [
@@ -250,7 +250,7 @@ export default function HoldingPage() {
               <p style={{ ...cardTitle, margin: 0 }}>Net margin · SKU × store</p>
               <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
                 <span><span style={{ color: red }}>●</span> under 10%</span>
-                <span><span style={{ color: lime }}>●</span> 10–20%</span>
+                <span><span style={{ color: amber }}>●</span> 10–20%</span>
                 <span><span style={{ color: green }}>●</span> 20%+</span>
               </div>
             </div>

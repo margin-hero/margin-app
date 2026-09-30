@@ -124,7 +124,7 @@ export default function SkuDetailPage() {
   function marginColor(pct: number | null) {
     if (pct === null) return '#555'
     if (pct < 10) return '#FF4C4C'
-    if (pct < 20) return '#DCFF00'
+    if (pct < 20) return '#FFB020' // amber
     return '#39FF6A'
   }
 

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadCostTypes, hasDoubleCountRisk } from '@/lib/costTypes'
-import { lime, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
+import { lime, amber, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
 
 type ProductCosts = {
   id: string
@@ -196,7 +196,7 @@ export default function CostsPage() {
                         {advice && <div style={{ color: red }}>{advice}</div>}
                         {r.doubleCount && <div style={{ color: red }}>All-in landed cost AND product cost / freight / duty in effect: possible double count</div>}
                         {r.ordersNoShipping > 0 && (
-                          <div style={{ color: lime }}>{r.ordersNoShipping} order line(s) with £0 shipping: add a shipping rule for that quantity</div>
+                          <div style={{ color: amber }}>{r.ordersNoShipping} order line(s) with £0 shipping: add a shipping rule for that quantity</div>
                         )}
                         {!advice && r.landedPence === null && <div style={{ color: red }}>No landed / product cost yet</div>}
                         {!needsAttention(r) && <span style={{ color: dim }}>—</span>}

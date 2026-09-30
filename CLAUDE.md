@@ -73,11 +73,11 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - Document each new channel in `docs/margin-hero-how-to-guide.md`.
 
 ## Styling
-- Brand palette (from `/grid`):
-  - Base `#1A1A1A`, panels `#232323`
-  - Margin tiers: fluro red `#FF4C4C` (under 10%), lime `#DCFF00` (10–20%), fluro green `#39FF6A` (20%+)
-  - Lime `#DCFF00` is also the brand accent (logo arrow, active nav link)
-- `/grid` is the reference design; carry its visual language to other pages. Existing pages use inline styles rather than Tailwind classes.
+- Brand palette lives in `lib/theme.ts` (from the homepage): base `#111112`, panels `#1B1C19`, lime accent `#D2FF00`, Mona Sans.
+  - Margin tiers are classic red / amber / green: red `#FF4C4C` (under 10%), amber `#FFB020` (10–20%), green `#39FF6A` (20%+). Use `marginTier()`.
+  - Lime is the brand accent only (logo arrow, active nav, buttons). Never use it for margin.
+  - Tier thresholds are hardcoded for now; user-set ranges are on the roadmap.
+- The overall style isn't final yet. Only `/grid`, `/stores`, `/upload`, `/costs`, `/catalog-import` and `/cost-import` use the new theme; don't restyle other pages unasked. Pages use inline styles rather than Tailwind classes.
 
 ## Roadmap
 See `docs/margin-saas-roadmap.md` (Phase 0 MVP → Phase 4 international).
