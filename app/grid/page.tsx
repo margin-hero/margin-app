@@ -1,135 +1,136 @@
+import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { lime, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
+
+type Cell = { revenuePence: number; marginPence: number }
 
 export default async function GridPage() {
-  const { data, error } = await supabase.from('sku_channel_margins').select('*')
+  // Render on every visit so the grid shows live data, not a snapshot from build time
+  await connection()
+
+  const { data, error } = await supabase
+    .from('order_margins')
+    .select('master_product_id, product_name, channel, revenue_pence, margin_pence')
 
   if (error) {
-    return <div style={{ padding: '2rem', background: '#1A1A1A', minHeight: '100vh', color: '#FF4C4C', fontFamily: 'sans-serif' }}>Error: {error.message}</div>
+    return <div style={{ ...pageStyle, color: red }}>Error: {error.message}</div>
   }
 
-  const rows = data || []
-  const products = Array.from(new Set(rows.map((row) => row.product_name)))
-  const channels = Array.from(new Set(rows.map((row) => row.channel)))
-
-  function getMarginPercent(product: string, channel: string) {
-    const matches = rows.filter((row) => row.product_name === product && row.channel === channel)
-    if (matches.length === 0) return null
-    const avg = matches.reduce((sum, row) => sum + row.margin_percent, 0) / matches.length
-    return Math.round(avg * 10) / 10
+  // Sum revenue and margin per product × store FIRST, then work out the %
+  // from those totals (never average per-order percentages).
+  const products = new Map<string, string>() // id -> name
+  const channelSet = new Set<string>()
+  const cells = new Map<string, Cell>()
+  for (const row of data || []) {
+    products.set(row.master_product_id, row.product_name)
+    channelSet.add(row.channel)
+    const key = `${row.master_product_id}|${row.channel}`
+    const cell = cells.get(key) || { revenuePence: 0, marginPence: 0 }
+    cell.revenuePence += Number(row.revenue_pence) || 0
+    cell.marginPence += Number(row.margin_pence) || 0
+    cells.set(key, cell)
   }
+  const productList = Array.from(products, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  const channels = Array.from(channelSet).sort()
 
-  function getMarginTotal(product: string, channel: string) {
-    const matches = rows.filter((row) => row.product_name === product && row.channel === channel)
-    if (matches.length === 0) return null
-    return matches.reduce((sum, row) => sum + row.margin_pence, 0) / 100
-  }
-
-  function percentColors(margin: number | null) {
-    if (margin === null) return { bg: 'transparent', text: '#555' }
-    if (margin < 10) return { bg: 'rgba(255,76,76,0.15)', text: '#FF4C4C' }
-    if (margin < 20) return { bg: 'rgba(220,255,0,0.12)', text: '#DCFF00' }
-    return { bg: 'rgba(57,255,106,0.15)', text: '#39FF6A' }
-  }
-
-  function valueColors(margin: number | null) {
-    if (margin === null) return { bg: 'transparent', text: '#555' }
-    if (margin < 0) return { bg: 'rgba(255,76,76,0.15)', text: '#FF4C4C' }
-    return { bg: 'rgba(57,255,106,0.15)', text: '#39FF6A' }
+  function marginPercent(productId: string, channel: string) {
+    const cell = cells.get(`${productId}|${channel}`)
+    if (!cell || cell.revenuePence === 0) return null
+    return Math.round((cell.marginPence / cell.revenuePence) * 1000) / 10
   }
 
-  const pageStyle: React.CSSProperties = {
-    background: '#1A1A1A',
-    minHeight: '100vh',
-    padding: '2rem',
-    fontFamily: 'sans-serif',
-    color: '#fff',
+  function marginPounds(productId: string, channel: string) {
+    const cell = cells.get(`${productId}|${channel}`)
+    return cell ? cell.marginPence / 100 : null
   }
-  const cardStyle: React.CSSProperties = {
-    background: '#232323',
-    borderRadius: '12px',
-    border: '0.5px solid #333',
-    padding: '20px',
-    marginTop: '1.5rem',
-  }
-  const thStyle: React.CSSProperties = { padding: '8px', textAlign: 'center', color: '#888', fontWeight: 500, fontSize: '13px' }
-  const cellStyle = (colors: { bg: string; text: string }): React.CSSProperties => ({
-    padding: '8px 4px',
+
+  const headStyle: React.CSSProperties = { fontSize: '12px', color: muted, fontWeight: 600, padding: '4px', textAlign: 'center' }
+  const cellStyle = (bgColour: string, fg: string, outlined = false): React.CSSProperties => ({
+    background: bgColour,
+    color: fg,
     textAlign: 'center',
-    borderRadius: '6px',
-    background: colors.bg,
-    color: colors.text,
-    fontWeight: 500,
-    fontSize: '14px',
+    fontSize: '16px',
+    fontWeight: 800,
+    padding: '12px 6px',
+    borderRadius: '10px',
+    outline: outlined ? `2px solid ${fg}` : 'none',
+    outlineOffset: '-2px',
   })
 
+  function table(render: (productId: string) => React.ReactNode[]) {
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'separate', borderSpacing: '6px', width: '100%', minWidth: `${160 + channels.length * 110}px` }}>
+          <thead>
+            <tr>
+              <th style={{ ...headStyle, textAlign: 'left' }}>Product</th>
+              {channels.map((channel) => (
+                <th key={channel} style={headStyle}>{channel}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {productList.map((product) => (
+              <tr key={product.id}>
+                <td style={{ padding: '4px', fontSize: '15px', fontWeight: 800, color: text }}>{product.name}</td>
+                {render(product.id)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   return (
-    <div style={{ background: '#1A1A1A', minHeight: '100vh' }}>
-      <div style={pageStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-        <span style={{ fontSize: '20px', color: '#DCFF00' }}>↗</span>
-        <span style={{ fontSize: '18px', fontWeight: 500 }}>Margin Hero</span>
-      </div>
-      <p style={{ color: '#888', fontSize: '13px', marginTop: 0 }}>SKU × channel margin overview</p>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Dashboards</p>
+      <h1 style={pageTitle}>SKU × store</h1>
+      <p style={pageIntro}>Net margin for every product in every store, side by side.</p>
 
       <div style={cardStyle}>
-        <p style={{ fontSize: '13px', color: '#888', margin: '0 0 14px' }}>Margin % by SKU and channel</p>
-        <table style={{ borderCollapse: 'separate', borderSpacing: '4px', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle, textAlign: 'left' }}>Product</th>
-              {channels.map((channel) => (
-                <th key={channel} style={thStyle}>{channel}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product}>
-                <td style={{ padding: '8px', color: '#eee' }}>{product}</td>
-                {channels.map((channel) => {
-                  const margin = getMarginPercent(product, channel)
-                  return (
-                    <td key={channel} style={cellStyle(percentColors(margin))}>
-                      {margin !== null ? `${margin}%` : '—'}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '18px' }}>
+          <p style={{ ...cardTitle, margin: 0 }}>Net margin %</p>
+          <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
+            <span><span style={{ color: red }}>●</span> under 10%</span>
+            <span><span style={{ color: lime }}>●</span> 10–20%</span>
+            <span><span style={{ color: green }}>●</span> 20%+</span>
+          </div>
+        </div>
+        {table((productId) => {
+          const margins = channels.map((channel) => marginPercent(productId, channel))
+          const known = margins.filter((m): m is number => m !== null)
+          const best = known.length > 1 ? Math.max(...known) : null
+          return margins.map((m, i) => {
+            const tier = marginTier(m)
+            return (
+              <td key={channels[i]} style={cellStyle(tier.bg, tier.fg, m !== null && m === best)}>
+                {m === null ? '—' : `${m}%`}
+              </td>
+            )
+          })
+        })}
+        <p style={{ fontSize: '12px', color: dim, margin: '12px 0 0' }}>Outlined cell = the most profitable store for that product.</p>
       </div>
 
       <div style={cardStyle}>
-        <p style={{ fontSize: '13px', color: '#888', margin: '0 0 4px' }}>Margin £ by SKU and channel</p>
-        <p style={{ fontSize: '12px', color: '#666', margin: '0 0 14px' }}>Total profit, summed across all orders for that product on that channel.</p>
-        <table style={{ borderCollapse: 'separate', borderSpacing: '4px', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle, textAlign: 'left' }}>Product</th>
-              {channels.map((channel) => (
-                <th key={channel} style={thStyle}>{channel}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product}>
-                <td style={{ padding: '8px', color: '#eee' }}>{product}</td>
-                {channels.map((channel) => {
-                  const total = getMarginTotal(product, channel)
-                  return (
-                    <td key={channel} style={cellStyle(valueColors(total))}>
-                      {total !== null ? `£${total.toFixed(2)}` : '—'}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <p style={{ ...cardTitle, margin: '0 0 4px' }}>Net profit £</p>
+        <p style={{ fontSize: '13px', color: muted, margin: '0 0 18px' }}>Total profit, summed across all orders for that product in that store.</p>
+        {table((productId) =>
+          channels.map((channel) => {
+            const total = marginPounds(productId, channel)
+            const colours =
+              total === null ? { bg: 'transparent', fg: dim }
+              : total < 0 ? { bg: 'rgba(255,76,76,0.16)', fg: red }
+              : { bg: 'rgba(57,255,106,0.16)', fg: green }
+            return (
+              <td key={channel} style={cellStyle(colours.bg, colours.fg)}>
+                {total === null ? '—' : `${total < 0 ? '−' : ''}£${Math.abs(total).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              </td>
+            )
+          })
+        )}
       </div>
-    </div>
     </div>
   )
 }

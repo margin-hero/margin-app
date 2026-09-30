@@ -1,6 +1,10 @@
+import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 export default async function MarginsPage() {
+  // Render on every visit so this shows live data, not a snapshot from build time
+  await connection()
+
   const { data, error } = await supabase.from('order_margins').select('*')
 
   if (error) {

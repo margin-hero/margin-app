@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { lime, green, red, bg, panel, panelRaised, border, text, muted, dim, font, display } from '@/lib/theme'
+import { lime, green, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier } from '@/lib/theme'
 
 // "live" = import already works in the app. Update as new importers ship.
 const CHANNELS: { name: string; live: boolean }[] = [
@@ -50,13 +50,6 @@ const MOVERS = [
   { sku: 'PL-7', store: 'The Range', profit: -138 },
   { sku: 'LL-1', store: 'TikTok Shop', profit: -412 },
 ]
-
-function tier(margin: number | null) {
-  if (margin === null) return { bg: 'transparent', fg: dim }
-  if (margin < 10) return { bg: 'rgba(255,76,76,0.16)', fg: red }
-  if (margin < 20) return { bg: 'rgba(210,255,0,0.13)', fg: lime }
-  return { bg: 'rgba(57,255,106,0.16)', fg: green }
-}
 
 function formatPounds(n: number) {
   return `${n < 0 ? '−' : '+'}£${Math.abs(n).toLocaleString('en-GB')}`
@@ -220,7 +213,7 @@ export default function HoldingPage() {
               <p style={cardTitle}>Net margin by store</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {STORES.map((s) => {
-                  const c = tier(s.margin)
+                  const c = marginTier(s.margin)
                   return (
                     <div key={s.name} style={{ display: 'grid', gridTemplateColumns: '96px 1fr 56px', alignItems: 'center', gap: '12px' }}>
                       <span style={{ fontSize: '14px', color: text }}>{s.name}</span>
@@ -281,7 +274,7 @@ export default function HoldingPage() {
                           <div style={{ fontSize: '12px', color: muted }}>{row.name}</div>
                         </td>
                         {row.margins.map((m, j) => {
-                          const c = tier(m)
+                          const c = marginTier(m)
                           return (
                             <td key={j} style={{
                               background: c.bg,
