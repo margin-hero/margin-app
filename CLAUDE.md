@@ -20,7 +20,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `RESEND_API_KEY`, `RESEND_AUDIENCE_ID`: used by `app/api/subscribe`
 
 ## Working rules
-- **Database changes:** do NOT run SQL against Supabase directly. Write SQL as migration files in `supabase/migrations/` (create the folder if missing) and tell me to run them in the Supabase SQL editor. Views that pages depend on (`order_margins` and `sku_channel_margins`) need extra care. List which pages are affected.
+- **Database changes:** do NOT run SQL against Supabase directly. Write SQL as migration files in `supabase/migrations/` (create the folder if missing) and tell me to run them in the Supabase SQL editor. Views that pages depend on (mainly `order_margins`) need extra care. List which pages are affected.
 - **Before saying a task is done:** run `npm run build` and fix any TypeScript errors. Vercel builds fail on TS errors.
 - **Git:** show me what changed before committing. Use clear commit messages. Don't push without asking.
 - **RLS reminder:** real RLS policies and Supabase Auth are deliberately deferred. We're using one test tenant for now. Don't implement them unasked, but remind me when a change makes them more important (e.g. anything going public-facing).
@@ -48,7 +48,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `cogs_components`, `shipping_rules`
 - `tiktok_sku_catalog`: maps TikTok numeric SKU IDs → seller SKUs
 - `order_margins` (view): revenue_pence, product_cost_pence, total_cost_pence, margin_pence, margin_percent, price_per_unit_pence, etc.
-- `sku_channel_margins` (view): per SKU x channel margins, used by `/grid`
+- `sku_channel_margins` (view): per SKU x channel margins. No longer used by any page (`/grid` reads `order_margins` and aggregates itself)
 - Test tenant is looked up by name (`.eq('name', 'Test Store')`) in `lib/importEngine.ts`, `/mappings` and `/tiktok-catalog`. This is what gets replaced when Supabase Auth arrives.
 
 ## Code structure
