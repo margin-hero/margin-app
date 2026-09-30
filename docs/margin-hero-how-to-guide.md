@@ -125,12 +125,12 @@ The **transaction / accounting export** from that retailer's seller portal, save
 
 ---
 
-## Generic CSV upload (any other channel)
+## Generic CSV / Excel upload (any other channel)
 
-Use this for a store that doesn't have its own import page yet, such as **Argos** or **Shopify**. You make the CSV yourself, for example in Excel or Google Sheets, then save it as CSV.
+Use this for a store that doesn't have its own import page yet, such as **Argos** or **Shopify**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
 
-**Page:** Import → **CSV Upload**
-**File type:** CSV
+**Page:** Import → **CSV / Excel**
+**File type:** CSV or Excel (.xlsx). Only the first sheet of an Excel file is read.
 
 ### Before you start
 Make sure the store exists in **Manage → Stores**. Like the other import pages, any SKU Margin Hero hasn't seen before in that store is **added as a new product automatically**, so double-check your SKUs are spelled consistently. `MUG-BLUE-01` and `mug-blue-01` would become two different products.
@@ -151,13 +151,13 @@ Your file needs these column headings in the first row, spelled exactly like thi
 
 Tips:
 - Write amounts as plain numbers, with no £ sign and no commas (`1250.00`, not `£1,250.00`).
-- Write dates as `2026-09-14`. Other formats like `14/09/2026` may not be read correctly.
+- Write dates as `2026-09-14`. In an Excel file, a proper date cell also works. Dates typed as text in other formats, like `14/09/2026`, will be flagged and not imported.
 - If there were no fees or no VAT, put `0` rather than leaving the cell empty.
 
 ### Steps
-1. Go to **Import → CSV Upload**.
+1. Go to **Import → CSV / Excel**.
 2. Choose which **store** the file is for.
-3. Choose your CSV file.
+3. Choose your CSV or Excel file.
 4. Check the preview. It shows every row exactly as it was read from your file. Rows that can't be imported (missing order number, SKU or quantity, or a date not written as `2026-09-14`) are greyed out and listed by spreadsheet row number, so you can fix them.
 5. Click **Confirm Import**.
 6. Read the message. It tells you how many orders were imported and how many were skipped because they'd already been imported. Fix any invalid rows and upload the same file again. Orders that already went in won't be duplicated.

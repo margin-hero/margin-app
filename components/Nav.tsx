@@ -25,7 +25,7 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: L
   {
     label: 'Import',
     links: [
-      { href: '/upload', label: 'CSV Upload', icon: FileUp },
+      { href: '/upload', label: 'CSV / Excel', icon: FileUp },
       { href: '/amazon-import', label: 'Amazon', icon: ShoppingCart },
       { href: '/tiktok-catalog', label: 'TikTok Catalog', icon: BookOpen },
       { href: '/tiktok-import', label: 'TikTok', icon: Music2 },

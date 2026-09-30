@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 import { importOrdersForStore, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
@@ -20,6 +21,16 @@ type ParsedRow = {
 
 const pence = (pounds: string) => Math.round((parseFloat(pounds) || 0) * 100)
 
+// Excel stores dates as serial numbers (e.g. 46279) — turn those back into YYYY-MM-DD,
+// and turn every other cell into plain text so both file types look the same.
+function excelCellToText(key: string, value: unknown): string {
+  if (key === 'order_date' && typeof value === 'number') {
+    const d = XLSX.SSF.parse_date_code(value)
+    return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
+  }
+  return String(value ?? '').trim()
+}
+
 export default function UploadPage() {
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [orders, setOrders] = useState<NormalizedOrder[]>([])
@@ -31,40 +42,58 @@ export default function UploadPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    Papa.parse<ParsedRow>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const normalized: NormalizedOrder[] = []
-        const invalid: number[] = []
-        results.data.forEach((row, i) => {
-          const qty = parseInt(row.qty)
-          // Rows without an order number, SKU, valid date or quantity can't be imported safely
-          if (!row.external_id?.trim() || !row.platform_sku?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.order_date?.trim() || '') || !(qty > 0)) {
-            invalid.push(i + 2) // +2 = spreadsheet row number (header is row 1)
-            return
-          }
-          normalized.push({
-            sku: row.platform_sku.trim(),
-            externalId: row.external_id.trim(),
-            orderDate: row.order_date.trim(),
-            qty,
-            salePriceGrossPence: pence(row.sale_price_pounds),
-            saleVatPence: pence(row.sale_vat_pounds),
-            feesGrossPence: pence(row.fees_pounds),
-            feesVatPence: pence(row.fees_vat_pounds),
-            actualShippingCostPence: null, // no shipping column — uses your shipping rules
-          })
-        })
-        setRows(results.data)
-        setOrders(normalized)
-        setInvalidRows(invalid)
-        setStatus(
-          `Parsed ${normalized.length} rows — review below, then confirm.` +
-          (invalid.length ? ` ${invalid.length} row(s) can't be imported (missing order number, SKU, quantity, or date not written as YYYY-MM-DD): spreadsheet row ${invalid.join(', ')}.` : '')
-        )
-      },
+    if (/\.xlsx?$/i.test(file.name)) {
+      // Excel: read the first sheet
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const workbook = XLSX.read(event.target?.result, { type: 'array' })
+        const sheet = workbook.Sheets[workbook.SheetNames[0]]
+        const raw: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+        const rows = raw.map((r) =>
+          Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim(), excelCellToText(k.trim(), v)]))
+        ) as ParsedRow[]
+        processRows(rows)
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      // CSV: Papa keeps every cell as the exact text in the file (e.g. SKU "00123" stays "00123")
+      Papa.parse<ParsedRow>(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => processRows(results.data),
+      })
+    }
+  }
+
+  function processRows(parsedRows: ParsedRow[]) {
+    const normalized: NormalizedOrder[] = []
+    const invalid: number[] = []
+    parsedRows.forEach((row, i) => {
+      const qty = parseInt(row.qty)
+      // Rows without an order number, SKU, valid date or quantity can't be imported safely
+      if (!row.external_id?.trim() || !row.platform_sku?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.order_date?.trim() || '') || !(qty > 0)) {
+        invalid.push(i + 2) // +2 = spreadsheet row number (header is row 1)
+        return
+      }
+      normalized.push({
+        sku: row.platform_sku.trim(),
+        externalId: row.external_id.trim(),
+        orderDate: row.order_date.trim(),
+        qty,
+        salePriceGrossPence: pence(row.sale_price_pounds),
+        saleVatPence: pence(row.sale_vat_pounds),
+        feesGrossPence: pence(row.fees_pounds),
+        feesVatPence: pence(row.fees_vat_pounds),
+        actualShippingCostPence: null, // no shipping column — uses your shipping rules
+      })
     })
+    setRows(parsedRows)
+    setOrders(normalized)
+    setInvalidRows(invalid)
+    setStatus(
+      `Parsed ${normalized.length} rows — review below, then confirm.` +
+      (invalid.length ? ` ${invalid.length} row(s) can't be imported (missing order number, SKU, quantity, or date not written as YYYY-MM-DD): spreadsheet row ${invalid.join(', ')}.` : '')
+    )
   }
 
   async function handleImport() {
@@ -93,14 +122,14 @@ export default function UploadPage() {
   return (
     <div style={pageStyle}>
       <p style={eyebrow}>Import</p>
-      <h1 style={pageTitle}>CSV Upload</h1>
+      <h1 style={pageTitle}>CSV / Excel Upload</h1>
       <p style={pageIntro}>
-        For any store without its own import page (e.g. Argos, Shopify). Choose the store, pick your file, review the rows, then confirm.
+        For any store without its own import page (e.g. Argos, Shopify). Choose the store, pick your CSV or Excel (.xlsx) file, review the rows, then confirm.
       </p>
 
       <div style={cardStyle}>
         <StorePicker platformFilter={() => true} value={store} onChange={setStore} />
-        <input type="file" accept=".csv" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px' }} />
+        <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px' }} />
         {status && <p style={{ color: invalidRows.length ? red : lime, fontSize: '14px', fontWeight: 600, margin: '16px 0 0' }}>{status}</p>}
       </div>
 
