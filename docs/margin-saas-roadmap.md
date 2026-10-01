@@ -48,7 +48,7 @@ This is where the product actually becomes usable daily, so the dashboard work m
 
 **Data**
 - CSV import for eBay, Mirakl retailers, OnBuy, Temu, TikTok — one parser + column mapping per platform
-- `ad_spend` import (manual or CSV) for ACOS/TACOS
+- Ad spend import, see **Advertising** below
 - Per-product VAT/tax rates (zero-rated handling)
 - **Dashboard performance at scale**: dashboards currently download every order line (in 1,000-row pages via `lib/fetchAll.ts`) and add them up in the browser. Fine for tens of thousands of lines; before sellers have hundreds of thousands, move the totals into the database (aggregated views or Postgres functions grouped by product × store × date) so pages download summaries, not raw rows.
 - **Date-tracked VAT registration per store**: `vat_registered` is currently a simple yes/no on `stores`, so ticking it recalculates *all* of that store's past orders as if it had always been registered. Store it with an `effective_from` date (same pattern as `cogs_components` / `shipping_rules`) so orders before the registration date keep the non-registered treatment. Useful when a new brand launches unregistered and registers later.
@@ -68,6 +68,32 @@ Steps:
 3. ✅ **Bulk cost import.** (Done 2026-09-30: `/cost-import`.) Same style as Catalog Import: CSV/XLSX, adds only, dated, deliberate VAT rate per row (no default).
 4. ✅ **Shipping rate cards.** (Done 2026-10-01 as a courier price list + shipping profiles: qty bands → N parcels × courier service, prices dated on the courier service, per-product profile with per-store exceptions or "no shipping cost". Later: date the profile bands themselves; bulk "raise courier X by n% from date"; shipping spend by courier report.)
 5. ✅ **Overheads + allocation.** (Done 2026-10-01: `/overheads` with recurring weekly / 4-weekly / monthly / quarterly / yearly or one-off spread over N months; whole business or one store; shared by revenue (default), units or orders; shown on Channel Overview and the Grid's "After overheads" view. Later: other dashboards, per-category reports, importing overheads from accounting software.) `overhead_costs` (name, amount, period) and the allocation rule above, subtracted in Net Profit only (never Gross).
+
+**Advertising (ad spend in margin)**
+
+Ads are often the single biggest cost after the product itself, and a SKU can look healthy on Net margin while losing money once its ad spend is counted. Scope is strictly *what ads do to margin*: no campaign management, bidding or keyword tools (the homepage promises "No PPC bidding").
+
+- **Data:** an `ad_spend` table: tenant, store, date, campaign name, optional SKU (`master_product_id`), spend in pence, VAT rate, attributed sales in pence. Dated per day so any dashboard range works.
+- **Sources, one importer each (reusing `lib/readSpreadsheet.ts`):**
+  - Amazon Sponsored Products / Brands: the "Advertised product" report (spend and sales per SKU per day)
+  - TikTok Shop ads (GMV Max, Promote). Creator affiliate commission is already counted in TikTok fees, so it mustn't be counted again here.
+  - Retail media where the Mirakl retailers offer it, plus Google / Meta ads for Shopify and other own-site stores
+  - Manual entry for anything else (e.g. a one-off influencer fee)
+- **Allocation:**
+  - Spend tied to a SKU goes to that SKU in that store.
+  - Campaign- or store-level spend with no SKU is shared across that store's sales for the period, by revenue (the same per-day sharing already used for overheads in `lib/overheads.ts`).
+- **Metrics:**
+  - **ACOS** = ad spend ÷ ad-attributed sales
+  - **TACOS** = ad spend ÷ *total* sales (the one that shows whether ads are paying for themselves)
+  - **ROAS** = ad-attributed sales ÷ ad spend
+  - **Break-even ACOS per SKU** = its net margin before ads (moved here from Phase 3 since the data makes it trivial)
+  - All are sums first, then ratios, per the aggregation rule.
+- **Where it shows:**
+  - **Net profit after ads** on Channel Overview, SKU Detail and the Grid (an "After ads" view alongside "After overheads").
+  - Ad spend as a line in the cost breakdown.
+  - An alert when a SKU's TACOS pushes its margin below the user's red threshold.
+- **Margin order:** Gross (landed cost) → Net (fees, shipping, other costs) → **after ads** → after overheads. Ads never touch Gross.
+- **Pricing:** included on every plan, like everything else.
 
 **Dashboard (priority)**
 - **Overview page**: total revenue, total margin, margin %, order count — filterable by date range, defaulting to "last 7 days" and "this month"
@@ -120,7 +146,7 @@ Deliberately scoped to margin only — resist pressure to add inventory manageme
   - CM2 = CM1 − ad spend (can you afford to acquire customers on this SKU?)
   - CM3 = CM2 − fulfilment/storage/returns (the real bottom line)
   - Shows *where* margin leaks, not just that it's thin
-- **Break-even ACOS per SKU** — max ad spend % before the SKU stops being profitable, calculated from existing fee/COGS/margin data
+- **Break-even ACOS per SKU**: moved into Phase 1 **Advertising**
 - **Pre-listing what-if simulator** — model margin at a hypothetical price/fee/ad-spend combination before committing to a listing, using the `fee_rules` engine already built for pre-sale forecasting in Phase 2
 - **Margin sensitivity view** — show margin impact of a % change in COGS, ad spend, or shipping cost — useful for supplier/courier negotiations
 - **Category/channel benchmarking** — compare a tenant's margin against anonymised aggregate benchmarks once enough tenant data exists
