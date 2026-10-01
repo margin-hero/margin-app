@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Grid3x3, ScanSearch, Percent, TrendingUp,
-  FileUp, ShoppingCart, BookOpen, Music2, Building2,
+  FileUp, ShoppingCart, Music2, Building2,
   Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen,
   type LucideIcon,
 } from 'lucide-react'
@@ -27,7 +27,6 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: L
     links: [
       { href: '/upload', label: 'CSV / Excel', icon: FileUp },
       { href: '/amazon-import', label: 'Amazon', icon: ShoppingCart },
-      { href: '/tiktok-catalog', label: 'TikTok Catalog', icon: BookOpen },
       { href: '/tiktok-import', label: 'TikTok', icon: Music2 },
       { href: '/mirakl-import', label: 'Mirakl', icon: Building2 },
     ],

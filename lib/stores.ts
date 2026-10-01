@@ -27,3 +27,8 @@ export function storeLabel(store: { name: string; platforms: { name: string } | 
   if (!platform || store.name.toLowerCase().includes(platform.toLowerCase())) return store.name
   return `${store.name} (${platform})`
 }
+
+// TikTok stores need a TikTok SKU ID on each listing (TikTok reports use numeric SKU IDs)
+export function isTikTokStore(store: { platforms: { name: string } | null } | undefined | null): boolean {
+  return store?.platforms?.name === 'TikTok'
+}

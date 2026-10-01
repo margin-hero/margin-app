@@ -170,35 +170,25 @@ Your **settlement report** from Amazon Seller Central, downloaded in the "flat f
 
 ## TikTok Shop
 
-TikTok needs **two uploads**. The first one you only do once (and again when you add new products). The second one you do every time you want to import sales.
+### TikTok SKU IDs
+TikTok's sales reports don't show your own SKU codes. They show TikTok's long number for each product instead (for example `1729384756102938`), called the **SKU ID**. So every TikTok product in Margin Hero needs its SKU ID as well as its Seller SKU. It's part of the product's mapping, and there are three ways to add it:
 
-### Why two steps?
-TikTok's sales reports don't show your own SKU codes. They show TikTok's long number for each product instead (for example `1729384756102938`). The first step tells Margin Hero which TikTok number belongs to which of your SKUs.
+- **One product at a time:** on **Manage → Mappings**, when you add or edit a listing in a TikTok store, fill in the **TikTok SKU ID** (it's required for TikTok stores). Find it in TikTok Seller Center on the product's page.
+- **A whole shop at once:** on **Manage → Mappings**, open **TikTok catalog upload**, choose the TikTok store, and upload your product list exported from TikTok Seller Center. The file needs columns called **SKU ID** and **Seller SKU** (TikTok's bulk-edit product template has these). Re-uploading is safe; it updates the existing IDs.
+- **With your full catalog:** in **Manage → Catalog Import**, fill in the optional `tiktok_sku_id` column for TikTok rows, with your Seller SKU as the `store_sku`.
 
-### Step 1: Upload your product catalog (once)
+The Mappings page shows each TikTok listing's SKU ID, and flags any that are missing.
 
-**Page:** Import → **TikTok Catalog**
-**File type:** Excel (.xlsx)
-
-1. In TikTok Seller Center, export your product list. The file must have columns called **SKU ID** and **Seller SKU**. (TikTok's bulk-edit product template has these.)
-2. Go to **Import → TikTok Catalog** and choose that file.
-3. Check the preview. It should show TikTok's numbers on the left and your SKUs on the right.
-4. Click **Save Catalog Mapping**.
-
-You only need to do this again when you launch new products on TikTok. Re-uploading the catalog is safe; it updates the existing matches.
-
-### Step 2: Upload your sales report (each time)
+### Importing your sales report
 
 **Page:** Import → **TikTok**
 **File type:** Excel (.xlsx)
 
 1. In TikTok Seller Center, download your **settlement / statement report** from the Finance section as an Excel file.
-2. Go to **Import → TikTok** and choose that file.
-3. Read the message at the top of the preview carefully:
-   - **"All SKUs matched your catalog"**: you're good to go. Click **Confirm Import**.
-   - **"X rows had no catalog match"**: **stop, and don't click Confirm yet.** Some products in this report aren't in your catalog. Go back to Step 1, upload an up-to-date catalog, then come back and choose the sales file again.
-
-> **Why this matters:** if you confirm with unmatched products, Margin Hero creates products named after TikTok's long numbers. Fixing the catalog afterwards and re-importing won't tidy those up. You'd end up with the same sales counted twice, once under the number and once under your real SKU. Always fix the catalog *before* confirming.
+2. Go to **Import → TikTok**, choose the TikTok store, and choose that file.
+3. Read the message at the top of the preview:
+   - **"All SKUs matched your catalog"**: you're good to go. Click **Confirm import**.
+   - **"X rows had no catalog match"**: some products in this report don't have a TikTok SKU ID yet. The best fix is to add them on the Mappings page first, then choose the sales file again. If you confirm anyway, those rows are simply held back (leave **Create new products** unticked, or you'll get products named after TikTok's long numbers). Uploading the same file again later only adds the missing orders.
 
 ### What Margin Hero takes from the report
 - **Sale price:** "Net sales" for the item. That's the price after any discounts you funded yourself and after any refund shown on the same row. Discounts TikTok pays for don't reduce your sale price.

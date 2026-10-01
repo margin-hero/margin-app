@@ -4,24 +4,26 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { readSpreadsheet } from '@/lib/readSpreadsheet'
-import { loadStores, Store } from '@/lib/stores'
+import { loadStores, Store, isTikTokStore } from '@/lib/stores'
 import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, linkButton } from '@/lib/theme'
 
 // One row per listing: a product in 3 stores = 3 rows. A row with only
 // standard_sku + name (no store) just creates the product.
 const REQUIRED_COLUMNS = ['standard_sku', 'name', 'store', 'store_sku']
 const TEMPLATE = [
-  'standard_sku,name,store,store_sku,units_per_sale',
-  'MUG-01,Blue Mug,Amazon UK,AMZ-MUG-01,1',
-  'MUG-01,Blue Mug,Argos,88812345,1',
-  'MUG-01-2PK,Blue Mug x2,Amazon UK,AMZ-MUG-2PK,2',
-  'RAKE-3,Garden Rake,,,',
+  'standard_sku,name,store,store_sku,units_per_sale,tiktok_sku_id',
+  'MUG-01,Blue Mug,Amazon UK,AMZ-MUG-01,1,',
+  'MUG-01,Blue Mug,Argos,88812345,1,',
+  'MUG-01,Blue Mug,TikTok,MUG-01,1,1729384756102937',
+  'MUG-01-2PK,Blue Mug x2,Amazon UK,AMZ-MUG-2PK,2,',
+  'RAKE-3,Garden Rake,,,,',
 ].join('\n')
 
 type NewProduct = { standardSku: string; name: string }
 type NewListing = { standardSku: string; store: Store; storeSku: string; units: number }
 type Problem = { row: number; message: string }
-type Plan = { tenantId: string; newProducts: NewProduct[]; newListings: NewListing[]; unchanged: number; problems: Problem[] }
+type NewTikTokId = { store: Store; skuId: string; sellerSku: string }
+type Plan = { tenantId: string; newProducts: NewProduct[]; newListings: NewListing[]; newTikTokIds: NewTikTokId[]; unchanged: number; problems: Problem[] }
 
 export default function CatalogImportPage() {
   const [plan, setPlan] = useState<Plan | null>(null)
@@ -77,10 +79,21 @@ export default function CatalogImportPage() {
             .range(from, to)
         )
       : { data: [], error: null }
-    if (productsError || listingsError) {
-      setStatus(`Error loading existing data: ${(productsError || listingsError)!.message}`)
+    const tiktokStoreIds = stores.filter(isTikTokStore).map((s) => s.id)
+    const { data: catalog, error: catalogError } = tiktokStoreIds.length
+      ? await fetchAll((from, to) =>
+          supabase.from('tiktok_sku_catalog').select('store_id, sku_id, seller_sku').in('store_id', tiktokStoreIds).order('store_id').order('sku_id').range(from, to)
+        )
+      : { data: [], error: null }
+    if (productsError || listingsError || catalogError) {
+      setStatus(`Error loading existing data: ${(productsError || listingsError || catalogError)!.message}`)
       return
     }
+    // TikTok SKU IDs already on file: which store SKU owns each ID, and each store SKU's IDs
+    const tiktokOwner = new Map(catalog.map((c) => [`${c.store_id}|${c.sku_id}`, c.seller_sku]))
+    const tiktokIdsOf = new Map<string, string[]>()
+    catalog.forEach((c) => tiktokIdsOf.set(`${c.store_id}|${c.seller_sku}`, [...(tiktokIdsOf.get(`${c.store_id}|${c.seller_sku}`) || []), c.sku_id]))
+    const plannedTikTok = new Map<string, NewTikTokId>() // key store|sku_id
 
     const productIdBySku = new Map<string, string>()
     products.forEach((p) => { if (!productIdBySku.has(p.standard_sku)) productIdBySku.set(p.standard_sku, p.id) })
@@ -125,6 +138,29 @@ export default function CatalogImportPage() {
         return
       }
 
+      // TikTok stores: the row needs a TikTok SKU ID (unless one is already on file),
+      // and an ID can only ever belong to one store SKU
+      let tiktokToAdd: NewTikTokId | null = null
+      if (isTikTokStore(store)) {
+        const skuId = (r.tiktok_sku_id || '').trim()
+        const known = tiktokIdsOf.get(`${store.id}|${storeSku}`) || []
+        if (!skuId && known.length === 0) {
+          return problems.push({ row, message: `${store.name} is a TikTok shop: add the tiktok_sku_id (the number from TikTok Seller Centre), or orders for this product won't match.` })
+        }
+        if (skuId) {
+          if (!/^\d+$/.test(skuId)) return problems.push({ row, message: `tiktok_sku_id "${skuId}" should be digits only.` })
+          const owner = tiktokOwner.get(`${store.id}|${skuId}`) || plannedTikTok.get(`${store.id}|${skuId}`)?.sellerSku
+          if (owner && owner !== storeSku) return problems.push({ row, message: `TikTok SKU ID ${skuId} already belongs to store SKU "${owner}" in ${store.name}.` })
+          if (known.length > 0 && !known.includes(skuId)) {
+            return problems.push({ row, message: `${store.name} SKU "${storeSku}" already has TikTok SKU ID ${known.join(', ')}. Not changed — edit it in Mappings if that's wrong.` })
+          }
+          if (!owner) tiktokToAdd = { store, skuId, sellerSku: storeSku }
+        }
+      }
+      const addTikTokId = () => {
+        if (tiktokToAdd) plannedTikTok.set(`${tiktokToAdd.store.id}|${tiktokToAdd.skuId}`, tiktokToAdd)
+      }
+
       // Check the store SKU isn't already mapped to a different product BEFORE
       // creating anything, so a clash never leaves an orphan product behind
       const key = `${store.id}|${storeSku}`
@@ -136,7 +172,8 @@ export default function CatalogImportPage() {
         if (existingListing.units_per_sale !== units) {
           return problems.push({ row, message: `${store.name} SKU "${storeSku}" is already mapped with units per sale ${existingListing.units_per_sale}, file says ${units}. Not changed — edit it in Mappings if needed.` })
         }
-        unchanged++
+        addTikTokId()
+        if (!tiktokToAdd) unchanged++
         return
       }
       const planned = plannedListings.get(key)
@@ -147,13 +184,22 @@ export default function CatalogImportPage() {
         return
       }
       addProductIfNew()
+      addTikTokId()
       plannedListings.set(key, { standardSku, store, storeSku, units })
     })
 
-    const result: Plan = { tenantId: tenant.id, newProducts: Array.from(newProducts.values()), newListings: Array.from(plannedListings.values()), unchanged, problems }
+    const result: Plan = {
+      tenantId: tenant.id,
+      newProducts: Array.from(newProducts.values()),
+      newListings: Array.from(plannedListings.values()),
+      newTikTokIds: Array.from(plannedTikTok.values()),
+      unchanged,
+      problems,
+    }
     setPlan(result)
     setStatus(
-      `Ready: ${result.newProducts.length} new product(s) and ${result.newListings.length} new store mapping(s). ` +
+      `Ready: ${result.newProducts.length} new product(s), ${result.newListings.length} new store mapping(s)` +
+      (result.newTikTokIds.length ? ` and ${result.newTikTokIds.length} TikTok SKU ID(s). ` : '. ') +
       `${result.unchanged} row(s) already set up. ` +
       (result.problems.length ? `${result.problems.length} row(s) have problems and will be skipped (listed below).` : 'No problems found.')
     )
@@ -207,8 +253,22 @@ export default function CatalogImportPage() {
       }
     }
 
+    // 3. TikTok SKU IDs
+    if (plan.newTikTokIds.length) {
+      const { error } = await supabase.from('tiktok_sku_catalog').upsert(
+        plan.newTikTokIds.map((t) => ({ tenant_id: t.store.tenant_id, store_id: t.store.id, sku_id: t.skuId, seller_sku: t.sellerSku })),
+        { onConflict: 'store_id,sku_id' }
+      )
+      if (error) {
+        setStatus(`Error saving TikTok SKU IDs: ${error.message}. Products and mappings were saved; choose the file again to retry.`)
+        setBusy(false)
+        return
+      }
+    }
+
     setStatus(
-      `Done. Created ${plan.newProducts.length} product(s) and ${plan.newListings.length} store mapping(s).` +
+      `Done. Created ${plan.newProducts.length} product(s), ${plan.newListings.length} store mapping(s)` +
+      (plan.newTikTokIds.length ? ` and ${plan.newTikTokIds.length} TikTok SKU ID(s).` : '.') +
       (plan.problems.length ? ` ${plan.problems.length} row(s) with problems were skipped.` : '') +
       ' Next: add costs for new products under Products.'
     )
@@ -231,13 +291,14 @@ export default function CatalogImportPage() {
           CSV or Excel, <strong style={{ color: text }}>one row per product per store</strong>. Columns:{' '}
           <code>standard_sku</code>, <code>name</code>, <code>store</code> (must match a name on the Stores page), <code>store_sku</code>,{' '}
           and optionally <code>units_per_sale</code> (for bundles, defaults to 1). Leave <code>store</code> and <code>store_sku</code> empty to just add a product.
+          For TikTok shops, also fill in <code>tiktok_sku_id</code> (the number TikTok&apos;s reports use) and use your Seller SKU as the <code>store_sku</code>.
         </p>
         <button onClick={downloadTemplate} style={{ ...linkButton, padding: 0 }}>Download template ↓</button>
         <div style={{ marginTop: '18px' }}>
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} disabled={busy} style={{ color: muted, fontSize: '14px' }} />
         </div>
         {status && <p style={{ color: lime, fontSize: '14px', fontWeight: 600, margin: '16px 0 0' }}>{status}</p>}
-        {plan && (plan.newProducts.length > 0 || plan.newListings.length > 0) && (
+        {plan && (plan.newProducts.length > 0 || plan.newListings.length > 0 || plan.newTikTokIds.length > 0) && (
           <button onClick={handleImport} disabled={busy} style={{ ...primaryButton, marginTop: '18px', opacity: busy ? 0.5 : 1 }}>
             {busy ? 'Importing...' : 'Confirm import'}
           </button>

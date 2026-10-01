@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { loadStores, Store, storeLabel } from '@/lib/stores'
+import { loadStores, Store, storeLabel, isTikTokStore } from '@/lib/stores'
+import TikTokCatalogUpload from '@/components/TikTokCatalogUpload'
 import Link from 'next/link'
-import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
+import { lime, red, amber, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Listing = {
   id: string
@@ -37,6 +38,7 @@ export default function MappingsPage() {
   const [addStoreId, setAddStoreId] = useState('')
   const [addSku, setAddSku] = useState('')
   const [addUnits, setAddUnits] = useState('1')
+  const [addTikTokId, setAddTikTokId] = useState('')
 
   // Editing an existing listing
   const [editingListingId, setEditingListingId] = useState<string | null>(null)
@@ -44,6 +46,10 @@ export default function MappingsPage() {
   const [editSku, setEditSku] = useState('')
   const [editUnits, setEditUnits] = useState('1')
   const [editProductId, setEditProductId] = useState('')
+  const [editTikTokId, setEditTikTokId] = useState('')
+
+  // TikTok SKU IDs per TikTok store (TikTok reports use these instead of your SKU)
+  const [tiktokIds, setTiktokIds] = useState<{ store_id: string; sku_id: string; seller_sku: string }[]>([])
 
   async function loadAll() {
     const { data: productData } = await fetchAll((from, to) =>
@@ -57,6 +63,30 @@ export default function MappingsPage() {
     setProducts((productData as any) || [])
 
     setStores(await loadStores())
+
+    const { data: catalog } = await fetchAll((from, to) =>
+      supabase.from('tiktok_sku_catalog').select('store_id, sku_id, seller_sku').order('store_id').order('sku_id').range(from, to)
+    )
+    setTiktokIds(catalog)
+  }
+
+  const idsFor = (storeId: string, sellerSku: string) =>
+    tiktokIds.filter((c) => c.store_id === storeId && c.seller_sku === sellerSku).map((c) => c.sku_id)
+
+  // Returns an error message, or null if this TikTok SKU ID can be used for this store SKU
+  function checkTikTokId(storeId: string, skuId: string, sellerSku: string): string | null {
+    if (!/^\d+$/.test(skuId)) return 'The TikTok SKU ID is the long number from TikTok Seller Centre (digits only).'
+    const taken = tiktokIds.find((c) => c.store_id === storeId && c.sku_id === skuId && c.seller_sku !== sellerSku)
+    return taken ? `TikTok SKU ID ${skuId} already belongs to store SKU "${taken.seller_sku}" in this shop.` : null
+  }
+
+  // One TikTok SKU ID per listing: replace whatever was stored for the old store SKU
+  async function saveTikTokId(store: Store, skuId: string, sellerSku: string, previousSellerSku: string) {
+    await supabase.from('tiktok_sku_catalog').delete().eq('store_id', store.id).in('seller_sku', [sellerSku, previousSellerSku])
+    return supabase.from('tiktok_sku_catalog').upsert(
+      { tenant_id: store.tenant_id, store_id: store.id, sku_id: skuId, seller_sku: sellerSku },
+      { onConflict: 'store_id,sku_id' }
+    )
   }
 
   useEffect(() => {
@@ -89,12 +119,27 @@ export default function MappingsPage() {
     setAddStoreId('')
     setAddSku('')
     setAddUnits('1')
+    setAddTikTokId('')
   }
 
   async function saveNewListing(productId: string) {
     if (!addStoreId || !addSku) {
       setStatus('Please choose a store and enter a SKU.')
       return
+    }
+    const addStore = stores.find((st) => st.id === addStoreId)
+    const tiktokId = addTikTokId.trim()
+    const knownIds = idsFor(addStoreId, addSku.trim())
+    if (isTikTokStore(addStore) && !tiktokId && knownIds.length === 0) {
+      setStatus('TikTok listings need their TikTok SKU ID, or orders for this product won\'t match.')
+      return
+    }
+    if (isTikTokStore(addStore) && tiktokId) {
+      const problem = checkTikTokId(addStoreId, tiktokId, addSku.trim())
+      if (problem) {
+        setStatus(problem)
+        return
+      }
     }
     const { error } = await supabase.from('platform_listings').insert({
       master_product_id: productId,
@@ -107,6 +152,10 @@ export default function MappingsPage() {
       setStatus(`Error adding listing: ${error.message}`)
       return
     }
+    if (addStore && isTikTokStore(addStore) && tiktokId) {
+      const { error: idError } = await saveTikTokId(addStore, tiktokId, addSku.trim(), addSku.trim())
+      if (idError) setStatus(`Listing added, but saving the TikTok SKU ID failed: ${idError.message}`)
+    }
     setAddingToProduct(null)
     setStatus('Listing added.')
     loadAll()
@@ -118,9 +167,26 @@ export default function MappingsPage() {
     setEditSku(listing.platform_sku)
     setEditUnits(listing.units_per_sale.toString())
     setEditProductId(currentProductId)
+    setEditTikTokId(idsFor(listing.store_id, listing.platform_sku)[0] || '')
   }
 
   async function saveListingEdit(listingId: string) {
+    const original = products.flatMap((p) => p.platform_listings).find((l) => l.id === listingId)
+    const editStore = stores.find((st) => st.id === editStoreId)
+    const tiktokId = editTikTokId.trim()
+    if (isTikTokStore(editStore)) {
+      if (!tiktokId) {
+        setStatus('TikTok listings need their TikTok SKU ID, or orders for this product won\'t match.')
+        return
+      }
+      const previousSku = original && original.store_id === editStoreId ? original.platform_sku : editSku
+      // Fine if the ID already belongs to this listing's old store SKU or its new one; a problem only if both checks fail
+      const problem = checkTikTokId(editStoreId, tiktokId, previousSku) && checkTikTokId(editStoreId, tiktokId, editSku)
+      if (problem) {
+        setStatus(problem)
+        return
+      }
+    }
     const { error } = await supabase
       .from('platform_listings')
       .update({
@@ -134,6 +200,15 @@ export default function MappingsPage() {
     if (error) {
       setStatus(`Error saving: ${error.message}`)
       return
+    }
+    if (editStore && isTikTokStore(editStore)) {
+      const previousSku = original && original.store_id === editStoreId ? original.platform_sku : editSku
+      const { error: idError } = await saveTikTokId(editStore, tiktokId, editSku, previousSku)
+      if (idError) {
+        setStatus(`Listing updated, but saving the TikTok SKU ID failed: ${idError.message}`)
+        loadAll()
+        return
+      }
     }
     setEditingListingId(null)
     setStatus('Listing updated.')
@@ -183,6 +258,7 @@ export default function MappingsPage() {
   }
 
   const cancelButton: React.CSSProperties = { ...linkButton, color: muted }
+  const hasTikTok = stores.some(isTikTokStore)
   const deleteButton: React.CSSProperties = { ...linkButton, color: red }
   const q = search.trim().toLowerCase()
   const shownProducts = products.filter(
@@ -208,6 +284,8 @@ export default function MappingsPage() {
           <button onClick={createProduct} style={primaryButton}>Create</button>
         </div>
       </section>
+
+      {stores.some(isTikTokStore) && <TikTokCatalogUpload onSaved={loadAll} />}
 
       <div style={{ marginTop: '20px' }}>
         <input placeholder="Search SKU, name or store SKU" value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inputStyle, width: '300px' }} />
@@ -253,6 +331,7 @@ export default function MappingsPage() {
                 <th style={thStyle}>Store</th>
                 <th style={thStyle}>Store SKU</th>
                 <th style={thStyle}>Units per sale</th>
+                {hasTikTok && <th style={thStyle}>TikTok SKU ID</th>}
                 <th style={thStyle}></th>
               </tr>
             </thead>
@@ -273,6 +352,13 @@ export default function MappingsPage() {
                     <td style={tdStyle}>
                       <input value={editUnits} onChange={(e) => setEditUnits(e.target.value)} style={{ ...inputStyle, width: '50px' }} />
                     </td>
+                    {hasTikTok && (
+                      <td style={tdStyle}>
+                        {isTikTokStore(stores.find((st) => st.id === editStoreId)) ? (
+                          <input placeholder="Required" value={editTikTokId} onChange={(e) => setEditTikTokId(e.target.value)} style={{ ...inputStyle, width: '170px' }} />
+                        ) : <span style={{ color: dim }}>—</span>}
+                      </td>
+                    )}
                     <td style={tdStyle}>
                       <select value={editProductId} onChange={(e) => setEditProductId(e.target.value)} style={{ ...inputStyle, marginRight: '8px' }}>
                         {products.map((p) => (
@@ -288,6 +374,13 @@ export default function MappingsPage() {
                     <td style={tdStyle}>{storeLabel(listing.stores)}</td>
                     <td style={tdStyle}>{listing.platform_sku}</td>
                     <td style={tdStyle}>{listing.units_per_sale}</td>
+                    {hasTikTok && (
+                      <td style={tdStyle}>
+                        {isTikTokStore(stores.find((st) => st.id === listing.store_id))
+                          ? idsFor(listing.store_id, listing.platform_sku).join(', ') || <span style={{ color: amber, fontWeight: 700 }}>Missing: orders won&apos;t match</span>
+                          : <span style={{ color: dim }}>—</span>}
+                      </td>
+                    )}
                     <td style={tdStyle}>
                       <button onClick={() => startEditListing(listing, product.id)} style={linkButton}>
                         Edit
@@ -312,6 +405,13 @@ export default function MappingsPage() {
               </select>
               <input placeholder="Store SKU" value={addSku} onChange={(e) => setAddSku(e.target.value)} style={{ ...inputStyle, width: '140px' }} />
               <input placeholder="Units/sale" value={addUnits} onChange={(e) => setAddUnits(e.target.value)} style={{ ...inputStyle, width: '70px' }} />
+              {isTikTokStore(stores.find((st) => st.id === addStoreId)) && (
+                idsFor(addStoreId, addSku.trim()).length > 0 ? (
+                  <span style={{ fontSize: '13px', color: muted }}>TikTok SKU ID {idsFor(addStoreId, addSku.trim()).join(', ')} already on file</span>
+                ) : (
+                  <input placeholder="TikTok SKU ID (required)" value={addTikTokId} onChange={(e) => setAddTikTokId(e.target.value)} style={{ ...inputStyle, width: '210px' }} />
+                )
+              )}
               <button onClick={() => saveNewListing(product.id)} style={primaryButton}>Save</button>
               <button onClick={() => setAddingToProduct(null)} style={cancelButton}>Cancel</button>
             </div>

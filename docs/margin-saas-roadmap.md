@@ -20,6 +20,7 @@
 
 - **Supabase Auth + real RLS policies.** Currently deferred: there's one test tenant, looked up by name (`'Test Store'`). Every tenant-scoped table needs policies, including `stores`, `tiktok_sku_catalog`, `master_products`, `platform_listings`, `order_line_items`, `cogs_components`, `shipping_rules`, and the `order_margins` / `sku_channel_margins` views. Replace every `'Test Store'` lookup with the logged-in user's tenant.
 - ~~**Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.**~~ Done 2026-09-30.
+- **TikTok sale VAT for VAT-registered stores.** TikTok settlement reports show £0 VAT for UK-established sellers (TikTok only fills it when it collects the VAT itself), so the importer records the whole sale as net revenue. For a VAT-registered store that overstates revenue and margin by the VAT. Fix: when the report's VAT is £0 and the store is VAT registered, work out the VAT from each product's VAT rate (`master_products.vat_rate`) at import time.
 - **Refunds and returns.** Every importer currently skips refund rows (Amazon refunds and SAFE-T reimbursements, TikTok refund-only rows, Mirakl refund types), so revenue and margins are overstated for any product that gets returns. Needs: importing refunds as their own lines linked to the original sale (by order / order-line ID), the refunded revenue and refunded fees, whether the item came back resaleable (cost recovered) or not (cost lost), and showing refund rate per SKU per store.
 
 ---

@@ -135,7 +135,7 @@ export default function TikTokImportPage() {
       ;(window as any).__tiktokOrders = normalized
       setStatus(
         `Parsed ${normalized.length} order lines. Skipped ${refundsSkipped} fully refunded or refund-only rows (refunds are handled later).` +
-        (noMatch > 0 ? `WARNING: ${noMatch} rows had no catalog match. Best fix: upload an up-to-date catalog on the TikTok Catalog page, then choose this file again. If you confirm now anyway, those rows are held back (don't tick "Create new products" here, or you'll get products named after TikTok's numeric IDs).` : 'All SKUs matched your catalog.')
+        (noMatch > 0 ? `WARNING: ${noMatch} rows had no catalog match. Best fix: add their TikTok SKU IDs on the Mappings page (one by one, or with the TikTok catalog upload there), then choose this file again. If you confirm now anyway, those rows are held back (don't tick "Create new products" here, or you'll get products named after TikTok's numeric IDs).` : 'All SKUs matched your catalog.')
       )
     }
     reader.readAsBinaryString(file)
@@ -160,7 +160,7 @@ export default function TikTokImportPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Import</p>
       <h1 style={pageTitle}>TikTok Import</h1>
-      <p style={pageIntro}>First pass: standard sales only (refund rows are skipped for now). Upload each shop's catalog on the TikTok Catalog page first. Rows whose SKU isn't matched are held back and listed, so you can fix them and upload the same file again.</p>
+      <p style={pageIntro}>First pass: standard sales only (refund rows are skipped for now). Set up each product's TikTok SKU ID on the Mappings page first (or upload the shop's catalog there). Rows whose SKU isn't matched are held back and listed, so you can fix them and upload the same file again.</p>
       <div style={cardStyle}>
       <StorePicker platformFilter={(p) => p.name === 'TikTok'} value={store} onChange={changeStore} />
       <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
