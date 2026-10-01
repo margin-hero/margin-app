@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Grid3x3, ScanSearch, Percent, TrendingUp,
   FileUp, ShoppingCart, BookOpen, Music2, Building2,
-  Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, PanelLeftClose, PanelLeftOpen,
+  Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, PanelLeftClose, PanelLeftOpen,
   type LucideIcon,
 } from 'lucide-react'
 import { lime, bg, border, text, muted, dim, font, display } from '@/lib/theme'
@@ -41,6 +41,8 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: L
       { href: '/catalog-import', label: 'Catalog Import', icon: ListPlus },
       { href: '/costs', label: 'Costs', icon: PoundSterling },
       { href: '/cost-import', label: 'Cost Import', icon: FileSpreadsheet },
+      { href: '/couriers', label: 'Couriers', icon: Truck },
+      { href: '/shipping-profiles', label: 'Shipping Profiles', icon: Boxes },
     ],
   },
 ]

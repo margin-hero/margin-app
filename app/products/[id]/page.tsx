@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { loadStores, Store } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
+import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
 
 type Product = {
   id: string
@@ -43,6 +44,10 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [cogs, setCogs] = useState<CogsRow[]>([])
   const [shipping, setShipping] = useState<ShippingRow[]>([])
+  const [profiles, setProfiles] = useState<ShippingProfile[]>([])
+  const [profileAssignments, setProfileAssignments] = useState<{ id: string; store_id: string | null; shipping_profile_id: string | null }[]>([])
+  const [overrideStoreId, setOverrideStoreId] = useState('')
+  const [overrideProfileId, setOverrideProfileId] = useState('')
   const [stores, setStores] = useState<Store[]>([])
   const [costTypes, setCostTypes] = useState<CostType[]>([])
   const [status, setStatus] = useState('')
@@ -96,6 +101,13 @@ export default function ProductDetailPage() {
     setShipping(shippingData || [])
 
     setStores(await loadStores())
+
+    setProfiles(await loadShippingProfiles())
+    const { data: assignmentData } = await supabase
+      .from('product_shipping_profiles')
+      .select('id, store_id, shipping_profile_id')
+      .eq('master_product_id', productId)
+    setProfileAssignments(assignmentData || [])
     setCostTypes(await loadCostTypes())
   }
 
@@ -229,7 +241,53 @@ export default function ProductDetailPage() {
     loadAll()
   }
 
+  // The all-stores profile: replace whatever is there ('' = remove it)
+  async function setDefaultProfile(profileId: string) {
+    await supabase.from('product_shipping_profiles').delete().eq('master_product_id', productId).is('store_id', null)
+    if (profileId) {
+      const { error } = await supabase.from('product_shipping_profiles').insert({ master_product_id: productId, store_id: null, shipping_profile_id: profileId })
+      if (error) {
+        setStatus(`Error setting shipping profile: ${error.message}`)
+        return
+      }
+    }
+    setStatus(profileId ? 'Shipping profile set for all stores.' : 'Shipping profile removed.')
+    loadAll()
+  }
+
+  // A different profile in one store, or 'none' = no shipping cost there (e.g. FBA)
+  async function addOverride() {
+    if (!overrideStoreId || !overrideProfileId) {
+      setStatus('Choose a store and a profile (or "No shipping cost").')
+      return
+    }
+    await supabase.from('product_shipping_profiles').delete().eq('master_product_id', productId).eq('store_id', overrideStoreId)
+    const { error } = await supabase.from('product_shipping_profiles').insert({
+      master_product_id: productId,
+      store_id: overrideStoreId,
+      shipping_profile_id: overrideProfileId === 'none' ? null : overrideProfileId,
+    })
+    if (error) {
+      setStatus(`Error adding store exception: ${error.message}`)
+      return
+    }
+    setOverrideStoreId('')
+    setOverrideProfileId('')
+    setStatus('Store exception saved.')
+    loadAll()
+  }
+
+  async function removeOverride(id: string) {
+    await supabase.from('product_shipping_profiles').delete().eq('id', id)
+    setStatus('Store exception removed.')
+    loadAll()
+  }
+
   if (!product) return <div style={{ padding: '2rem' }}>Loading...</div>
+
+  const defaultAssignment = profileAssignments.find((a) => a.store_id === null)
+  const storeOverrides = profileAssignments.filter((a) => a.store_id !== null)
+  const profileName = (id: string | null) => (id ? profiles.find((p) => p.id === id)?.name || '?' : 'No shipping cost')
 
   const thStyle = { padding: '8px', textAlign: 'left' as const, borderBottom: '2px solid #ccc' }
   const tdStyle = { padding: '8px' }
@@ -396,7 +454,44 @@ export default function ProductDetailPage() {
       </section>
 
       <section style={{ marginTop: '2rem' }}>
-        <h2>Shipping Rules</h2>
+        <h2>Shipping Profile</h2>
+        <p style={{ color: '#666', fontSize: '13px' }}>
+          How this product ships. Profiles and courier prices are managed on the <a href="/shipping-profiles">Shipping Profiles</a> and <a href="/couriers">Couriers</a> pages.
+          The real label cost from a channel (e.g. Amazon) and any exact-price shipping rules below take priority over the profile.
+        </p>
+        <label style={{ fontSize: '14px' }}>
+          All stores:{' '}
+          <select value={defaultAssignment?.shipping_profile_id || ''} onChange={(e) => setDefaultProfile(e.target.value)} style={{ padding: '6px', marginLeft: '6px' }}>
+            <option value="">No profile</option>
+            {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
+
+        <h3 style={{ fontSize: '15px', marginTop: '1.2rem' }}>Store exceptions</h3>
+        {storeOverrides.length === 0 && <p style={{ color: '#666', fontSize: '13px' }}>None: every store uses the profile above.</p>}
+        {storeOverrides.map((o) => (
+          <p key={o.id} style={{ fontSize: '14px', margin: '4px 0' }}>
+            <strong>{stores.find((st) => st.id === o.store_id)?.name || '?'}</strong>: {profileName(o.shipping_profile_id)}{' '}
+            <button onClick={() => removeOverride(o.id)} style={{ color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer' }}>Remove</button>
+          </p>
+        ))}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
+          <select value={overrideStoreId} onChange={(e) => setOverrideStoreId(e.target.value)} style={{ padding: '6px' }}>
+            <option value="">Store...</option>
+            {stores.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
+          </select>
+          <select value={overrideProfileId} onChange={(e) => setOverrideProfileId(e.target.value)} style={{ padding: '6px' }}>
+            <option value="">Uses...</option>
+            <option value="none">No shipping cost (e.g. Amazon FBA)</option>
+            {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <button onClick={addOverride} style={{ padding: '6px 12px' }}>Add exception</button>
+        </div>
+      </section>
+
+      <section style={{ marginTop: '2rem' }}>
+        <h2>Shipping Rules (exact-price overrides)</h2>
+        <p style={{ color: '#666', fontSize: '13px' }}>Optional. A rule here beats the shipping profile for that exact quantity. Most products won&apos;t need any.</p>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>

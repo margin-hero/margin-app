@@ -64,7 +64,7 @@ Steps:
 1. ✅ **Costs overview + missing-costs warning.** (Done 2026-09-30.) One table of every product's current costs, flagging products whose orders have no product cost (they silently show ~100% margin), including costs dated *after* some orders that need backdating. Warning banner on dashboards.
 2. ✅ **Fixed cost types + per-order costs.** (Done 2026-09-30: `cost_types` table, all-in landed cost or broken down, per-order charged once per order *line*. Later: store the order number on each line so a multi-product order is charged its box once.) Replace free-text `component_type` with a fixed list (landed cost, pick & pack, packaging, WEEE, other…) so reports can break costs down by type; add per-order costs (per the modelling point above).
 3. ✅ **Bulk cost import.** (Done 2026-09-30: `/cost-import`.) Same style as Catalog Import: CSV/XLSX, adds only, dated, deliberate VAT rate per row (no default).
-4. **Shipping rate cards.** Define a courier service once ("Evri small parcel = £2.95", per-quantity and bundle prices) and assign products to it, instead of per-product shipping rows. Price change = one edit, dated. Also decide the fallback when an order quantity has no matching rate.
+4. ✅ **Shipping rate cards.** (Done 2026-10-01 as a courier price list + shipping profiles: qty bands → N parcels × courier service, prices dated on the courier service, per-product profile with per-store exceptions or "no shipping cost". Later: date the profile bands themselves; bulk "raise courier X by n% from date"; shipping spend by courier report.)
 5. **Overheads + allocation.** `overhead_costs` (name, amount, period) and the allocation rule above, subtracted in Net Profit only (never Gross).
 
 **Dashboard (priority)**

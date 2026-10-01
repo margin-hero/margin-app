@@ -16,6 +16,7 @@ type ProductCosts = {
   perOrderPence: number // current per-order costs combined
   futureCostFrom: string | null // a landed cost exists but only starts in the future
   doubleCount: boolean // all-in landed cost AND its parts are both in effect
+  shippingProfile: string | null // all-stores shipping profile name
   shippingRules: number
   ordersNoCost: number // order lines where product cost came out as £0
   earliestNoCost: string | null
@@ -33,7 +34,7 @@ export default function CostsPage() {
   useEffect(() => {
     async function load() {
       const today = new Date().toISOString().slice(0, 10)
-      const [costTypes, products, cogs, shipping, noCost, noShipping] = await Promise.all([
+      const [costTypes, products, cogs, shipping, noCost, noShipping, profiles, assignments] = await Promise.all([
         loadCostTypes(),
         fetchAll((from, to) => supabase.from('master_products').select('id, standard_sku, name').order('id').range(from, to)),
         fetchAll((from, to) =>
@@ -44,10 +45,15 @@ export default function CostsPage() {
           supabase.from('order_margins').select('master_product_id, order_date').eq('product_cost_pence', 0).order('order_line_item_id').range(from, to)
         ),
         fetchAll((from, to) =>
-          supabase.from('order_margins').select('master_product_id').eq('shipping_pence', 0).order('order_line_item_id').range(from, to)
+          // 'missing' = no label cost, no rule and no profile covers this order (deliberate 'no shipping' isn't flagged)
+          supabase.from('order_margins').select('master_product_id').eq('shipping_source', 'missing').order('order_line_item_id').range(from, to)
+        ),
+        supabase.from('shipping_profiles').select('id, name'),
+        fetchAll((from, to) =>
+          supabase.from('product_shipping_profiles').select('id, master_product_id, shipping_profile_id').is('store_id', null).order('id').range(from, to)
         ),
       ])
-      const firstError = [products, cogs, shipping, noCost, noShipping].find((r) => r.error)?.error
+      const firstError = [products, cogs, shipping, noCost, noShipping, profiles, assignments].find((r) => r.error)?.error
       if (firstError) {
         setError(firstError.message)
         setLoading(false)
@@ -81,6 +87,8 @@ export default function CostsPage() {
       const shippingCounts = count(shipping.data)
       const noCostCounts = count(noCost.data)
       const noShippingCounts = count(noShipping.data)
+      const profileNameById = new Map((profiles.data || []).map((p) => [p.id, p.name]))
+      const profileOf = new Map(assignments.data.map((a) => [a.master_product_id, profileNameById.get(a.shipping_profile_id) || null]))
       const earliestNoCost = new Map<string, string>()
       noCost.data.forEach((r) => {
         const prev = earliestNoCost.get(r.master_product_id)
@@ -110,6 +118,7 @@ export default function CostsPage() {
             perOrderPence: perOrder,
             futureCostFrom: landed === null && firstLanded && firstLanded > today ? firstLanded : null,
             doubleCount: hasDoubleCountRisk(activeTypes),
+            shippingProfile: profileOf.get(p.id) || null,
             shippingRules: shippingCounts.get(p.id) || 0,
             ordersNoCost: noCostCounts.get(p.id) || 0,
             earliestNoCost: earliestNoCost.get(p.id) || null,
@@ -174,7 +183,7 @@ export default function CostsPage() {
                   <th style={thStyle}>Landed cost</th>
                   <th style={thStyle}>Other per unit</th>
                   <th style={thStyle}>Per order</th>
-                  <th style={thStyle}>Shipping rules</th>
+                  <th style={thStyle}>Shipping</th>
                   <th style={thStyle}>Needs attention</th>
                   <th style={thStyle}></th>
                 </tr>
@@ -191,12 +200,15 @@ export default function CostsPage() {
                       </td>
                       <td style={{ ...tdStyle, color: r.otherUnitPence ? text : dim }}>{r.otherUnitPence ? pounds(r.otherUnitPence) : '—'}</td>
                       <td style={{ ...tdStyle, color: r.perOrderPence ? text : dim }}>{r.perOrderPence ? pounds(r.perOrderPence) : '—'}</td>
-                      <td style={{ ...tdStyle, color: r.shippingRules ? text : dim }}>{r.shippingRules || '—'}</td>
+                      <td style={{ ...tdStyle, color: r.shippingProfile || r.shippingRules ? text : dim, fontSize: '13px' }}>
+                        {r.shippingProfile || (r.shippingRules ? '' : '—')}
+                        {r.shippingRules > 0 && <div style={{ color: muted }}>{r.shippingRules} exact-price rule(s)</div>}
+                      </td>
                       <td style={{ ...tdStyle, fontSize: '13px' }}>
                         {advice && <div style={{ color: red }}>{advice}</div>}
                         {r.doubleCount && <div style={{ color: red }}>All-in landed cost AND product cost / freight / duty in effect: possible double count</div>}
                         {r.ordersNoShipping > 0 && (
-                          <div style={{ color: amber }}>{r.ordersNoShipping} order line(s) with £0 shipping: add a shipping rule for that quantity</div>
+                          <div style={{ color: amber }}>{r.ordersNoShipping} order line(s) with no shipping cost: assign a shipping profile that covers that quantity (or set &quot;No shipping cost&quot; for that store)</div>
                         )}
                         {!advice && r.landedPence === null && <div style={{ color: red }}>No landed / product cost yet</div>}
                         {!needsAttention(r) && <span style={{ color: dim }}>—</span>}
@@ -212,7 +224,7 @@ export default function CostsPage() {
           </div>
         )}
         <p style={{ fontSize: '12px', color: dim, margin: '14px 0 0' }}>
-          Costs are shown as entered (including VAT). Shipping flags only matter for stores where the channel doesn&apos;t report the real label cost.
+          Costs are shown as entered (including VAT). Shipping is only flagged when nothing covers an order: no label cost from the channel, no exact-price rule and no shipping profile band.
         </p>
       </div>
     </div>

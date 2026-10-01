@@ -79,6 +79,38 @@ Cost Import **only adds** costs. If a row has the same product, cost type, descr
 
 ---
 
+## Shipping costs: Couriers and Shipping Profiles
+
+Shipping is set up in two parts, so a courier price change is only ever entered once.
+
+**1. Couriers (Manage → Couriers): what each service costs.** Add each courier service and size you use, e.g. `Evri – Medium parcel (≤2kg)`, with its VAT rate and price per parcel.
+- **Courier puts prices up?** Open the service, choose **Prices / price change**, and add the new price with the date it starts. Orders before that date keep the old price; every product using the service updates automatically.
+- **Typed a price wrong?** Use **Edit (fix mistake)**. That changes every order that used it, past and future.
+
+**2. Shipping Profiles (Manage → Shipping Profiles): how a product ships at each quantity.** For example:
+
+| Quantity | Ships as |
+|---|---|
+| 1–2 | 1 × Evri – Medium parcel |
+| 3 | 2 × Evri – Medium parcel |
+| 4–5 | 1 × DPD – Next day |
+| 6–10 | 1 × DX – 2-man |
+| 11+ | 1 × Palletforce – Half pallet |
+
+Leave the last band's "to" quantity empty to mean "and above". The page warns you about any quantities no band covers. Make one profile for everything, one per product size, or one per SKU: whatever suits you. Use **Assign to products** to apply a profile to many products at once.
+
+**Store exceptions:** on a product's **Edit costs** page you can use a different profile in one store, or choose **No shipping cost** for a store where you don't pay shipping (e.g. Amazon FBA).
+
+**What wins when more than one applies:**
+1. The real label cost, if the channel reports it (Amazon "Shipping label purchase").
+2. An exact-price shipping rule on the product, for that exact quantity (optional, for one-off exceptions).
+3. The product's shipping profile (a store exception first, then the all-stores profile).
+4. Nothing: the order shows £0 shipping and is flagged on the **Costs** page.
+
+Shipping is matched on the quantity of units shipped, so a bundle listed as 1 sale of 3 units uses the 3-unit band.
+
+---
+
 ## Amazon
 
 **Page:** Import → **Amazon**

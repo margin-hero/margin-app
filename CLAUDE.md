@@ -46,6 +46,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `platforms`: shared across tenants, added by migration only (no UI, to avoid duplicates). `integration_type` (e.g. `'mirakl'`) is how importers find their platforms; `'csv'` = no dedicated importer, orders come in via `/upload` (e.g. Argos, Shopify)
 - `order_line_items`: unique on `(platform_listing_id, external_id)` for dedupe on re-uploads
 - `cogs_components`, `shipping_rules`
+- Shipping profiles: `courier_services` (+ dated `courier_service_prices`, per parcel, with the service's VAT rate) → `shipping_profiles` with `shipping_profile_bands` (qty range → N parcels × a courier service; `max_qty` null = "and above"; bands are NOT dated) → `product_shipping_profiles` (store_id null = all stores; a store override with null profile = deliberately no shipping cost). Shipping priority in `order_margins`: label cost → `shipping_rules` (exact qty) → profile → missing. `order_margins.shipping_source` = 'label' | 'rule' | 'profile' | 'none' | 'missing'. Pages: `/couriers`, `/shipping-profiles`, assignment on `/products/[id]`.
 - `cost_types`: fixed list (migration-only) that `cogs_components.component_type` must reference. `basis` = `per_unit` (× effective_qty) or `per_order` (once per order line; there's no order grouping yet, so a multi-product order is charged per line). `in_gross` = landed cost. `cogs_components.description` is optional; "latest cost wins" applies per (type, description). Per-order costs appear in `other_cost_pence` and separately as `per_order_cost_pence`.
 - `tiktok_sku_catalog`: maps TikTok numeric SKU IDs → seller SKUs
 - `order_margins` (view): revenue_pence, product_cost_pence, total_cost_pence, margin_pence, margin_percent, price_per_unit_pence, etc.
@@ -59,11 +60,11 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `importEngine` holds back orders whose SKU isn't mapped in the store (listed via `describeImportResult`) unless `createUnknownSkus` is set (tick-box `components/CreateProductsToggle.tsx` on each import page). A store SKU that exactly matches a product's `standard_sku` is still linked automatically.
 - `/catalog-import`: bulk products + store mappings from CSV/XLSX (one row per listing). Only adds, never changes or deletes; clashes are reported as problems.
 - `/cost-import`: bulk costs from CSV/XLSX (one row per cost; cost_type by label or code; vat_rate and effective_from required, no defaults). Adds only: a different amount for the same product/type/description/date is reported, never overwritten.
-- `/costs`: overview of every product's current costs; flags products whose orders have £0 product cost (missing or not-backdated costs) and £0 shipping. `components/MissingCostsBanner.tsx` shows the same warning above dashboards (via AppShell).
+- `/costs`: overview of every product's current costs; flags products whose orders have £0 product cost (missing or not-backdated costs) and `shipping_source = 'missing'`. `components/MissingCostsBanner.tsx` shows the same warning above dashboards (via AppShell).
 - `lib/readSpreadsheet.ts`: shared CSV/XLSX reader (Papa for CSV to keep exact text, SheetJS for Excel with date-cell conversion). Use it for new file importers.
 - `lib/fetchAll.ts`: Supabase silently caps results at 1,000 rows. Any query that can return more (orders, listings, products, catalogs) must go through `fetchAll` with an `.order()` on a unique column + `.range(from, to)`.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
-- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/mappings`, `/products`, `/products/[id]`
+- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/couriers`, `/shipping-profiles`, `/mappings`, `/products`, `/products/[id]`
 - `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
 
 ## Platform import notes
