@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { loadStores, Store } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
+import Link from 'next/link'
+import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Product = {
   id: string
@@ -283,28 +285,31 @@ export default function ProductDetailPage() {
     loadAll()
   }
 
-  if (!product) return <div style={{ padding: '2rem' }}>Loading...</div>
+  if (!product) return <div style={pageStyle}><p style={{ color: muted }}>Loading...</p></div>
 
   const defaultAssignment = profileAssignments.find((a) => a.store_id === null)
   const storeOverrides = profileAssignments.filter((a) => a.store_id !== null)
   const profileName = (id: string | null) => (id ? profiles.find((p) => p.id === id)?.name || '?' : 'No shipping cost')
 
-  const thStyle = { padding: '8px', textAlign: 'left' as const, borderBottom: '2px solid #ccc' }
-  const tdStyle = { padding: '8px' }
-  const inputStyle = { padding: '4px', width: '90px' }
+  const smallInput: React.CSSProperties = { ...inputStyle, width: '100px' }
+  const cancelButton: React.CSSProperties = { ...linkButton, color: muted }
+  const deleteButton: React.CSSProperties = { ...linkButton, color: red }
+  const help: React.CSSProperties = { color: muted, fontSize: '13px', lineHeight: 1.5, margin: '0 0 12px' }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '950px' }}>
-      <h1>{product.name} <span style={{ color: '#888', fontWeight: 'normal' }}>({product.standard_sku})</span></h1>
-      {status && <p style={{ color: '#2563eb' }}>{status}</p>}
+    <div style={pageStyle}>
+      <p style={eyebrow}><Link href="/products" style={{ color: lime, textDecoration: 'none' }}>← Products</Link></p>
+      <h1 style={pageTitle}>{product.name}</h1>
+      <p style={{ color: muted, fontSize: '15px', margin: 0 }}>{product.standard_sku}</p>
+      {status && <p style={{ color: lime, fontSize: '14px', fontWeight: 600, marginTop: '16px' }}>{status}</p>}
 
-      <section style={{ marginTop: '1.5rem' }}>
-        <h2>Default VAT Rate</h2>
-        <p style={{ color: '#666', fontSize: '14px' }}>Used as a suggested default for forecasting — not applied retroactively to costs already entered below.</p>
+      <section style={cardStyle}>
+        <p style={cardTitle}>Default VAT Rate</p>
+        <p style={help}>Used as a suggested default for forecasting — not applied retroactively to costs already entered below.</p>
         <select
           value={product.vat_rate}
           onChange={(e) => updateProductVatRate(parseFloat(e.target.value))}
-          style={{ padding: '6px' }}
+          style={inputStyle}
         >
           <option value="0">0% (VAT-free / zero-rated)</option>
           <option value="0.05">5% (Reduced rate)</option>
@@ -312,19 +317,19 @@ export default function ProductDetailPage() {
         </select>
       </section>
 
-      <section style={{ marginTop: '2rem' }}>
-        <h2>Costs</h2>
-        <p style={{ color: '#666', fontSize: '13px' }}>
+      <section style={cardStyle}>
+        <p style={cardTitle}>Costs</p>
+        <p style={help}>
           <strong>Per unit</strong> costs are multiplied by the quantity sold (bundles included). <strong>Per order</strong> costs, like a box or pick &amp; pack,
           are charged once per order line. <strong>Landed cost</strong> types (all-in, or product cost + freight + duty) count in Gross Profit; everything counts in Net.
           Two costs of the same type both apply if they have different descriptions.
         </p>
         {hasDoubleCountRisk(cogs.filter((c) => c.effective_from <= today()).map((c) => c.component_type)) && (
-          <p style={{ color: '#dc2626', fontSize: '14px', fontWeight: 600 }}>
+          <p style={{ color: red, fontSize: '14px', fontWeight: 600 }}>
             ⚠ This product has an all-in landed cost AND product cost / freight / duty in effect. If the all-in figure already includes those, they&apos;re being counted twice.
           </p>
         )}
-        <p style={{ color: '#666', fontSize: '13px' }}>
+        <p style={help}>
           <strong>Edit</strong> corrects a mistake — it changes margin for every order using this cost, past and future.
           To reflect a genuine price change from today onward while keeping historical accuracy, use <strong>Add Cost</strong> below instead of editing.
         </p>
@@ -342,9 +347,9 @@ export default function ProductDetailPage() {
           <tbody>
             {cogs.map((row) =>
               editingCogsId === row.id ? (
-                <tr key={row.id} style={{ borderBottom: '1px solid #eee', background: '#fafafa' }}>
+                <tr key={row.id} style={{ background: 'rgba(255,255,255,0.03)' }}>
                   <td style={tdStyle}>
-                    <select value={editComponentType} onChange={(e) => setEditComponentType(e.target.value)} style={{ padding: '4px' }}>
+                    <select value={editComponentType} onChange={(e) => setEditComponentType(e.target.value)} style={inputStyle}>
                       <option value="">Select cost type...</option>
                       <optgroup label="Per unit (× quantity sold)">
                         {costTypes.filter((t) => t.basis === 'per_unit').map((t) => (
@@ -359,13 +364,13 @@ export default function ProductDetailPage() {
                     </select>
                   </td>
                   <td style={tdStyle}>
-                    <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Optional" style={inputStyle} />
+                    <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Optional" style={smallInput} />
                   </td>
                   <td style={tdStyle}>
-                    <input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={inputStyle} />
+                    <input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={smallInput} />
                   </td>
                   <td style={tdStyle}>
-                    <select value={editVatRate} onChange={(e) => setEditVatRate(e.target.value)} style={{ padding: '4px' }}>
+                    <select value={editVatRate} onChange={(e) => setEditVatRate(e.target.value)} style={inputStyle}>
                       <option value="0">0%</option>
                       <option value="0.05">5%</option>
                       <option value="0.2">20%</option>
@@ -373,15 +378,15 @@ export default function ProductDetailPage() {
                   </td>
                   <td style={tdStyle}>{row.effective_from}</td>
                   <td style={tdStyle}>
-                    <button onClick={() => saveCogsEdit(row.id)} style={{ marginRight: '8px' }}>Save</button>
-                    <button onClick={() => setEditingCogsId(null)}>Cancel</button>
+                    <button onClick={() => saveCogsEdit(row.id)} style={linkButton}>Save</button>
+                    <button onClick={() => setEditingCogsId(null)} style={cancelButton}>Cancel</button>
                   </td>
                 </tr>
               ) : (
-                <tr key={row.id} style={{ borderBottom: '1px solid #eee' }}>
+                <tr key={row.id}>
                   <td style={tdStyle}>
                     {costTypes.find((t) => t.code === row.component_type)?.label || row.component_type}
-                    <span style={{ color: '#888', fontSize: '12px', marginLeft: '6px' }}>
+                    <span style={{ color: muted, fontSize: '12px', marginLeft: '6px' }}>
                       {costTypes.find((t) => t.code === row.component_type)?.basis === 'per_order' ? 'per order' : 'per unit'}
                     </span>
                   </td>
@@ -390,10 +395,10 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
                   <td style={tdStyle}>{row.effective_from}</td>
                   <td style={tdStyle}>
-                    <button onClick={() => startEditCogs(row)} style={{ marginRight: '12px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <button onClick={() => startEditCogs(row)} style={linkButton}>
                       Edit
                     </button>
-                    <button onClick={() => deleteCogsRow(row.id)} style={{ color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <button onClick={() => deleteCogsRow(row.id)} style={deleteButton}>
                       Delete
                     </button>
                   </td>
@@ -404,7 +409,7 @@ export default function ProductDetailPage() {
         </table>
 
         <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={newComponentType} onChange={(e) => setNewComponentType(e.target.value)} style={{ padding: '6px' }}>
+          <select value={newComponentType} onChange={(e) => setNewComponentType(e.target.value)} style={inputStyle}>
             <option value="">Select cost type...</option>
             <optgroup label="Per unit (× quantity sold)">
               {costTypes.filter((t) => t.basis === 'per_unit').map((t) => (
@@ -421,15 +426,15 @@ export default function ProductDetailPage() {
             placeholder="Description (optional)"
             value={newDescription}
             onChange={(e) => setNewDescription(e.target.value)}
-            style={{ padding: '6px', width: '170px' }}
+            style={{ ...inputStyle, width: '170px' }}
           />
           <input
             placeholder="Amount £"
             value={newAmount}
             onChange={(e) => setNewAmount(e.target.value)}
-            style={{ padding: '6px', width: '100px' }}
+            style={{ ...inputStyle, width: '100px' }}
           />
-          <select value={newVatRate} onChange={(e) => setNewVatRate(e.target.value)} style={{ padding: '6px' }}>
+          <select value={newVatRate} onChange={(e) => setNewVatRate(e.target.value)} style={inputStyle}>
             <option value="">Select VAT rate...</option>
             <option value="0">0% (VAT-free / labour / zero-rated)</option>
             <option value="0.05">5% (Reduced rate)</option>
@@ -440,58 +445,58 @@ export default function ProductDetailPage() {
               type="date"
               value={newEffectiveFrom}
               onChange={(e) => setNewEffectiveFrom(e.target.value)}
-              style={{ padding: '6px' }}
+              style={inputStyle}
             />
-            <div style={{ fontSize: '11px', color: '#888' }}>Effective from — today for a new price, or an earlier date if backfilling history</div>
+            <div style={{ fontSize: '11px', color: muted, marginTop: '4px' }}>Effective from — today for a new price, or an earlier date if backfilling history</div>
           </div>
-          <button onClick={addCogsRow} style={{ padding: '6px 12px' }}>Add Cost</button>
+          <button onClick={addCogsRow} style={primaryButton}>Add Cost</button>
         </div>
         {newComponentType && (
-          <p style={{ color: '#666', fontSize: '13px', marginTop: '8px' }}>
+          <p style={{ ...help, marginTop: '10px' }}>
             {costTypes.find((t) => t.code === newComponentType)?.description}
           </p>
         )}
       </section>
 
-      <section style={{ marginTop: '2rem' }}>
-        <h2>Shipping Profile</h2>
-        <p style={{ color: '#666', fontSize: '13px' }}>
-          How this product ships. Profiles and courier prices are managed on the <a href="/shipping-profiles">Shipping Profiles</a> and <a href="/couriers">Couriers</a> pages.
+      <section style={cardStyle}>
+        <p style={cardTitle}>Shipping Profile</p>
+        <p style={help}>
+          How this product ships. Profiles and courier prices are managed on the <Link href="/shipping-profiles" style={{ color: lime, fontWeight: 700 }}>Shipping Profiles</Link> and <Link href="/couriers" style={{ color: lime, fontWeight: 700 }}>Couriers</Link> pages.
           The real label cost from a channel (e.g. Amazon) and any exact-price shipping rules below take priority over the profile.
         </p>
-        <label style={{ fontSize: '14px' }}>
+        <label style={{ fontSize: '14px', color: text }}>
           All stores:{' '}
-          <select value={defaultAssignment?.shipping_profile_id || ''} onChange={(e) => setDefaultProfile(e.target.value)} style={{ padding: '6px', marginLeft: '6px' }}>
+          <select value={defaultAssignment?.shipping_profile_id || ''} onChange={(e) => setDefaultProfile(e.target.value)} style={{ ...inputStyle, marginLeft: '6px' }}>
             <option value="">No profile</option>
             {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </label>
 
-        <h3 style={{ fontSize: '15px', marginTop: '1.2rem' }}>Store exceptions</h3>
-        {storeOverrides.length === 0 && <p style={{ color: '#666', fontSize: '13px' }}>None: every store uses the profile above.</p>}
+        <p style={{ ...cardTitle, margin: '22px 0 10px' }}>Store exceptions</p>
+        {storeOverrides.length === 0 && <p style={help}>None: every store uses the profile above.</p>}
         {storeOverrides.map((o) => (
           <p key={o.id} style={{ fontSize: '14px', margin: '4px 0' }}>
             <strong>{stores.find((st) => st.id === o.store_id)?.name || '?'}</strong>: {profileName(o.shipping_profile_id)}{' '}
-            <button onClick={() => removeOverride(o.id)} style={{ color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer' }}>Remove</button>
+            <button onClick={() => removeOverride(o.id)} style={deleteButton}>Remove</button>
           </p>
         ))}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
-          <select value={overrideStoreId} onChange={(e) => setOverrideStoreId(e.target.value)} style={{ padding: '6px' }}>
+          <select value={overrideStoreId} onChange={(e) => setOverrideStoreId(e.target.value)} style={inputStyle}>
             <option value="">Store...</option>
             {stores.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
           </select>
-          <select value={overrideProfileId} onChange={(e) => setOverrideProfileId(e.target.value)} style={{ padding: '6px' }}>
+          <select value={overrideProfileId} onChange={(e) => setOverrideProfileId(e.target.value)} style={inputStyle}>
             <option value="">Uses...</option>
             <option value="none">No shipping cost (e.g. Amazon FBA)</option>
             {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <button onClick={addOverride} style={{ padding: '6px 12px' }}>Add exception</button>
+          <button onClick={addOverride} style={primaryButton}>Add exception</button>
         </div>
       </section>
 
-      <section style={{ marginTop: '2rem' }}>
-        <h2>Shipping Rules (exact-price overrides)</h2>
-        <p style={{ color: '#666', fontSize: '13px' }}>Optional. A rule here beats the shipping profile for that exact quantity. Most products won&apos;t need any.</p>
+      <section style={cardStyle}>
+        <p style={cardTitle}>Shipping Rules (exact-price overrides)</p>
+        <p style={help}>Optional. A rule here beats the shipping profile for that exact quantity. Most products won&apos;t need any.</p>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
@@ -507,9 +512,9 @@ export default function ProductDetailPage() {
           <tbody>
             {shipping.map((row) =>
               editingShippingId === row.id ? (
-                <tr key={row.id} style={{ borderBottom: '1px solid #eee', background: '#fafafa' }}>
+                <tr key={row.id} style={{ background: 'rgba(255,255,255,0.03)' }}>
                   <td style={tdStyle}>
-                    <select value={editShippingStoreId} onChange={(e) => setEditShippingStoreId(e.target.value)} style={{ padding: '4px' }}>
+                    <select value={editShippingStoreId} onChange={(e) => setEditShippingStoreId(e.target.value)} style={inputStyle}>
                       <option value="">All stores</option>
                       {stores.map((st) => (
                         <option key={st.id} value={st.id}>{st.name}</option>
@@ -517,31 +522,31 @@ export default function ProductDetailPage() {
                     </select>
                   </td>
                   <td style={tdStyle}>
-                    <input value={editQty} onChange={(e) => setEditQty(e.target.value)} style={{ ...inputStyle, width: '50px' }} />
+                    <input value={editQty} onChange={(e) => setEditQty(e.target.value)} style={{ ...smallInput, width: '70px' }} />
                   </td>
                   <td style={tdStyle}>
-                    <input value={editShippingCost} onChange={(e) => setEditShippingCost(e.target.value)} style={inputStyle} />
+                    <input value={editShippingCost} onChange={(e) => setEditShippingCost(e.target.value)} style={smallInput} />
                   </td>
                   <td style={tdStyle}>
-                    <select value={editShippingVat} onChange={(e) => setEditShippingVat(e.target.value)} style={{ padding: '4px' }}>
+                    <select value={editShippingVat} onChange={(e) => setEditShippingVat(e.target.value)} style={inputStyle}>
                       <option value="0">0%</option>
                       <option value="0.2">20%</option>
                     </select>
                   </td>
                   <td style={tdStyle}>
-                    <select value={editServiceLevel} onChange={(e) => setEditServiceLevel(e.target.value)} style={{ padding: '4px' }}>
+                    <select value={editServiceLevel} onChange={(e) => setEditServiceLevel(e.target.value)} style={inputStyle}>
                       <option value="standard">Standard</option>
                       <option value="express">Express</option>
                     </select>
                   </td>
                   <td style={tdStyle}>{row.effective_from}</td>
                   <td style={tdStyle}>
-                    <button onClick={() => saveShippingEdit(row.id)} style={{ marginRight: '8px' }}>Save</button>
-                    <button onClick={() => setEditingShippingId(null)}>Cancel</button>
+                    <button onClick={() => saveShippingEdit(row.id)} style={linkButton}>Save</button>
+                    <button onClick={() => setEditingShippingId(null)} style={cancelButton}>Cancel</button>
                   </td>
                 </tr>
               ) : (
-                <tr key={row.id} style={{ borderBottom: '1px solid #eee' }}>
+                <tr key={row.id}>
                   <td style={tdStyle}>{row.store_id ? stores.find((st) => st.id === row.store_id)?.name : 'All stores'}</td>
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.courier_cost_pence / 100).toFixed(2)}</td>
@@ -549,10 +554,10 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>{row.service_level}</td>
                   <td style={tdStyle}>{row.effective_from}</td>
                   <td style={tdStyle}>
-                    <button onClick={() => startEditShipping(row)} style={{ marginRight: '12px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <button onClick={() => startEditShipping(row)} style={linkButton}>
                       Edit
                     </button>
-                    <button onClick={() => deleteShippingRow(row.id)} style={{ color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <button onClick={() => deleteShippingRow(row.id)} style={deleteButton}>
                       Delete
                     </button>
                   </td>
@@ -562,13 +567,13 @@ export default function ProductDetailPage() {
           </tbody>
         </table>
 
-        <p style={{ color: '#666', fontSize: '13px' }}>
+        <p style={help}>
           If the courier price genuinely changes, use <strong>Add Rule</strong> with today's date — past orders keep the old rate, future orders use the new one.
           Use <strong>Edit</strong> on an existing row only to fix a mistake (it changes every order using that rule, past and future).
           A rule for a specific store (e.g. Amazon FR) overrides the <strong>All stores</strong> rule for that store's orders.
         </p>
         <div style={{ marginTop: '1rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select value={newShippingStoreId} onChange={(e) => setNewShippingStoreId(e.target.value)} style={{ padding: '6px' }}>
+          <select value={newShippingStoreId} onChange={(e) => setNewShippingStoreId(e.target.value)} style={inputStyle}>
                       <option value="">All stores</option>
                       {stores.map((st) => (
                         <option key={st.id} value={st.id}>{st.name}</option>
@@ -578,20 +583,20 @@ export default function ProductDetailPage() {
             placeholder="Qty"
             value={newQty}
             onChange={(e) => setNewQty(e.target.value)}
-            style={{ padding: '6px', width: '60px' }}
+            style={{ ...inputStyle, width: '60px' }}
           />
           <input
             placeholder="Cost £"
             value={newShippingCost}
             onChange={(e) => setNewShippingCost(e.target.value)}
-            style={{ padding: '6px', width: '100px' }}
+            style={{ ...inputStyle, width: '100px' }}
           />
-          <select value={newShippingVat} onChange={(e) => setNewShippingVat(e.target.value)} style={{ padding: '6px' }}>
+          <select value={newShippingVat} onChange={(e) => setNewShippingVat(e.target.value)} style={inputStyle}>
             <option value="">Select VAT rate...</option>
             <option value="0">0%</option>
             <option value="0.2">20%</option>
           </select>
-          <select value={newServiceLevel} onChange={(e) => setNewServiceLevel(e.target.value)} style={{ padding: '6px' }}>
+          <select value={newServiceLevel} onChange={(e) => setNewServiceLevel(e.target.value)} style={inputStyle}>
             <option value="standard">Standard</option>
             <option value="express">Express</option>
           </select>
@@ -600,11 +605,11 @@ export default function ProductDetailPage() {
               type="date"
               value={newShippingEffectiveFrom}
               onChange={(e) => setNewShippingEffectiveFrom(e.target.value)}
-              style={{ padding: '6px' }}
+              style={inputStyle}
             />
-            <div style={{ fontSize: '11px', color: '#888' }}>Effective from</div>
+            <div style={{ fontSize: '11px', color: muted, marginTop: '4px' }}>Effective from</div>
           </div>
-          <button onClick={addShippingRow} style={{ padding: '6px 12px' }}>Add Rule</button>
+          <button onClick={addShippingRow} style={primaryButton}>Add Rule</button>
         </div>
       </section>
     </div>

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadStores, Store } from '@/lib/stores'
+import Link from 'next/link'
+import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Listing = {
   id: string
@@ -24,6 +26,7 @@ export default function MappingsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [stores, setStores] = useState<Store[]>([])
   const [status, setStatus] = useState('')
+  const [search, setSearch] = useState('')
 
   // New product form
   const [newSku, setNewSku] = useState('')
@@ -179,106 +182,117 @@ export default function MappingsPage() {
     loadAll()
   }
 
-  const thStyle = { padding: '6px', textAlign: 'left' as const, borderBottom: '1px solid #ddd', fontSize: '13px', color: '#666' }
-  const tdStyle = { padding: '6px', fontSize: '14px' }
+  const cancelButton: React.CSSProperties = { ...linkButton, color: muted }
+  const deleteButton: React.CSSProperties = { ...linkButton, color: red }
+  const q = search.trim().toLowerCase()
+  const shownProducts = products.filter(
+    (p) => !q || p.standard_sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || p.platform_listings.some((l) => l.platform_sku.toLowerCase().includes(q))
+  )
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', maxWidth: '1000px' }}>
-      <h1>SKU Mapping by Channel</h1>
-      <p style={{ color: '#666', fontSize: '14px' }}>
-        Each product below can have one listing per store. If the same product was auto-created as separate entries during import,
-        use the "Move to" dropdown when editing a listing to merge it into the correct product.
+    <div style={pageStyle}>
+      <p style={eyebrow}>Manage</p>
+      <h1 style={pageTitle}>Mappings</h1>
+      <p style={pageIntro}>
+        Which SKU each store uses for each of your products. If the same product was auto-created as separate entries during import,
+        edit a listing and use &ldquo;Move to&rdquo; to merge it into the correct product. To map lots at once, use{' '}
+        <Link href="/catalog-import" style={{ color: lime, fontWeight: 700 }}>Catalog Import</Link>.
       </p>
-      {status && <p style={{ color: '#2563eb' }}>{status}</p>}
+      {status && <p style={{ color: lime, fontSize: '14px', fontWeight: 600, marginTop: '16px' }}>{status}</p>}
 
-      <section style={{ marginTop: '1.5rem', padding: '1rem', background: '#f5f5f5', borderRadius: '6px' }}>
-        <h3 style={{ marginTop: 0 }}>Create New Product</h3>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input placeholder="Standard SKU" value={newSku} onChange={(e) => setNewSku(e.target.value)} style={{ padding: '6px', width: '160px' }} />
-          <input placeholder="Product Name" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ padding: '6px', width: '220px' }} />
-          <button onClick={createProduct} style={{ padding: '6px 12px' }}>Create</button>
+      <section style={cardStyle}>
+        <p style={cardTitle}>Create new product</p>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <input placeholder="Standard SKU" value={newSku} onChange={(e) => setNewSku(e.target.value)} style={{ ...inputStyle, width: '160px' }} />
+          <input placeholder="Product Name" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ ...inputStyle, width: '220px' }} />
+          <button onClick={createProduct} style={primaryButton}>Create</button>
         </div>
       </section>
 
-      {products.map((product) => (
-        <section key={product.id} style={{ marginTop: '2rem', borderTop: '2px solid #eee', paddingTop: '1rem' }}>
+      <div style={{ marginTop: '20px' }}>
+        <input placeholder="Search SKU, name or store SKU" value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inputStyle, width: '300px' }} />
+        <span style={{ fontSize: '13px', color: muted, marginLeft: '12px' }}>{shownProducts.length} of {products.length} products</span>
+      </div>
+
+      {shownProducts.map((product) => (
+        <section key={product.id} style={cardStyle}>
           {editingProductId === product.id ? (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <input value={editProductSku} onChange={(e) => setEditProductSku(e.target.value)} style={{ padding: '4px', width: '140px' }} />
-              <input value={editProductName} onChange={(e) => setEditProductName(e.target.value)} style={{ padding: '4px', width: '220px' }} />
-              <button onClick={() => saveProductDetails(product.id)}>Save</button>
-              <button onClick={() => setEditingProductId(null)}>Cancel</button>
+              <input value={editProductSku} onChange={(e) => setEditProductSku(e.target.value)} style={{ ...inputStyle, width: '140px' }} />
+              <input value={editProductName} onChange={(e) => setEditProductName(e.target.value)} style={{ ...inputStyle, width: '220px' }} />
+              <button onClick={() => saveProductDetails(product.id)} style={linkButton}>Save</button>
+              <button onClick={() => setEditingProductId(null)} style={cancelButton}>Cancel</button>
             </div>
           ) : (
-            <h3>
-              {product.name} <span style={{ color: '#888', fontWeight: 'normal' }}>({product.standard_sku})</span>{' '}
+            <p style={{ fontSize: '17px', fontWeight: 800, color: text, margin: '0 0 12px' }}>
+              {product.name} <span style={{ color: muted, fontWeight: 600, fontSize: '14px' }}>{product.standard_sku}</span>{' '}
               <button
                 onClick={() => {
                   setEditingProductId(product.id)
                   setEditProductSku(product.standard_sku)
                   setEditProductName(product.name)
                 }}
-                style={{ fontSize: '12px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}
+                style={linkButton}
               >
                 Edit
               </button>
               {product.platform_listings.length === 0 && (
                 <button
                   onClick={() => deleteProduct(product.id, product.platform_listings.length)}
-                  style={{ fontSize: '12px', color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer', marginLeft: '8px' }}
+                  style={deleteButton}
                 >
                   Delete empty product
                 </button>
               )}
-            </h3>
+            </p>
           )}
 
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
               <tr>
                 <th style={thStyle}>Store</th>
-                <th style={thStyle}>Platform SKU</th>
-                <th style={thStyle}>Units per Sale</th>
+                <th style={thStyle}>Store SKU</th>
+                <th style={thStyle}>Units per sale</th>
                 <th style={thStyle}></th>
               </tr>
             </thead>
             <tbody>
               {product.platform_listings.map((listing) =>
                 editingListingId === listing.id ? (
-                  <tr key={listing.id} style={{ background: '#fafafa' }}>
+                  <tr key={listing.id} style={{ background: 'rgba(255,255,255,0.03)' }}>
                     <td style={tdStyle}>
-                      <select value={editStoreId} onChange={(e) => setEditStoreId(e.target.value)} style={{ padding: '4px' }}>
+                      <select value={editStoreId} onChange={(e) => setEditStoreId(e.target.value)} style={inputStyle}>
                         {stores.map((st) => (
                           <option key={st.id} value={st.id}>{st.name}</option>
                         ))}
                       </select>
                     </td>
                     <td style={tdStyle}>
-                      <input value={editSku} onChange={(e) => setEditSku(e.target.value)} style={{ padding: '4px', width: '120px' }} />
+                      <input value={editSku} onChange={(e) => setEditSku(e.target.value)} style={{ ...inputStyle, width: '120px' }} />
                     </td>
                     <td style={tdStyle}>
-                      <input value={editUnits} onChange={(e) => setEditUnits(e.target.value)} style={{ padding: '4px', width: '50px' }} />
+                      <input value={editUnits} onChange={(e) => setEditUnits(e.target.value)} style={{ ...inputStyle, width: '50px' }} />
                     </td>
                     <td style={tdStyle}>
-                      <select value={editProductId} onChange={(e) => setEditProductId(e.target.value)} style={{ padding: '4px', marginRight: '8px' }}>
+                      <select value={editProductId} onChange={(e) => setEditProductId(e.target.value)} style={{ ...inputStyle, marginRight: '8px' }}>
                         {products.map((p) => (
                           <option key={p.id} value={p.id}>Move to: {p.name} ({p.standard_sku})</option>
                         ))}
                       </select>
-                      <button onClick={() => saveListingEdit(listing.id)} style={{ marginRight: '6px' }}>Save</button>
-                      <button onClick={() => setEditingListingId(null)}>Cancel</button>
+                      <button onClick={() => saveListingEdit(listing.id)} style={linkButton}>Save</button>
+                      <button onClick={() => setEditingListingId(null)} style={cancelButton}>Cancel</button>
                     </td>
                   </tr>
                 ) : (
-                  <tr key={listing.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <tr key={listing.id}>
                     <td style={tdStyle}>{listing.stores?.name}</td>
                     <td style={tdStyle}>{listing.platform_sku}</td>
                     <td style={tdStyle}>{listing.units_per_sale}</td>
                     <td style={tdStyle}>
-                      <button onClick={() => startEditListing(listing, product.id)} style={{ marginRight: '10px', color: '#2563eb', border: 'none', background: 'none', cursor: 'pointer' }}>
+                      <button onClick={() => startEditListing(listing, product.id)} style={linkButton}>
                         Edit
                       </button>
-                      <button onClick={() => deleteListing(listing.id)} style={{ color: '#dc2626', border: 'none', background: 'none', cursor: 'pointer' }}>
+                      <button onClick={() => deleteListing(listing.id)} style={deleteButton}>
                         Delete
                       </button>
                     </td>
@@ -289,20 +303,20 @@ export default function MappingsPage() {
           </table>
 
           {addingToProduct === product.id ? (
-            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <select value={addStoreId} onChange={(e) => setAddStoreId(e.target.value)} style={{ padding: '6px' }}>
+            <div style={{ marginTop: '14px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={addStoreId} onChange={(e) => setAddStoreId(e.target.value)} style={inputStyle}>
                 <option value="">Select store...</option>
                 {stores.map((st) => (
                   <option key={st.id} value={st.id}>{st.name}</option>
                 ))}
               </select>
-              <input placeholder="Platform SKU" value={addSku} onChange={(e) => setAddSku(e.target.value)} style={{ padding: '6px', width: '140px' }} />
-              <input placeholder="Units/sale" value={addUnits} onChange={(e) => setAddUnits(e.target.value)} style={{ padding: '6px', width: '70px' }} />
-              <button onClick={() => saveNewListing(product.id)}>Save</button>
-              <button onClick={() => setAddingToProduct(null)}>Cancel</button>
+              <input placeholder="Store SKU" value={addSku} onChange={(e) => setAddSku(e.target.value)} style={{ ...inputStyle, width: '140px' }} />
+              <input placeholder="Units/sale" value={addUnits} onChange={(e) => setAddUnits(e.target.value)} style={{ ...inputStyle, width: '70px' }} />
+              <button onClick={() => saveNewListing(product.id)} style={primaryButton}>Save</button>
+              <button onClick={() => setAddingToProduct(null)} style={cancelButton}>Cancel</button>
             </div>
           ) : (
-            <button onClick={() => startAddListing(product.id)} style={{ marginTop: '0.75rem', padding: '4px 10px', fontSize: '13px' }}>
+            <button onClick={() => startAddListing(product.id)} style={{ ...linkButton, padding: 0, marginTop: '14px' }}>
               + Add store listing
             </button>
           )}
