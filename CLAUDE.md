@@ -67,7 +67,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `lib/fetchAll.ts`: Supabase silently caps results at 1,000 rows. Any query that can return more (orders, listings, products, catalogs) must go through `fetchAll` with an `.order()` on a unique column + `.range(from, to)`.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
 - Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/couriers`, `/shipping-profiles`, `/overheads`, `/settings`, `/mappings`, `/products`, `/products/[id]`
-- `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
+- Public pages (no sidebar, listed in `PUBLIC_PAGES` in `AppShell.tsx`): `app/page.tsx` (holding page with a pricing section) and `/pricing`, sharing `components/PublicHeader.tsx`. Plans, features and fair-usage terms live only in `lib/pricing.ts` (order-volume pricing, every feature on every plan, annual = 10 months); `components/PricingPlans.tsx` renders the plan cards. `app/api/subscribe`: Resend signup route.
 
 ## Platform import notes
 - **Amazon settlement:** multi-row per order; group by order-item-code, revenue = Principal + Tax, costs = ItemFees, use "Shipping label purchase" if present else `shipping_rules`. Refunds and SAFE-T reimbursements not yet handled.

@@ -7,11 +7,14 @@ import { bg } from '@/lib/theme'
 
 const DASHBOARDS = ['/grid', '/channel-overview', '/sku-detail', '/margins', '/trends']
 
-// Wraps every app page with the sidebar. The public homepage ("/") is left as-is.
+// Public marketing pages: no sidebar
+const PUBLIC_PAGES = ['/', '/pricing']
+
+// Wraps every app page with the sidebar. Public pages are left as-is.
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  if (pathname === '/') return <>{children}</>
+  if (PUBLIC_PAGES.includes(pathname)) return <>{children}</>
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: bg }}>

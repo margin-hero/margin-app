@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import PublicHeader from '@/components/PublicHeader'
+import PricingPlans from '@/components/PricingPlans'
 import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier } from '@/lib/theme'
 
 // "live" = import already works in the app. Update as new importers ship.
@@ -11,11 +13,12 @@ const CHANNELS: { name: string; live: boolean }[] = [
   { name: 'The Range', live: true },
   { name: 'Debenhams', live: true },
   { name: 'Tesco', live: true },
+  { name: 'Argos', live: true },
   { name: 'eBay', live: false },
   { name: 'OnBuy', live: false },
   { name: 'Temu', live: false },
-  { name: 'Argos', live: false },
   { name: 'Shopify', live: false },
+  { name: 'More channels', live: false },
 ]
 
 // ---- Sample data for the dashboard mockup (illustrative only) ----
@@ -35,12 +38,12 @@ const STORES = [
   { name: 'TikTok Shop', margin: -4.6 },
 ]
 
-const GRID_STORES = ['Amazon', 'B&Q', 'The Range', 'TikTok Shop']
+const GRID_STORES = ['Amazon', 'B&Q', 'The Range', 'Debenhams', 'Tesco', 'Argos', 'TikTok Shop']
 const GRID_SKUS: { sku: string; name: string; margins: (number | null)[] }[] = [
-  { sku: 'LL-1', name: 'Lazy-Leaf Blower', margins: [34, 18, 21, -6] },
-  { sku: 'PB-3', name: 'Garden Rake', margins: [29, 25, null, 12] },
-  { sku: 'HS-12', name: 'Hose Reel 30m', margins: [8, 31, 19, null] },
-  { sku: 'PL-7', name: 'Planter Set (3)', margins: [22, 14, -2, 9] },
+  { sku: 'LL-1', name: 'Lazy-Leaf Blower', margins: [34, 18, 21, 26, 15, 23, -6] },
+  { sku: 'PB-3', name: 'Garden Rake', margins: [29, 25, null, 19, 11, 27, 12] },
+  { sku: 'HS-12', name: 'Hose Reel 30m', margins: [8, 31, 19, null, 6, 17, null] },
+  { sku: 'PL-7', name: 'Planter Set (3)', margins: [22, 14, -2, 16, 9, null, 9] },
 ]
 
 const MOVERS = [
@@ -147,16 +150,7 @@ export default function HoldingPage() {
 
   return (
     <div style={{ background: bg, color: text, fontFamily: font, overflowX: 'hidden' }}>
-      {/* Top bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px clamp(16px, 4vw, 40px)', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '24px', color: lime, fontWeight: 900 }}>↗</span>
-          <span style={{ ...display, fontSize: '18px' }}>Margin Hero</span>
-        </div>
-        <a href="#waitlist" style={{ background: lime, color: bg, borderRadius: '999px', padding: '10px 18px', fontSize: '13px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-          Join the waitlist
-        </a>
-      </div>
+      <PublicHeader />
 
       {/* Hero */}
       <div style={{ padding: 'clamp(48px, 9vw, 110px) 16px 56px', textAlign: 'center' }}>
@@ -255,10 +249,10 @@ export default function HoldingPage() {
               </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'separate', borderSpacing: '6px', width: '100%', minWidth: '520px' }}>
+              <table style={{ borderCollapse: 'separate', borderSpacing: '6px', width: '100%', minWidth: '820px', tableLayout: 'fixed' }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left', fontSize: '12px', color: muted, fontWeight: 600, padding: '4px' }}>SKU</th>
+                    <th style={{ textAlign: 'left', fontSize: '12px', color: muted, fontWeight: 600, padding: '4px', width: '150px' }}>SKU</th>
                     {GRID_STORES.map((s) => (
                       <th key={s} style={{ fontSize: '12px', color: muted, fontWeight: 600, padding: '4px' }}>{s}</th>
                     ))}
@@ -339,12 +333,13 @@ export default function HoldingPage() {
         <h2 style={{ ...display, fontSize: 'clamp(30px, 5vw, 60px)', lineHeight: 0.95, textAlign: 'center', margin: '0 auto 48px', maxWidth: '950px' }}>
           Margin. <span style={{ color: lime }}>Just margin.</span>
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
           {[
             { title: 'SKU by SKU, store by store', body: 'Compare the same product across every marketplace at a glance. Spot where it earns and where it bleeds.' },
             { title: 'Gross and Net, kept apart', body: 'Gross shows what is left after landed cost. Net shows what is left after everything: fees, shipping, VAT, the lot.' },
             { title: 'UK VAT, done right', body: 'VAT-registered or not, zero-rated products, per-product rates. Handled properly, not assumed away.' },
             { title: 'Costs that change over time', body: 'Supplier price went up in March? Add the new cost from that date and older orders keep their original margin.' },
+            { title: 'Alerts before it hurts', body: 'Get told the moment a SKU’s margin drops below your threshold, not weeks later when you’re checking last quarter’s numbers.' },
             { title: 'Nothing you don’t need', body: 'No PPC bidding, no review requests, no CRM creep. One job, done properly, so you can trust the number.' },
           ].map((f, i) => (
             <div key={f.title} style={{ ...cardStyle, padding: '28px' }}>
@@ -354,6 +349,21 @@ export default function HoldingPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Pricing */}
+      <div style={{ padding: '0 16px 110px', textAlign: 'center' }}>
+        <p style={eyebrow}>Pricing</p>
+        <h2 style={{ ...display, fontSize: 'clamp(30px, 5vw, 60px)', lineHeight: 0.95, margin: '0 auto 16px', maxWidth: '900px' }}>
+          Every feature. <span style={{ color: lime }}>Every plan.</span>
+        </h2>
+        <p style={{ fontSize: '17px', color: muted, maxWidth: '600px', margin: '0 auto 36px', lineHeight: 1.5 }}>
+          Pay only for your order volume. Every channel, unlimited stores and SKUs, and no per-channel or per-SKU fees.
+        </p>
+        <PricingPlans />
+        <p style={{ marginTop: '24px' }}>
+          <a href="/pricing" style={{ color: lime, fontWeight: 700, fontSize: '15px' }}>See everything that&apos;s included →</a>
+        </p>
       </div>
 
       {/* Bottom CTA */}
