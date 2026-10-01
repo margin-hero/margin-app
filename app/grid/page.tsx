@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
-import { lime, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
+import { loadMarginRanges } from '@/lib/marginRanges'
+import { lime, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier, marginLegend } from '@/lib/theme'
 
 type Cell = { revenuePence: number; marginPence: number }
 
@@ -11,6 +12,8 @@ export default async function GridPage({ searchParams }: PageProps<'/grid'>) {
   // Render on every visit so the grid shows live data, not a snapshot from build time
   await connection()
   const includeOverheads = (await searchParams).overheads === '1'
+  const ranges = await loadMarginRanges()
+  const legend = marginLegend(ranges)
 
   const { data, error } = await fetchAll((from, to) =>
     supabase
@@ -123,9 +126,9 @@ export default async function GridPage({ searchParams }: PageProps<'/grid'>) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '18px' }}>
           <p style={{ ...cardTitle, margin: 0 }}>Net margin %{includeOverheads ? ' after overheads' : ''}</p>
           <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
-            <span><span style={{ color: red }}>●</span> under 10%</span>
-            <span><span style={{ color: amber }}>●</span> 10–20%</span>
-            <span><span style={{ color: green }}>●</span> 20%+</span>
+            <span><span style={{ color: red }}>●</span> {legend[0]}</span>
+            <span><span style={{ color: amber }}>●</span> {legend[1]}</span>
+            <span><span style={{ color: green }}>●</span> {legend[2]}</span>
           </div>
         </div>
         {table((productId) => {
@@ -133,7 +136,7 @@ export default async function GridPage({ searchParams }: PageProps<'/grid'>) {
           const known = margins.filter((m): m is number => m !== null)
           const best = known.length > 1 ? Math.max(...known) : null
           return margins.map((m, i) => {
-            const tier = marginTier(m)
+            const tier = marginTier(m, ranges)
             return (
               <td key={channels[i]} style={cellStyle(tier.bg, tier.fg, m !== null && m === best)}>
                 {m === null ? '—' : `${m}%`}

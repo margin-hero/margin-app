@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
+import { useMarginRanges } from '@/hooks/useMarginRanges'
+import { marginTier } from '@/lib/theme'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 
 type MarginRow = {
@@ -41,6 +43,7 @@ function defaultTo() {
 }
 
 export default function ChannelOverviewPage() {
+  const ranges = useMarginRanges()
   const [dateFrom, setDateFrom] = useState(defaultFrom())
   const [dateTo, setDateTo] = useState(defaultTo())
   const [cards, setCards] = useState<ChannelCard[]>([])
@@ -115,10 +118,7 @@ export default function ChannelOverviewPage() {
   }, [])
 
   function marginColor(pct: number | null) {
-    if (pct === null) return '#555'
-    if (pct < 10) return '#FF4C4C'
-    if (pct < 20) return '#FFB020' // amber
-    return '#39FF6A'
+    return marginTier(pct, ranges).fg
   }
 
   return (

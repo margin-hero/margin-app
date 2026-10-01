@@ -32,11 +32,21 @@ export const inputStyle: CSSProperties = { padding: '9px 14px', background: bg, 
 export const primaryButton: CSSProperties = { background: lime, color: bg, border: 'none', borderRadius: '999px', padding: '9px 20px', fontSize: '13px', fontWeight: 800, fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.04em', cursor: 'pointer' }
 export const linkButton: CSSProperties = { color: lime, border: 'none', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700, fontFamily: font }
 
-// Margin % colour tiers (red / amber / green): under 10% red, 10–20% amber, 20%+ green. null = no sales.
+// Margin % colour tiers (red / amber / green). The cut-offs are a tenant setting
+// (tenants.margin_red_below / margin_green_from, edited on /settings); these are the defaults.
 // Lime is kept for the brand accent only, never for margin.
-export function marginTier(margin: number | null) {
+export type MarginRanges = { redBelow: number; greenFrom: number }
+export const DEFAULT_MARGIN_RANGES: MarginRanges = { redBelow: 10, greenFrom: 20 }
+
+export function marginTier(margin: number | null, ranges: MarginRanges = DEFAULT_MARGIN_RANGES) {
   if (margin === null) return { bg: 'transparent', fg: dim }
-  if (margin < 10) return { bg: 'rgba(255,76,76,0.16)', fg: red }
-  if (margin < 20) return { bg: 'rgba(255,176,32,0.15)', fg: amber }
+  if (margin < ranges.redBelow) return { bg: 'rgba(255,76,76,0.16)', fg: red }
+  if (margin < ranges.greenFrom) return { bg: 'rgba(255,176,32,0.15)', fg: amber }
   return { bg: 'rgba(57,255,106,0.16)', fg: green }
+}
+
+// Legend text, e.g. ['under 10%', '10–20%', '20%+']
+export function marginLegend(ranges: MarginRanges = DEFAULT_MARGIN_RANGES): [string, string, string] {
+  const f = (n: number) => `${Number(n.toFixed(1))}%`
+  return [`under ${f(ranges.redBelow)}`, `${f(ranges.redBelow)}–${f(ranges.greenFrom)}`, `${f(ranges.greenFrom)}+`]
 }

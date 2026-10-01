@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
+import { useMarginRanges } from '@/hooks/useMarginRanges'
+import { marginTier } from '@/lib/theme'
 
 type MarginRow = {
   master_product_id: string
@@ -44,6 +46,7 @@ function defaultTo() {
 }
 
 export default function SkuDetailPage() {
+  const ranges = useMarginRanges()
   const [dateFrom, setDateFrom] = useState(defaultFrom())
   const [dateTo, setDateTo] = useState(defaultTo())
   const [groups, setGroups] = useState<ProductGroup[]>([])
@@ -122,10 +125,7 @@ export default function SkuDetailPage() {
   const tdNum = (color?: string): React.CSSProperties => ({ padding: '8px 10px', textAlign: 'right', fontWeight: 500, fontSize: '13px', color: color || '#eee' })
 
   function marginColor(pct: number | null) {
-    if (pct === null) return '#555'
-    if (pct < 10) return '#FF4C4C'
-    if (pct < 20) return '#FFB020' // amber
-    return '#39FF6A'
+    return marginTier(pct, ranges).fg
   }
 
   return (

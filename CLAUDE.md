@@ -66,7 +66,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `lib/readSpreadsheet.ts`: shared CSV/XLSX reader (Papa for CSV to keep exact text, SheetJS for Excel with date-cell conversion). Use it for new file importers.
 - `lib/fetchAll.ts`: Supabase silently caps results at 1,000 rows. Any query that can return more (orders, listings, products, catalogs) must go through `fetchAll` with an `.order()` on a unique column + `.range(from, to)`.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
-- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/couriers`, `/shipping-profiles`, `/overheads`, `/mappings`, `/products`, `/products/[id]`
+- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/couriers`, `/shipping-profiles`, `/overheads`, `/settings`, `/mappings`, `/products`, `/products/[id]`
 - `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
 
 ## Platform import notes
@@ -77,9 +77,9 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 
 ## Styling
 - Brand palette lives in `lib/theme.ts` (from the homepage): base `#111112`, panels `#1B1C19`, lime accent `#D2FF00`, Mona Sans.
-  - Margin tiers are classic red / amber / green: red `#FF4C4C` (under 10%), amber `#FFB020` (10–20%), green `#39FF6A` (20%+). Use `marginTier()`.
+  - Margin tiers are classic red / amber / green: red `#FF4C4C`, amber `#FFB020`, green `#39FF6A`. Always use `marginTier(margin, ranges)` and `marginLegend(ranges)`, never hardcoded cut-offs.
   - Lime is the brand accent only (logo arrow, active nav, buttons). Never use it for margin.
-  - Tier thresholds are hardcoded for now; user-set ranges are on the roadmap.
+  - Cut-offs are a tenant setting (`tenants.margin_red_below` / `margin_green_from`, defaults 10 / 20, edited on `/settings`). Server pages: `loadMarginRanges()` from `lib/marginRanges.ts`; client pages: `useMarginRanges()` from `hooks/useMarginRanges.ts`. Per-store / per-product ranges are on the roadmap. The homepage mockup uses the defaults.
 - The overall style isn't final yet. Only `/grid`, `/stores`, `/upload`, `/costs`, `/catalog-import` and `/cost-import` use the new theme; don't restyle other pages unasked. Pages use inline styles rather than Tailwind classes.
 
 ## Roadmap

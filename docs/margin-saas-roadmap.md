@@ -89,7 +89,7 @@ Top to bottom: summary metric cards (revenue, net margin, margin %, order count)
 Design decisions to make before/during build:
 
 - **User-set margin colour ranges (red / amber / green).** Currently hardcoded at under 10% red, 10–20% amber, 20%+ green (`marginTier()` in `lib/theme.ts`). Build in stages:
-  1. **Overall (first):** a tenant setting for the two cut-offs (e.g. red below 12%, green from 25%), used by every dashboard and the grid.
+  1. ✅ **Overall (first):** a tenant setting for the two cut-offs (e.g. red below 12%, green from 25%), used by every dashboard and the grid. (Done 2026-10-01: `/settings`.)
   2. **Per store (later):** override for a store where margins are naturally different (e.g. TikTok with high fees).
   3. **Per product (future):** override for individual products, e.g. a high-volume commodity line that's healthy at 8%.
   Most specific wins: product → store → overall.
