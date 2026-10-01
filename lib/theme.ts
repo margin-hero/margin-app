@@ -18,6 +18,11 @@ export const font = 'var(--font-mona), Arial, sans-serif'
 // Extra-wide, extra-heavy cut of Mona Sans for headlines
 export const display: CSSProperties = { fontFamily: font, fontStretch: '125%', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.01em' }
 
+// Chart series colours, validated for the dark panel (lightness band, colour-blind
+// separation, contrast) with the dataviz validator. Not the margin tier colours.
+export const chartRevenue = '#3987E5'
+export const chartProfit = '#839F00'
+
 // ---- Shared app page styles ----
 
 export const pageStyle: CSSProperties = { background: bg, minHeight: '100vh', padding: 'clamp(20px, 3vw, 40px)', fontFamily: font, color: text }

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
-import { marginTier } from '@/lib/theme'
+import { marginTier, red, green, amber, muted, dim, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle } from '@/lib/theme'
+import { pounds, percent } from '@/lib/format'
+import DateRangeBar from '@/components/DateRangeBar'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 
 type MarginRow = {
@@ -35,7 +37,7 @@ type Totals = { revenuePence: number; netPence: number; overheadPence: number; u
 
 function defaultFrom() {
   const d = new Date()
-  d.setDate(d.getDate() - 30)
+  d.setDate(d.getDate() - 29) // last 30 days including today
   return d.toISOString().slice(0, 10)
 }
 function defaultTo() {
@@ -44,13 +46,13 @@ function defaultTo() {
 
 export default function ChannelOverviewPage() {
   const ranges = useMarginRanges()
-  const [dateFrom, setDateFrom] = useState(defaultFrom())
-  const [dateTo, setDateTo] = useState(defaultTo())
+  const [rangeFrom, setRangeFrom] = useState(defaultFrom())
+  const [rangeTo, setRangeTo] = useState(defaultTo())
   const [cards, setCards] = useState<ChannelCard[]>([])
   const [loading, setLoading] = useState(true)
   const [totals, setTotals] = useState<Totals | null>(null)
 
-  async function load() {
+  async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
     const [{ data: rows }, overheadSetup] = await Promise.all([fetchAll((from, to) =>
       supabase
@@ -121,101 +123,82 @@ export default function ChannelOverviewPage() {
     return marginTier(pct, ranges).fg
   }
 
+  const row = (label: string, value: React.ReactNode, color: string = text, divider = false) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '7px 0', borderTop: divider ? `1px solid ${border}` : 'none' }}>
+      <span style={{ color: muted }}>{label}</span>
+      <span style={{ color, fontWeight: 700 }}>{value}</span>
+    </div>
+  )
+
   return (
-    <div style={{ background: '#1A1A1A', minHeight: '100vh', color: '#fff', fontFamily: 'sans-serif' }}>
-      <div style={{ padding: '2rem' }}>
-        <p style={{ color: '#888', fontSize: '13px', marginTop: 0, marginBottom: '4px' }}>Overview</p>
-        <h1 style={{ margin: '0 0 16px', fontSize: '22px' }}>Channel performance</h1>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Dashboards</p>
+      <h1 style={pageTitle}>Channel Overview</h1>
+      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s share of overheads.</p>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+      <DateRangeBar
+        from={rangeFrom}
+        to={rangeTo}
+        onChange={(f, t) => { setRangeFrom(f); setRangeTo(t) }}
+        onApply={(f, t) => load(f, t)}
+      />
+
+      {!loading && totals && totals.overheadPence > 0 && (
+        <div style={{ ...cardStyle, display: 'flex', gap: '32px', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <div>
-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>From</div>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-              style={{ padding: '6px', background: '#232323', border: '0.5px solid #444', color: '#fff', borderRadius: '6px' }} />
+            <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net profit · all stores</p>
+            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(totals.netPence)}</p>
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>To</div>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-              style={{ padding: '6px', background: '#232323', border: '0.5px solid #444', color: '#fff', borderRadius: '6px' }} />
+            <p style={{ ...cardTitle, margin: '0 0 6px' }}>Overheads in period</p>
+            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(-totals.overheadPence)}</p>
           </div>
-          <button onClick={load} style={{ background: '#DCFF00', color: '#1a1a1a', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 500, cursor: 'pointer' }}>
-            Update
-          </button>
+          <div>
+            <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net after overheads</p>
+            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: totals.netPence - totals.overheadPence < 0 ? red : green }}>
+              {pounds(totals.netPence - totals.overheadPence)}
+              {totals.revenuePence > 0 && (
+                <span style={{ fontSize: '14px', marginLeft: '8px' }}>
+                  {(((totals.netPence - totals.overheadPence) / totals.revenuePence) * 100).toFixed(1)}%
+                </span>
+              )}
+            </p>
+          </div>
+          {totals.unallocatedPence > 0 && (
+            <p style={{ color: amber, fontSize: '13px', margin: 0, flexBasis: '100%' }}>
+              {pounds(totals.unallocatedPence)} of overheads had no sales in this period to be shared across (e.g. a store-only overhead for a store with no orders), so it isn&apos;t in any store below, but it is in the total.
+            </p>
+          )}
         </div>
+      )}
 
-        {!loading && totals && totals.overheadPence > 0 && (
-          <div style={{ background: '#232323', borderRadius: '12px', border: '0.5px solid #333', padding: '14px 18px', marginBottom: '14px', fontSize: '13px', display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
-            <span><span style={{ color: '#888' }}>Net profit (all stores) </span>£{(totals.netPence / 100).toFixed(2)}</span>
-            <span><span style={{ color: '#888' }}>Overheads in this period </span>−£{(totals.overheadPence / 100).toFixed(2)}</span>
-            <span>
-              <span style={{ color: '#888' }}>Net after overheads </span>
-              <strong style={{ color: totals.netPence - totals.overheadPence < 0 ? '#FF4C4C' : '#39FF6A' }}>
-                £{((totals.netPence - totals.overheadPence) / 100).toFixed(2)}
-                {totals.revenuePence > 0 && ` (${(((totals.netPence - totals.overheadPence) / totals.revenuePence) * 100).toFixed(1)}%)`}
-              </strong>
-            </span>
-            {totals.unallocatedPence > 0 && (
-              <span style={{ color: '#FFB020' }}>£{(totals.unallocatedPence / 100).toFixed(2)} of overheads had no sales in this period to be shared across (e.g. a store-only overhead for a store with no orders), so they aren&apos;t in any card below, but they are in the total.</span>
-            )}
-          </div>
-        )}
-
-        {loading ? (
-          <p style={{ color: '#888' }}>Loading...</p>
-        ) : cards.length === 0 ? (
-          <p style={{ color: '#888' }}>No orders in this date range.</p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
-            {cards.map((c) => (
-              <div key={c.channel} style={{ background: '#232323', borderRadius: '12px', border: '0.5px solid #333', padding: '18px' }}>
-                <p style={{ fontSize: '13px', color: '#DCFF00', fontWeight: 500, margin: '0 0 10px' }}>{c.channel}</p>
-                <p style={{ fontSize: '28px', fontWeight: 500, margin: '0 0 2px' }}>£{(c.totalSalesPence / 100).toFixed(2)}</p>
-                <p style={{ fontSize: '12px', color: '#888', margin: '0 0 14px' }}>
-                  {c.orderCount} orders · {c.totalQty} units · £{(c.aovPence / 100).toFixed(2)} AOV
-                </p>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderTop: '0.5px solid #333', paddingTop: '10px' }}>
-                  <span style={{ color: '#888' }}>Gross margin</span>
-                  <span style={{ color: marginColor(c.grossMarginPercent), fontWeight: 500 }}>
-                    {c.grossMarginPercent !== null ? `${c.grossMarginPercent}%` : '—'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
-                  <span style={{ color: '#888' }}>Net margin</span>
-                  <span style={{ color: marginColor(c.netMarginPercent), fontWeight: 500 }}>
-                    {c.netMarginPercent !== null ? `${c.netMarginPercent}%` : '—'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '10px', borderTop: '0.5px solid #333', paddingTop: '10px' }}>
-                  <span style={{ color: '#888' }}>Gross profit</span>
-                  <span style={{ fontWeight: 500 }}>£{(c.grossProfitPence / 100).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
-                  <span style={{ color: '#888' }}>Net profit</span>
-                  <span style={{ color: c.netProfitPence < 0 ? '#FF4C4C' : '#39FF6A', fontWeight: 500 }}>
-                    £{(c.netProfitPence / 100).toFixed(2)}
-                  </span>
-                </div>
-                {c.overheadPence > 0 && (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
-                      <span style={{ color: '#888' }}>Share of overheads</span>
-                      <span style={{ fontWeight: 500 }}>−£{(c.overheadPence / 100).toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px', borderTop: '0.5px solid #333', paddingTop: '6px' }}>
-                      <span style={{ color: '#888' }}>Net after overheads</span>
-                      <span style={{ color: marginColor(c.netAfterOverheadsPercent), fontWeight: 600 }}>
-                        £{(c.netAfterOverheadsPence / 100).toFixed(2)}
-                        {c.netAfterOverheadsPercent !== null && ` · ${c.netAfterOverheadsPercent}%`}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <p style={{ color: muted, marginTop: '20px' }}>Loading...</p>
+      ) : cards.length === 0 ? (
+        <div style={cardStyle}><p style={{ color: muted, margin: 0 }}>No orders in this date range.</p></div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px', marginTop: '20px' }}>
+          {cards.map((c) => (
+            <div key={c.channel} style={{ ...cardStyle, marginTop: 0 }}>
+              <p style={{ ...cardTitle, margin: '0 0 12px', color: text }}>{c.channel}</p>
+              <p style={{ fontSize: '30px', fontWeight: 800, margin: '0 0 4px' }}>{pounds(c.totalSalesPence)}</p>
+              <p style={{ fontSize: '12px', color: dim, margin: '0 0 14px' }}>
+                {c.orderCount} orders · {c.totalQty} units · {pounds(c.aovPence)} avg order
+              </p>
+              {row('Gross margin', percent(c.grossMarginPercent), marginColor(c.grossMarginPercent), true)}
+              {row('Net margin', percent(c.netMarginPercent), marginColor(c.netMarginPercent))}
+              {row('Gross profit', pounds(c.grossProfitPence), text, true)}
+              {row('Net profit', pounds(c.netProfitPence), c.netProfitPence < 0 ? red : green)}
+              {c.overheadPence > 0 && (
+                <>
+                  {row('Share of overheads', pounds(-c.overheadPence))}
+                  {row('Net after overheads', `${pounds(c.netAfterOverheadsPence)}${c.netAfterOverheadsPercent !== null ? ` · ${c.netAfterOverheadsPercent}%` : ''}`, marginColor(c.netAfterOverheadsPercent), true)}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

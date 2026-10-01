@@ -3,7 +3,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from 'recharts'
+import { useMarginRanges } from '@/hooks/useMarginRanges'
+import { pounds } from '@/lib/format'
+import {
+  chartRevenue, chartProfit, panelRaised, border, muted, text, red,
+  pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, marginTier,
+} from '@/lib/theme'
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, LabelList } from 'recharts'
 
 type MarginRow = {
   product_name: string
@@ -12,11 +18,16 @@ type MarginRow = {
   margin_pence: number
 }
 
+const axisTick = { fill: muted, fontSize: 12 }
+const shortPounds = (value: number) => `£${Math.round(value).toLocaleString('en-GB')}`
+
 export default function TrendsPage() {
+  const ranges = useMarginRanges()
   const [data, setData] = useState<MarginRow[]>([])
   const [products, setProducts] = useState<string[]>([])
   const [selectedProduct, setSelectedProduct] = useState<string>('All')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -29,7 +40,7 @@ export default function TrendsPage() {
       )
 
       if (error) {
-        console.error(error)
+        setError(error.message)
         setLoading(false)
         return
       }
@@ -41,83 +52,117 @@ export default function TrendsPage() {
     load()
   }, [])
 
-  if (loading) return <div style={{ padding: '2rem' }}>Loading...</div>
-
   const filtered = selectedProduct === 'All' ? data : data.filter((r) => r.product_name === selectedProduct)
 
-  // Group by month (YYYY-MM)
-  const byMonth = new Map<string, { revenue: number; margin: number; count: number }>()
+  // Group by month (YYYY-MM): sum pence first, convert to pounds for the chart last
+  const byMonth = new Map<string, { revenuePence: number; profitPence: number; count: number }>()
   for (const row of filtered) {
     const month = row.order_date.slice(0, 7) // "2026-08"
-    if (!byMonth.has(month)) byMonth.set(month, { revenue: 0, margin: 0, count: 0 })
-    const entry = byMonth.get(month)!
-    entry.revenue += row.revenue_pence / 100
-    entry.margin += row.margin_pence / 100
+    const entry = byMonth.get(month) || { revenuePence: 0, profitPence: 0, count: 0 }
+    entry.revenuePence += Number(row.revenue_pence) || 0
+    entry.profitPence += Number(row.margin_pence) || 0
     entry.count += 1
+    byMonth.set(month, entry)
   }
 
-  const chartData = Array.from(byMonth.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, vals]) => ({
-      month,
-      Revenue: Math.round(vals.revenue * 100) / 100,
-      Margin: Math.round(vals.margin * 100) / 100,
-      Orders: vals.count,
-    }))
+  const months = Array.from(byMonth.entries()).sort(([a], [b]) => a.localeCompare(b))
+  const chartData = months.map(([month, v]) => ({
+    month,
+    Revenue: v.revenuePence / 100,
+    'Net profit': v.profitPence / 100,
+  }))
+  const lastIndex = chartData.length - 1
+  // Label only the final point of each line, so the lines are named without a number on every point
+  const endLabel = (series: string) =>
+    function EndLabel(props: { x?: number | string; y?: number | string; index?: number }) {
+      if (props.index !== lastIndex) return null
+      return (
+        <text x={Number(props.x) + 8} y={Number(props.y)} dy={4} fill={text} fontSize={12} fontWeight={700}>
+          {series}
+        </text>
+      )
+    }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Revenue & Margin Trends</h1>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Dashboards</p>
+      <h1 style={pageTitle}>Trends</h1>
+      <p style={pageIntro}>Revenue and net profit month by month, for all products or one at a time.</p>
 
-      <select
-        value={selectedProduct}
-        onChange={(e) => setSelectedProduct(e.target.value)}
-        style={{ marginTop: '1rem', padding: '6px', fontSize: '14px' }}
-      >
-        <option value="All">All Products</option>
-        {products.map((p) => (
-          <option key={p} value={p}>{p}</option>
-        ))}
-      </select>
-
-      {chartData.length === 0 ? (
-        <p style={{ marginTop: '1rem' }}>No data for this selection.</p>
-      ) : (
-        <div style={{ marginTop: '2rem', height: '400px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => `£${Number(value).toFixed(2)}`} />
-              <Legend />
-              <Line type="monotone" dataKey="Revenue" stroke="#2563eb" strokeWidth={2} />
-              <Line type="monotone" dataKey="Margin" stroke="#16a34a" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '2rem', fontSize: '13px' }}>
-        <thead>
-          <tr style={{ borderBottom: '2px solid #ccc', textAlign: 'left' }}>
-            <th style={{ padding: '6px' }}>Month</th>
-            <th style={{ padding: '6px' }}>Revenue</th>
-            <th style={{ padding: '6px' }}>Margin</th>
-            <th style={{ padding: '6px' }}>Orders</th>
-          </tr>
-        </thead>
-        <tbody>
-          {chartData.map((row) => (
-            <tr key={row.month} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '6px' }}>{row.month}</td>
-              <td style={{ padding: '6px' }}>£{row.Revenue.toFixed(2)}</td>
-              <td style={{ padding: '6px' }}>£{row.Margin.toFixed(2)}</td>
-              <td style={{ padding: '6px' }}>{row.Orders}</td>
-            </tr>
+      <div style={{ marginTop: '20px' }}>
+        <select value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)} style={inputStyle} aria-label="Product">
+          <option value="All">All products</option>
+          {products.map((p) => (
+            <option key={p} value={p}>{p}</option>
           ))}
-        </tbody>
-      </table>
+        </select>
+      </div>
+
+      {loading ? (
+        <p style={{ color: muted, marginTop: '20px' }}>Loading...</p>
+      ) : error ? (
+        <p style={{ color: red, marginTop: '20px' }}>Error: {error}</p>
+      ) : chartData.length === 0 ? (
+        <div style={cardStyle}><p style={{ color: muted, margin: 0 }}>No data for this selection.</p></div>
+      ) : (
+        <>
+          <div style={cardStyle}>
+            <p style={cardTitle}>Revenue vs net profit, by month</p>
+            <div style={{ height: '380px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 10, right: 90, bottom: 0, left: 10 }}>
+                  <CartesianGrid stroke={border} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" tick={axisTick} axisLine={{ stroke: border }} tickLine={false} />
+                  <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={shortPounds} width={70} />
+                  <Tooltip
+                    formatter={(value) => pounds(Math.round(Number(value) * 100))}
+                    contentStyle={{ background: panelRaised, border: `1px solid ${border}`, borderRadius: '10px', color: text }}
+                    labelStyle={{ color: muted, marginBottom: '4px' }}
+                    itemStyle={{ color: text }}
+                    cursor={{ stroke: muted, strokeDasharray: '3 3' }}
+                  />
+                  <Legend wrapperStyle={{ color: muted, fontSize: '13px', paddingTop: '8px' }} />
+                  <Line type="monotone" dataKey="Revenue" stroke={chartRevenue} strokeWidth={2} dot={{ r: 4, fill: chartRevenue, strokeWidth: 0 }} activeDot={{ r: 6 }}>
+                    <LabelList dataKey="Revenue" content={endLabel('Revenue')} />
+                  </Line>
+                  <Line type="monotone" dataKey="Net profit" stroke={chartProfit} strokeWidth={2} dot={{ r: 4, fill: chartProfit, strokeWidth: 0 }} activeDot={{ r: 6 }}>
+                    <LabelList dataKey="Net profit" content={endLabel('Net profit')} />
+                  </Line>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div style={cardStyle}>
+            <p style={cardTitle}>By month</p>
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Month</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Revenue</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Net profit</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Net margin</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Order lines</th>
+                </tr>
+              </thead>
+              <tbody>
+                {months.map(([month, v]) => {
+                  const margin = v.revenuePence > 0 ? Math.round((v.profitPence / v.revenuePence) * 1000) / 10 : null
+                  return (
+                    <tr key={month}>
+                      <td style={tdStyle}>{month}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{pounds(v.revenuePence)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{pounds(v.profitPence)}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: marginTier(margin, ranges).fg }}>{margin === null ? '—' : `${margin}%`}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{v.count}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   )
 }
