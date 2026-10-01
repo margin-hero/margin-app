@@ -111,6 +111,36 @@ Shipping is matched on the quantity of units shipped, so a bundle listed as 1 sa
 
 ---
 
+## Overheads: wages, rent and other running costs
+
+**Page:** Manage → **Overheads**
+
+Overheads are costs that can't be tied to one order: wages, rent, business rates, utilities, subscriptions, insurance, equipment. Margin Hero turns each one into a cost per day and shares it across your sales, so you can see **Net Profit after overheads**. They never change Gross Profit.
+
+**Adding an overhead:** give it a name and category, choose whether it's for the **whole business** or **only one store**, then either:
+- **Recurring:** weekly, every 4 weeks, monthly, quarterly or yearly, from a start date until an optional end date. Choosing monthly means it repeats every month until you stop it.
+- **One-off, spread over months:** for a single payment. Spread a trade show fee over 1 month, or a new machine over its useful life (e.g. 36 months), so one month doesn't look like a disaster.
+
+Enter the amount including any VAT you pay, and choose the VAT rate (wages, rates and insurance are usually 0%).
+
+**When things change:**
+- **The amount changes** (e.g. rent goes up): use **Change amount** with the date it starts. Earlier periods keep the old amount.
+- **It stops** (e.g. you cancel a subscription): use **Stop** with the last day it applies.
+- **You typed it wrong:** use **Edit (fix mistake)**, which corrects every period.
+
+**How overheads are shared:** choose on the Overheads page:
+- **Share of revenue** (default): every product's margin drops by the same percentage points.
+- **Share of units sold:** each unit carries the same overhead, so cheap, high-volume products are hit harder.
+- **Share of orders:** each order line carries the same overhead.
+
+**Where you see it:**
+- **Channel Overview:** each store's share of overheads and its net after overheads, plus a business total for the dates you pick.
+- **Grid:** switch to **After overheads** at the top. The grid covers all time, so it uses overheads from your first order date to your last.
+
+This is a management view to show your true margin. It isn't a replacement for your accountant's figures.
+
+---
+
 ## Amazon
 
 **Page:** Import → **Amazon**

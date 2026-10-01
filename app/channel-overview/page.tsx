@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
+import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 
 type MarginRow = {
   channel: string
+  store_id: string
   effective_qty: number
   revenue_pence: number
   product_cost_pence: number
@@ -22,7 +24,12 @@ type ChannelCard = {
   netProfitPence: number
   grossMarginPercent: number | null
   netMarginPercent: number | null
+  overheadPence: number
+  netAfterOverheadsPence: number
+  netAfterOverheadsPercent: number | null
 }
+
+type Totals = { revenuePence: number; netPence: number; overheadPence: number; unallocatedPence: number }
 
 function defaultFrom() {
   const d = new Date()
@@ -38,21 +45,28 @@ export default function ChannelOverviewPage() {
   const [dateTo, setDateTo] = useState(defaultTo())
   const [cards, setCards] = useState<ChannelCard[]>([])
   const [loading, setLoading] = useState(true)
+  const [totals, setTotals] = useState<Totals | null>(null)
 
   async function load() {
     setLoading(true)
-    const { data: rows } = await fetchAll((from, to) =>
+    const [{ data: rows }, overheadSetup] = await Promise.all([fetchAll((from, to) =>
       supabase
         .from('order_margins')
-        .select('channel, effective_qty, revenue_pence, product_cost_pence, margin_pence')
+        .select('channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
         .order('order_line_item_id')
         .range(from, to)
-    )
+    ), loadOverheadSetup()])
+
+    // Share the overheads falling in this date range across these sales
+    const marginRows = (rows || []) as MarginRow[]
+    const allocation = allocateOverheads(marginRows, overheadSetup, dateFrom, dateTo)
+    const overheadByChannel = new Map<string, number>()
+    marginRows.forEach((r, i) => overheadByChannel.set(r.channel, (overheadByChannel.get(r.channel) || 0) + allocation.shares[i]))
 
     const byChannel = new Map<string, MarginRow[]>()
-    for (const row of (rows || []) as MarginRow[]) {
+    for (const row of marginRows) {
       if (!byChannel.has(row.channel)) byChannel.set(row.channel, [])
       byChannel.get(row.channel)!.push(row)
     }
@@ -65,6 +79,8 @@ export default function ChannelOverviewPage() {
       const totalQty = groupRows.reduce((s, r) => s + r.effective_qty, 0)
       const orderCount = groupRows.length
       const grossProfit = totalRevenue - totalProductCost
+      const overhead = Math.round(overheadByChannel.get(channel) || 0)
+      const netAfterOverheads = totalNetProfit - overhead
 
       result.push({
         channel,
@@ -76,11 +92,20 @@ export default function ChannelOverviewPage() {
         netProfitPence: totalNetProfit,
         grossMarginPercent: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : null,
         netMarginPercent: totalRevenue > 0 ? Math.round((totalNetProfit / totalRevenue) * 1000) / 10 : null,
+        overheadPence: overhead,
+        netAfterOverheadsPence: netAfterOverheads,
+        netAfterOverheadsPercent: totalRevenue > 0 ? Math.round((netAfterOverheads / totalRevenue) * 1000) / 10 : null,
       })
     }
 
     result.sort((a, b) => b.totalSalesPence - a.totalSalesPence)
     setCards(result)
+    setTotals({
+      revenuePence: marginRows.reduce((s, r) => s + Number(r.revenue_pence), 0),
+      netPence: marginRows.reduce((s, r) => s + Number(r.margin_pence), 0),
+      overheadPence: Math.round(allocation.totalPence),
+      unallocatedPence: Math.round(allocation.unallocatedPence),
+    })
     setLoading(false)
   }
 
@@ -118,6 +143,23 @@ export default function ChannelOverviewPage() {
           </button>
         </div>
 
+        {!loading && totals && totals.overheadPence > 0 && (
+          <div style={{ background: '#232323', borderRadius: '12px', border: '0.5px solid #333', padding: '14px 18px', marginBottom: '14px', fontSize: '13px', display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
+            <span><span style={{ color: '#888' }}>Net profit (all stores) </span>£{(totals.netPence / 100).toFixed(2)}</span>
+            <span><span style={{ color: '#888' }}>Overheads in this period </span>−£{(totals.overheadPence / 100).toFixed(2)}</span>
+            <span>
+              <span style={{ color: '#888' }}>Net after overheads </span>
+              <strong style={{ color: totals.netPence - totals.overheadPence < 0 ? '#FF4C4C' : '#39FF6A' }}>
+                £{((totals.netPence - totals.overheadPence) / 100).toFixed(2)}
+                {totals.revenuePence > 0 && ` (${(((totals.netPence - totals.overheadPence) / totals.revenuePence) * 100).toFixed(1)}%)`}
+              </strong>
+            </span>
+            {totals.unallocatedPence > 0 && (
+              <span style={{ color: '#FFB020' }}>£{(totals.unallocatedPence / 100).toFixed(2)} of overheads had no sales in this period to be shared across (e.g. a store-only overhead for a store with no orders), so they aren&apos;t in any card below, but they are in the total.</span>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <p style={{ color: '#888' }}>Loading...</p>
         ) : cards.length === 0 ? (
@@ -154,6 +196,21 @@ export default function ChannelOverviewPage() {
                     £{(c.netProfitPence / 100).toFixed(2)}
                   </span>
                 </div>
+                {c.overheadPence > 0 && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
+                      <span style={{ color: '#888' }}>Share of overheads</span>
+                      <span style={{ fontWeight: 500 }}>−£{(c.overheadPence / 100).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px', borderTop: '0.5px solid #333', paddingTop: '6px' }}>
+                      <span style={{ color: '#888' }}>Net after overheads</span>
+                      <span style={{ color: marginColor(c.netAfterOverheadsPercent), fontWeight: 600 }}>
+                        £{(c.netAfterOverheadsPence / 100).toFixed(2)}
+                        {c.netAfterOverheadsPercent !== null && ` · ${c.netAfterOverheadsPercent}%`}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

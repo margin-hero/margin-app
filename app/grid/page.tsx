@@ -1,18 +1,21 @@
 import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 import { fetchAll } from '@/lib/fetchAll'
-import { amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
+import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
+import { lime, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier } from '@/lib/theme'
 
 type Cell = { revenuePence: number; marginPence: number }
 
-export default async function GridPage() {
+export default async function GridPage({ searchParams }: PageProps<'/grid'>) {
   // Render on every visit so the grid shows live data, not a snapshot from build time
   await connection()
+  const includeOverheads = (await searchParams).overheads === '1'
 
   const { data, error } = await fetchAll((from, to) =>
     supabase
       .from('order_margins')
-      .select('master_product_id, product_name, channel, revenue_pence, margin_pence')
+      .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence')
       .order('order_line_item_id')
       .range(from, to)
   )
@@ -26,13 +29,25 @@ export default async function GridPage() {
   const products = new Map<string, string>() // id -> name
   const channelSet = new Set<string>()
   const cells = new Map<string, Cell>()
-  for (const row of data || []) {
+
+  // Optionally take each sale's share of overheads off its margin. The grid covers all
+  // time, so overheads are counted from the first order date to the last.
+  let overheadNote = ''
+  let overheadShares: number[] = []
+  if (includeOverheads && data.length > 0) {
+    const dates = data.map((r) => r.order_date).sort()
+    const allocation = allocateOverheads(data, await loadOverheadSetup(), dates[0], dates[dates.length - 1])
+    overheadShares = allocation.shares
+    overheadNote = `Includes £${(allocation.totalPence / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} of overheads from ${dates[0]} to ${dates[dates.length - 1]}, shared across sales.`
+  }
+
+  for (const [i, row] of data.entries()) {
     products.set(row.master_product_id, row.product_name)
     channelSet.add(row.channel)
     const key = `${row.master_product_id}|${row.channel}`
     const cell = cells.get(key) || { revenuePence: 0, marginPence: 0 }
     cell.revenuePence += Number(row.revenue_pence) || 0
-    cell.marginPence += Number(row.margin_pence) || 0
+    cell.marginPence += (Number(row.margin_pence) || 0) - (overheadShares[i] || 0)
     cells.set(key, cell)
   }
   const productList = Array.from(products, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
@@ -92,10 +107,21 @@ export default async function GridPage() {
       <p style={eyebrow}>Dashboards</p>
       <h1 style={pageTitle}>SKU × store</h1>
       <p style={pageIntro}>Net margin for every product in every store, side by side.</p>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {[
+          { label: 'Before overheads', href: '/grid', on: !includeOverheads },
+          { label: 'After overheads', href: '/grid?overheads=1', on: includeOverheads },
+        ].map((t) => (
+          <Link key={t.href} href={t.href} style={{ fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: '999px', textDecoration: 'none', background: t.on ? lime : 'transparent', color: t.on ? '#111112' : muted, border: `1px solid ${t.on ? lime : '#2E3029'}` }}>
+            {t.label}
+          </Link>
+        ))}
+        {overheadNote && <span style={{ fontSize: '12px', color: muted }}>{overheadNote}</span>}
+      </div>
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '18px' }}>
-          <p style={{ ...cardTitle, margin: 0 }}>Net margin %</p>
+          <p style={{ ...cardTitle, margin: 0 }}>Net margin %{includeOverheads ? ' after overheads' : ''}</p>
           <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
             <span><span style={{ color: red }}>●</span> under 10%</span>
             <span><span style={{ color: amber }}>●</span> 10–20%</span>
@@ -119,7 +145,7 @@ export default async function GridPage() {
       </div>
 
       <div style={cardStyle}>
-        <p style={{ ...cardTitle, margin: '0 0 4px' }}>Net profit £</p>
+        <p style={{ ...cardTitle, margin: '0 0 4px' }}>Net profit £{includeOverheads ? ' after overheads' : ''}</p>
         <p style={{ fontSize: '13px', color: muted, margin: '0 0 18px' }}>Total profit, summed across all orders for that product in that store.</p>
         {table((productId) =>
           channels.map((channel) => {

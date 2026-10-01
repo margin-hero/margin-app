@@ -30,7 +30,8 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - **Aggregation:** sum totals first, THEN derive percentages from the totals. Never average per-order percentages.
 - `margin_percent` uses **net revenue** as the denominator.
 - **Gross Profit** = revenue minus landed product cost only (`product_cost_pence` = every `cost_types` row with `in_gross`: all-in landed cost, or product cost + inbound freight + import duty).
-- **Net Profit** = revenue minus everything: product cost, other costs, fees, shipping (`total_cost_pence`). Future overhead allocation (wages/rent) will also subtract from Net.
+- **Net Profit** = revenue minus everything: product cost, other costs, fees, shipping (`total_cost_pence`).
+- **Net after overheads** = Net Profit minus each sale's share of overheads. Overheads are NOT in `order_margins`: they're shared at reporting time for the page's date range by `lib/overheads.ts` (`allocateOverheads`), never touching Gross.
 - Two VAT modes: VAT registered (net figures throughout) vs not registered (VAT is an irrecoverable cost). VAT rate is per product, not flat. `tax_regime_id` exists for future international taxes.
 - Landed cost from third-country imports and in-house picking/packing carry **0% VAT**, not the 20% default.
 - COGS must scale by quantity. Bundles use `units_per_sale` on `platform_listings` → `effective_qty`, used for both COGS and shipping lookup.
@@ -48,6 +49,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `cogs_components`, `shipping_rules`
 - Shipping profiles: `courier_services` (+ dated `courier_service_prices`, per parcel, with the service's VAT rate) → `shipping_profiles` with `shipping_profile_bands` (qty range → N parcels × a courier service; `max_qty` null = "and above"; bands are NOT dated) → `product_shipping_profiles` (store_id null = all stores; a store override with null profile = deliberately no shipping cost). Shipping priority in `order_margins`: label cost → `shipping_rules` (exact qty) → profile → missing. `order_margins.shipping_source` = 'label' | 'rule' | 'profile' | 'none' | 'missing'. Pages: `/couriers`, `/shipping-profiles`, assignment on `/products/[id]`.
 - `cost_types`: fixed list (migration-only) that `cogs_components.component_type` must reference. `basis` = `per_unit` (× effective_qty) or `per_order` (once per order line; there's no order grouping yet, so a multi-product order is charged per line). `in_gross` = landed cost. `cogs_components.description` is optional; "latest cost wins" applies per (type, description). Per-order costs appear in `other_cost_pence` and separately as `per_order_cost_pence`.
+- `overheads`: recurring (weekly / four_weekly / monthly / quarterly / yearly, start + optional end date) or one_off (spread over `spread_months`). `store_id` null = whole business (VAT treatment from `tenants.vat_registered`), set = that store only (store's VAT). Converted to a cost per day, shared by `tenants.overhead_allocation_basis` ('revenue' default | 'units' | 'orders'). "Change amount" ends the old row the day before and inserts a new one (history kept). Shown on `/overheads`, `/channel-overview` (per store + totals) and `/grid?overheads=1`.
 - `tiktok_sku_catalog`: maps TikTok numeric SKU IDs → seller SKUs
 - `order_margins` (view): revenue_pence, product_cost_pence, total_cost_pence, margin_pence, margin_percent, price_per_unit_pence, etc.
 - `sku_channel_margins` (view): per SKU x channel margins. No longer used by any page (`/grid` reads `order_margins` and aggregates itself)
@@ -64,7 +66,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `lib/readSpreadsheet.ts`: shared CSV/XLSX reader (Papa for CSV to keep exact text, SheetJS for Excel with date-cell conversion). Use it for new file importers.
 - `lib/fetchAll.ts`: Supabase silently caps results at 1,000 rows. Any query that can return more (orders, listings, products, catalogs) must go through `fetchAll` with an `.order()` on a unique column + `.range(from, to)`.
 - `lib/theme.ts`: shared brand palette + fonts (from the homepage). Use these instead of hardcoding colours.
-- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/couriers`, `/shipping-profiles`, `/mappings`, `/products`, `/products/[id]`
+- Pages: `/grid` (SKU x channel matrix, the styling template), `/channel-overview`, `/sku-detail`, `/margins`, `/trends`, `/upload`, `/amazon-import`, `/tiktok-import`, `/tiktok-catalog`, `/mirakl-import`, `/stores`, `/catalog-import`, `/costs`, `/cost-import`, `/couriers`, `/shipping-profiles`, `/overheads`, `/mappings`, `/products`, `/products/[id]`
 - `app/page.tsx`: public holding page. `app/api/subscribe`: Resend signup route.
 
 ## Platform import notes
