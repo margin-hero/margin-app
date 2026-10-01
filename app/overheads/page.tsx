@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { loadStores, Store } from '@/lib/stores'
+import { loadStores, Store, storeLabel } from '@/lib/stores'
 import {
   loadOverheadSetup, Overhead, AllocationBasis, CATEGORIES, FREQUENCIES, BASES,
   overheadInRange, perDayPence, lastDay, describeSchedule, addDays,
@@ -247,7 +247,7 @@ export default function OverheadsPage() {
           </select>
           <select value={storeId} onChange={(e) => setStoreId(e.target.value)} style={inputStyle}>
             <option value="">Whole business</option>
-            {stores.map((s) => <option key={s.id} value={s.id}>Only {s.name}</option>)}
+            {stores.map((s) => <option key={s.id} value={s.id}>Only {storeLabel(s)}</option>)}
           </select>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px' }}>
@@ -321,7 +321,7 @@ export default function OverheadsPage() {
                           </>
                         )}
                       </td>
-                      <td style={tdStyle}>{o.store_id ? stores.find((s) => s.id === o.store_id)?.name || '?' : 'Whole business'}</td>
+                      <td style={tdStyle}>{o.store_id ? storeLabel(stores.find((s) => s.id === o.store_id)) : 'Whole business'}</td>
                       <td style={{ ...tdStyle, fontSize: '13px' }}>
                         {editingId === o.id ? (
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { loadStores, Store } from '@/lib/stores'
+import { loadStores, Store, storeLabel } from '@/lib/stores'
 import { lime, red, muted, inputStyle } from '@/lib/theme'
 
 // Dropdown of the tenant's stores, narrowed to the platforms an importer understands
@@ -48,7 +48,7 @@ export default function StorePicker({
         <option value="">Select...</option>
         {stores.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.name}{s.platforms && s.platforms.name !== s.name ? ` (${s.platforms.name})` : ''}
+            {storeLabel(s)}
           </option>
         ))}
       </select>

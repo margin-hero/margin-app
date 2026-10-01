@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { loadStores, Store } from '@/lib/stores'
+import { loadStores, Store, storeLabel } from '@/lib/stores'
 import Link from 'next/link'
 import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
@@ -12,7 +12,7 @@ type Listing = {
   store_id: string
   platform_sku: string
   units_per_sale: number
-  stores: { name: string } | null
+  stores: { name: string; platforms: { name: string } | null } | null
 }
 
 type Product = {
@@ -49,7 +49,7 @@ export default function MappingsPage() {
     const { data: productData } = await fetchAll((from, to) =>
       supabase
         .from('master_products')
-        .select('id, standard_sku, name, platform_listings(id, store_id, platform_sku, units_per_sale, stores(name))')
+        .select('id, standard_sku, name, platform_listings(id, store_id, platform_sku, units_per_sale, stores(name, platforms(name)))')
         .order('standard_sku')
         .order('id')
         .range(from, to)
@@ -263,7 +263,7 @@ export default function MappingsPage() {
                     <td style={tdStyle}>
                       <select value={editStoreId} onChange={(e) => setEditStoreId(e.target.value)} style={inputStyle}>
                         {stores.map((st) => (
-                          <option key={st.id} value={st.id}>{st.name}</option>
+                          <option key={st.id} value={st.id}>{storeLabel(st)}</option>
                         ))}
                       </select>
                     </td>
@@ -285,7 +285,7 @@ export default function MappingsPage() {
                   </tr>
                 ) : (
                   <tr key={listing.id}>
-                    <td style={tdStyle}>{listing.stores?.name}</td>
+                    <td style={tdStyle}>{storeLabel(listing.stores)}</td>
                     <td style={tdStyle}>{listing.platform_sku}</td>
                     <td style={tdStyle}>{listing.units_per_sale}</td>
                     <td style={tdStyle}>
@@ -307,7 +307,7 @@ export default function MappingsPage() {
               <select value={addStoreId} onChange={(e) => setAddStoreId(e.target.value)} style={inputStyle}>
                 <option value="">Select store...</option>
                 {stores.map((st) => (
-                  <option key={st.id} value={st.id}>{st.name}</option>
+                  <option key={st.id} value={st.id}>{storeLabel(st)}</option>
                 ))}
               </select>
               <input placeholder="Store SKU" value={addSku} onChange={(e) => setAddSku(e.target.value)} style={{ ...inputStyle, width: '140px' }} />

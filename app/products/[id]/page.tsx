@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { loadStores, Store } from '@/lib/stores'
+import { loadStores, Store, storeLabel } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
 import Link from 'next/link'
@@ -476,14 +476,14 @@ export default function ProductDetailPage() {
         {storeOverrides.length === 0 && <p style={help}>None: every store uses the profile above.</p>}
         {storeOverrides.map((o) => (
           <p key={o.id} style={{ fontSize: '14px', margin: '4px 0' }}>
-            <strong>{stores.find((st) => st.id === o.store_id)?.name || '?'}</strong>: {profileName(o.shipping_profile_id)}{' '}
+            <strong>{storeLabel(stores.find((st) => st.id === o.store_id))}</strong>: {profileName(o.shipping_profile_id)}{' '}
             <button onClick={() => removeOverride(o.id)} style={deleteButton}>Remove</button>
           </p>
         ))}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
           <select value={overrideStoreId} onChange={(e) => setOverrideStoreId(e.target.value)} style={inputStyle}>
             <option value="">Store...</option>
-            {stores.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
+            {stores.map((st) => <option key={st.id} value={st.id}>{storeLabel(st)}</option>)}
           </select>
           <select value={overrideProfileId} onChange={(e) => setOverrideProfileId(e.target.value)} style={inputStyle}>
             <option value="">Uses...</option>
@@ -517,7 +517,7 @@ export default function ProductDetailPage() {
                     <select value={editShippingStoreId} onChange={(e) => setEditShippingStoreId(e.target.value)} style={inputStyle}>
                       <option value="">All stores</option>
                       {stores.map((st) => (
-                        <option key={st.id} value={st.id}>{st.name}</option>
+                        <option key={st.id} value={st.id}>{storeLabel(st)}</option>
                       ))}
                     </select>
                   </td>
@@ -547,7 +547,7 @@ export default function ProductDetailPage() {
                 </tr>
               ) : (
                 <tr key={row.id}>
-                  <td style={tdStyle}>{row.store_id ? stores.find((st) => st.id === row.store_id)?.name : 'All stores'}</td>
+                  <td style={tdStyle}>{row.store_id ? storeLabel(stores.find((st) => st.id === row.store_id)) : 'All stores'}</td>
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.courier_cost_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
@@ -576,7 +576,7 @@ export default function ProductDetailPage() {
           <select value={newShippingStoreId} onChange={(e) => setNewShippingStoreId(e.target.value)} style={inputStyle}>
                       <option value="">All stores</option>
                       {stores.map((st) => (
-                        <option key={st.id} value={st.id}>{st.name}</option>
+                        <option key={st.id} value={st.id}>{storeLabel(st)}</option>
                       ))}
                     </select>
           <input

@@ -18,3 +18,12 @@ export async function loadStores(): Promise<Store[]> {
     .order('name')
   return (data as any) || []
 }
+
+// How a store is shown in lists and dropdowns: "Brand A (TikTok)", or just "Amazon UK"
+// when the store name already is (or contains) the platform name
+export function storeLabel(store: { name: string; platforms: { name: string } | null } | undefined | null): string {
+  if (!store) return '?'
+  const platform = store.platforms?.name
+  if (!platform || store.name.toLowerCase().includes(platform.toLowerCase())) return store.name
+  return `${store.name} (${platform})`
+}
