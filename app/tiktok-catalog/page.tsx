@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
 
 export default function TikTokCatalogPage() {
   const [status, setStatus] = useState('')
@@ -98,35 +99,41 @@ export default function TikTokCatalogPage() {
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>TikTok SKU Catalog Mapping</h1>
-      <p style={{ color: '#666' }}>Upload each TikTok shop's product catalog export once, to teach the system which SKU ID matches which of your Seller SKUs. Re-upload only when new products launch.</p>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Import</p>
+      <h1 style={pageTitle}>TikTok Catalog</h1>
+      <p style={pageIntro}>Upload each TikTok shop's product catalog export once, to teach the system which SKU ID matches which of your Seller SKUs. Re-upload only when new products launch.</p>
+      <div style={cardStyle}>
       <StorePicker platformFilter={(p) => p.name === 'TikTok'} value={store} onChange={setStore} />
-      <input type="file" accept=".xlsx" onChange={handleFile} style={{ marginTop: '1rem' }} />
-      <p>{status}</p>
+      <input type="file" accept=".xlsx" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px', display: 'block' }} />
+      {status && <p style={{ color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', lineHeight: 1.5 }}>{status}</p>}
+      </div>
 
       {preview.length > 0 && (
-        <>
-          <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '1rem', fontSize: '13px' }}>
+        <div style={cardStyle}>
+          <p style={cardTitle}>Preview</p>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #ccc', textAlign: 'left' }}>
-                <th style={{ padding: '6px' }}>SKU ID</th>
-                <th style={{ padding: '6px' }}>Seller SKU</th>
+              <tr>
+                <th style={thStyle}>SKU ID</th>
+                <th style={thStyle}>Seller SKU</th>
               </tr>
             </thead>
             <tbody>
               {preview.slice(0, 20).map((row) => (
-                <tr key={row.skuId} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '6px' }}>{row.skuId}</td>
-                  <td style={{ padding: '6px' }}>{row.sellerSku}</td>
+                <tr key={row.skuId}>
+                  <td style={tdStyle}>{row.skuId}</td>
+                  <td style={tdStyle}>{row.sellerSku}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={handleImport} style={{ marginTop: '1rem', padding: '8px 16px' }}>
+          </div>
+          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
             Save Catalog Mapping
           </button>
-        </>
+        </div>
       )}
     </div>
   )

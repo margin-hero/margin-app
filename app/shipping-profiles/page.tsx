@@ -8,7 +8,7 @@ import {
   loadCourierServices, loadShippingProfiles, CourierService, ShippingProfile,
   priceOn, today, testTenantId, bandLabel, bandWarnings, overlapsExisting,
 } from '@/lib/shipping'
-import { lime, red, amber, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
+import { lime, red, amber, muted, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Product = { id: string; standard_sku: string; name: string }
 type Assignment = { master_product_id: string; store_id: string | null; shipping_profile_id: string | null }
@@ -281,7 +281,7 @@ export default function ShippingProfilesPage() {
             )}
 
             {assigningId === profile.id && (
-              <div style={{ marginTop: '18px', borderTop: '1px solid #2E3029', paddingTop: '16px' }}>
+              <div style={{ marginTop: '18px', borderTop: `1px solid ${border}`, paddingTop: '16px' }}>
                 <p style={{ ...cardTitle, margin: '0 0 10px' }}>Assign {profile.name} to products (all stores)</p>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
                   <input placeholder="Search SKU or name" value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...inputStyle, width: '240px' }} />

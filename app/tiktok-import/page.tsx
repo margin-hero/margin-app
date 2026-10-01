@@ -8,6 +8,7 @@ import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/l
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
 
 function parseTikTokDate(dateStr: string): string {
   // "2026/08/24" -> "2026-08-24"
@@ -156,44 +157,50 @@ export default function TikTokImportPage() {
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>TikTok Settlement Report Import</h1>
-      <p style={{ color: '#666' }}>First pass: standard sales only (refund rows are skipped for now). Upload your catalog mapping first, and don't confirm an import if any SKUs are unmatched.</p>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Import</p>
+      <h1 style={pageTitle}>TikTok Import</h1>
+      <p style={pageIntro}>First pass: standard sales only (refund rows are skipped for now). Upload each shop's catalog on the TikTok Catalog page first. Rows whose SKU isn't matched are held back and listed, so you can fix them and upload the same file again.</p>
+      <div style={cardStyle}>
       <StorePicker platformFilter={(p) => p.name === 'TikTok'} value={store} onChange={changeStore} />
       <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
-      <input type="file" accept=".xlsx" onChange={handleFile} style={{ marginTop: '1rem' }} />
-      <p>{status}</p>
+      <input type="file" accept=".xlsx" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px', display: 'block' }} />
+      {status && <p style={{ color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', lineHeight: 1.5 }}>{status}</p>}
+      </div>
 
       {preview.length > 0 && (
-        <>
-          <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '1rem', fontSize: '13px' }}>
+        <div style={cardStyle}>
+          <p style={cardTitle}>Preview</p>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #ccc', textAlign: 'left' }}>
-                <th style={{ padding: '6px' }}>SKU</th>
-                <th style={{ padding: '6px' }}>Order Date</th>
-                <th style={{ padding: '6px' }}>Qty</th>
-                <th style={{ padding: '6px' }}>Sale Price</th>
-                <th style={{ padding: '6px' }}>Fees</th>
-                <th style={{ padding: '6px' }}>VAT</th>
+              <tr>
+                <th style={thStyle}>SKU</th>
+                <th style={thStyle}>Order Date</th>
+                <th style={thStyle}>Qty</th>
+                <th style={thStyle}>Sale Price</th>
+                <th style={thStyle}>Fees</th>
+                <th style={thStyle}>VAT</th>
               </tr>
             </thead>
             <tbody>
               {preview.map((row) => (
-                <tr key={row.externalId} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '6px' }}>{row.sku}</td>
-                  <td style={{ padding: '6px' }}>{row.orderDate}</td>
-                  <td style={{ padding: '6px' }}>{row.qty}</td>
-                  <td style={{ padding: '6px' }}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
-                  <td style={{ padding: '6px' }}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
-                  <td style={{ padding: '6px' }}>£{(row.saleVatPence / 100).toFixed(2)}</td>
+                <tr key={row.externalId}>
+                  <td style={tdStyle}>{row.sku}</td>
+                  <td style={tdStyle}>{row.orderDate}</td>
+                  <td style={tdStyle}>{row.qty}</td>
+                  <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>£{(row.saleVatPence / 100).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={handleImport} style={{ marginTop: '1rem', padding: '8px 16px' }}>
+          </div>
+          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
             Confirm Import (all parsed rows, not just preview)
           </button>
-        </>
+        </div>
       )}
     </div>
   )

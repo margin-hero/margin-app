@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 import { loadMarginRanges } from '@/lib/marginRanges'
-import { lime, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier, marginLegend } from '@/lib/theme'
+import { lime, bg, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, marginTier, marginLegend } from '@/lib/theme'
 
 type Cell = { revenuePence: number; marginPence: number }
 
@@ -115,7 +115,7 @@ export default async function GridPage({ searchParams }: PageProps<'/grid'>) {
           { label: 'Before overheads', href: '/grid', on: !includeOverheads },
           { label: 'After overheads', href: '/grid?overheads=1', on: includeOverheads },
         ].map((t) => (
-          <Link key={t.href} href={t.href} style={{ fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: '999px', textDecoration: 'none', background: t.on ? lime : 'transparent', color: t.on ? '#111112' : muted, border: `1px solid ${t.on ? lime : '#2E3029'}` }}>
+          <Link key={t.href} href={t.href} style={{ fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: '999px', textDecoration: 'none', background: t.on ? lime : 'transparent', color: t.on ? bg : muted, border: `1px solid ${t.on ? lime : border}` }}>
             {t.label}
           </Link>
         ))}

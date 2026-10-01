@@ -6,6 +6,7 @@ import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/l
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
 
 function parseMiraklDate(dateStr: string): string {
   // "09/07/2026 - 21:45:52" -> "2026-07-09"
@@ -102,46 +103,53 @@ export default function MiraklImportPage() {
   }
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Mirakl Marketplace Import</h1>
-      <p style={{ color: '#666' }}>Used for B&Q, The Range, Debenhams, and Tesco — same underlying report format, different retailer.</p>
+    <div style={pageStyle}>
+      <p style={eyebrow}>Import</p>
+      <h1 style={pageTitle}>Mirakl Import</h1>
+      <p style={pageIntro}>Used for B&Q, The Range, Debenhams, and Tesco — same underlying report format, different retailer.</p>
+
+      <div style={cardStyle}>
 
       <StorePicker platformFilter={(p) => p.integration_type === 'mirakl'} value={store} onChange={setStore} />
       <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
 
-      <input type="file" accept=".xlsx,.csv" onChange={handleFile} style={{ marginTop: '1rem' }} />
-      <p>{status}</p>
+      <input type="file" accept=".xlsx,.csv" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px', display: 'block' }} />
+      {status && <p style={{ color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', lineHeight: 1.5 }}>{status}</p>}
+      </div>
 
       {preview.length > 0 && (
-        <>
-          <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '1rem', fontSize: '13px' }}>
+        <div style={cardStyle}>
+          <p style={cardTitle}>Preview</p>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #ccc', textAlign: 'left' }}>
-                <th style={{ padding: '6px' }}>SKU</th>
-                <th style={{ padding: '6px' }}>Order Date</th>
-                <th style={{ padding: '6px' }}>Qty</th>
-                <th style={{ padding: '6px' }}>Sale Price</th>
-                <th style={{ padding: '6px' }}>Fees</th>
-                <th style={{ padding: '6px' }}>Shipping Revenue</th>
+              <tr>
+                <th style={thStyle}>SKU</th>
+                <th style={thStyle}>Order Date</th>
+                <th style={thStyle}>Qty</th>
+                <th style={thStyle}>Sale Price</th>
+                <th style={thStyle}>Fees</th>
+                <th style={thStyle}>Shipping Revenue</th>
               </tr>
             </thead>
             <tbody>
               {preview.map((row) => (
-                <tr key={row.externalId} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '6px' }}>{row.sku}</td>
-                  <td style={{ padding: '6px' }}>{row.orderDate}</td>
-                  <td style={{ padding: '6px' }}>{row.qty}</td>
-                  <td style={{ padding: '6px' }}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
-                  <td style={{ padding: '6px' }}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
-                  <td style={{ padding: '6px' }}>£{((row.shippingRevenueGrossPence || 0) / 100).toFixed(2)}</td>
+                <tr key={row.externalId}>
+                  <td style={tdStyle}>{row.sku}</td>
+                  <td style={tdStyle}>{row.orderDate}</td>
+                  <td style={tdStyle}>{row.qty}</td>
+                  <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>£{((row.shippingRevenueGrossPence || 0) / 100).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={handleImport} style={{ marginTop: '1rem', padding: '8px 16px' }}>
+          </div>
+          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
             Confirm Import (all parsed rows, not just preview)
           </button>
-        </>
+        </div>
       )}
     </div>
   )
