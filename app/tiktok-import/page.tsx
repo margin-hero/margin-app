@@ -122,7 +122,7 @@ export default function TikTokImportPage() {
           orderDate: parseTikTokDate(row['Order created date']),
           qty: parseInt(row['Quantity']) || 1,
           salePriceGrossPence: Math.round(netSales * 100),
-          saleVatPence: vatPence,
+          saleVatPence: vatPence || null, // 0 (UK sellers) = work it out from the product's VAT rate
           feesGrossPence,
           feesVatPence,
           actualShippingCostPence: shippingRaw !== 0 ? Math.round(Math.abs(shippingRaw) * 100) : null,
@@ -191,7 +191,7 @@ export default function TikTokImportPage() {
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
-                  <td style={tdStyle}>£{((row.saleVatPence ?? 0) / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>{row.saleVatPence === null ? 'From product rate' : `£${(row.saleVatPence / 100).toFixed(2)}`}</td>
                 </tr>
               ))}
             </tbody>

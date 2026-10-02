@@ -193,7 +193,7 @@ The Mappings page shows each TikTok listing's SKU ID, and flags any that are mis
 ### What Margin Hero takes from the report
 - **Sale price:** "Net sales" for the item. That's the price after any discounts you funded yourself and after any refund shown on the same row. Discounts TikTok pays for don't reduce your sale price.
 - **Fully refunded orders are left out.** If an order was refunded in full, it isn't imported. If the refund appears on a later row, the original sale is still counted for now (see "Refunds aren't imported yet" above).
-- **VAT on the sale:** TikTok only shows VAT here when it collects the VAT itself (mostly for overseas sellers). For UK sellers it's usually £0. *(Coming soon: Margin Hero will work out the VAT from each product's VAT rate when this is £0. Until then, TikTok margins for VAT-registered sellers may look higher than they really are.)*
+- **VAT on the sale:** TikTok only shows VAT here when it collects the VAT itself (mostly for overseas sellers). For UK sellers it's usually £0, so Margin Hero works the VAT out from the product's VAT rate instead (the preview shows "From product rate"). Check each product's VAT rate on its product page. Orders imported before 2 Oct 2026 were saved with £0 VAT: delete and re-import them to correct this.
 - **Fees:** all of TikTok's fees. TikTok's own fees (commission, shipping service fee, Smart Promotion fee and so on) are treated as including 20% VAT. Affiliate commission paid to creators is treated as having no VAT.
 - **Shipping cost:** the shipping amount from the report if there is one, otherwise the shipping costs you've set up for that product.
 
