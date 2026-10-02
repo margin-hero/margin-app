@@ -1,6 +1,6 @@
 // Pricing plans, shared by /pricing and the homepage pricing section so they never disagree.
 // GBP, ex. VAT. Plans differ ONLY by order volume: every feature is on every plan.
-// Annual = 10 months' price (two months free).
+// Annual = roughly 10 months' price (two months free), rounded down to whole pounds per month.
 
 export type Plan = {
   name: string
@@ -11,15 +11,22 @@ export type Plan = {
 
 export const PLANS: Plan[] = [
   { name: 'Starter', monthlyPounds: 19, ordersUpTo: 2000, blurb: 'For sellers getting serious about margin.' },
-  { name: 'Growth', monthlyPounds: 35, ordersUpTo: 6000, blurb: 'For growing multichannel shops.' },
+  { name: 'Growth', monthlyPounds: 39, ordersUpTo: 6000, blurb: 'For growing multichannel shops.' },
   { name: 'Scale', monthlyPounds: 69, ordersUpTo: 20000, blurb: 'For established, high-volume sellers.' },
   { name: 'Enterprise', monthlyPounds: null, ordersUpTo: null, blurb: 'Over 20,000 orders a month? Let\'s talk.' },
 ]
 
 export const ANNUAL_MONTHS_CHARGED = 10
 
+// Annual plans shown as a whole-pound monthly figure: 10 months' price spread over 12, rounded DOWN
+export function annualMonthlyPounds(plan: Plan): number | null {
+  return plan.monthlyPounds === null ? null : Math.floor((plan.monthlyPounds * ANNUAL_MONTHS_CHARGED) / 12)
+}
+
+// Billed yearly = that rounded monthly figure x 12, so the two always agree
 export function annualPounds(plan: Plan): number | null {
-  return plan.monthlyPounds === null ? null : plan.monthlyPounds * ANNUAL_MONTHS_CHARGED
+  const monthly = annualMonthlyPounds(plan)
+  return monthly === null ? null : monthly * 12
 }
 
 export function ordersLabel(plan: Plan): string {

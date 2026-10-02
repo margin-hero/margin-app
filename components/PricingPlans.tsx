@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PLANS, annualPounds, ordersLabel } from '@/lib/pricing'
+import { PLANS, annualMonthlyPounds, annualPounds, ordersLabel } from '@/lib/pricing'
 import { lime, green, bg, panel, border, text, muted, dim, font, display } from '@/lib/theme'
 
 // Plan cards with a Monthly / Annual switch. Used on /pricing and the homepage.
@@ -36,7 +36,7 @@ export default function PricingPlans({ ctaHref = '/#waitlist' }: { ctaHref?: str
                 <p style={{ ...display, fontSize: '40px', margin: '0 0 6px', lineHeight: 1 }}>Let&apos;s talk</p>
               ) : (
                 <p style={{ margin: '0 0 6px', lineHeight: 1 }}>
-                  <span style={{ ...display, fontSize: '46px' }}>£{annual ? (yearly! / 12).toFixed(2).replace(/\.00$/, '') : plan.monthlyPounds}</span>
+                  <span style={{ ...display, fontSize: '46px' }}>£{annual ? annualMonthlyPounds(plan) : plan.monthlyPounds}</span>
                   <span style={{ color: muted, fontSize: '14px', marginLeft: '6px' }}>/ month</span>
                 </p>
               )}
