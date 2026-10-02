@@ -8,8 +8,8 @@ import { loadOverheadSetup, allocateOverheads } from './overheads'
 export type MarginCell = { revenuePence: number; marginPence: number; units: number }
 
 export type SkuStoreMargins = {
-  products: { id: string; name: string }[] // sorted by name
-  stores: { id: string; name: string }[] // sorted by name
+  products: { id: string; name: string; sku: string }[] // sorted by name
+  stores: { id: string; name: string; platform: string }[] // sorted by platform, then store name
   overheadNote: string
   cell: (productId: string, storeId: string) => MarginCell | null // null = no sales in the period
   total: (productId: string) => MarginCell | null // all stores together
@@ -43,15 +43,15 @@ export async function loadSkuStoreMargins(
     fetchAll((from, to) =>
       supabase
         .from('platform_listings')
-        .select('id, master_product_id, store_id, master_products(name), stores(name)')
+        .select('id, master_product_id, store_id, master_products(name, standard_sku), stores(name, platforms(name))')
         .order('id')
         .range(from, to)
     ),
   ])
   if (error || listingsError) return { error: (error || listingsError)!.message }
 
-  const products = new Map<string, string>() // id -> name
-  const storeNames = new Map<string, string>() // id -> name
+  const products = new Map<string, { name: string; sku: string }>()
+  const storeNames = new Map<string, { name: string; platform: string }>()
   const listed = new Set<string>() // `${productId}|${storeId}`
   const cells = new Map<string, MarginCell>()
   const totals = new Map<string, MarginCell>()
@@ -59,8 +59,8 @@ export async function loadSkuStoreMargins(
   // Only stores with at least one listing or sale are included, so a store whose
   // catalogue hasn't been mapped yet doesn't show every product as "not listed"
   for (const l of listings as any[]) {
-    products.set(l.master_product_id, l.master_products?.name ?? '?')
-    storeNames.set(l.store_id, l.stores?.name ?? '?')
+    products.set(l.master_product_id, { name: l.master_products?.name ?? '?', sku: l.master_products?.standard_sku ?? '' })
+    storeNames.set(l.store_id, { name: l.stores?.name ?? '?', platform: l.stores?.platforms?.name ?? '' })
     listed.add(`${l.master_product_id}|${l.store_id}`)
   }
 
@@ -86,8 +86,9 @@ export async function loadSkuStoreMargins(
     map.set(key, c)
   }
   for (const [i, row] of data.entries()) {
-    products.set(row.master_product_id, row.product_name)
-    storeNames.set(row.store_id, row.channel)
+    // Every sale has a listing, so names normally come from above; this is just a fallback
+    if (!products.has(row.master_product_id)) products.set(row.master_product_id, { name: row.product_name, sku: '' })
+    if (!storeNames.has(row.store_id)) storeNames.set(row.store_id, { name: row.channel, platform: '' })
     const revenue = Number(row.revenue_pence) || 0
     const margin = (Number(row.margin_pence) || 0) - (overheadShares[i] || 0)
     const units = Number(row.effective_qty) || 0
@@ -95,10 +96,9 @@ export async function loadSkuStoreMargins(
     add(totals, row.master_product_id, revenue, margin, units)
   }
 
-  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name)
   return {
-    products: Array.from(products, ([id, name]) => ({ id, name })).sort(byName),
-    stores: Array.from(storeNames, ([id, name]) => ({ id, name })).sort(byName),
+    products: Array.from(products, ([id, p]) => ({ id, ...p })).sort((a, b) => a.name.localeCompare(b.name)),
+    stores: Array.from(storeNames, ([id, st]) => ({ id, ...st })).sort((a, b) => a.platform.localeCompare(b.platform) || a.name.localeCompare(b.name)),
     overheadNote,
     cell: (productId, storeId) => cells.get(`${productId}|${storeId}`) ?? null,
     total: (productId) => totals.get(productId) ?? null,

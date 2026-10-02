@@ -171,11 +171,15 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
             <thead>
               <tr>
                 <th style={{ ...headStyle, textAlign: 'left' }}>
-                  <Link href={href({ sort: '', by: '', dir: '' })} style={{ color: sort === 'name' ? lime : muted, textDecoration: 'none' }}>Product{sort === 'name' ? ' (A–Z)' : ''}</Link>
+                  <Link href={href({ sort: '', by: '', dir: '' })} style={{ color: sort === 'name' ? lime : muted, textDecoration: 'none' }}>SKU · Product{sort === 'name' ? ' (A–Z)' : ''}</Link>
                 </th>
                 <th style={{ ...headStyle, color: text }}>All stores{sortLinks('all')}</th>
                 {stores.map((store) => (
-                  <th key={store.id} style={headStyle}>{store.name}{sortLinks(store.id)}</th>
+                  <th key={store.id} style={headStyle}>
+                    <div style={{ color: text, fontWeight: 800 }}>{store.platform || store.name}</div>
+                    {store.platform && <div>{store.name}</div>}
+                    {sortLinks(store.id)}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -185,7 +189,10 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
                 const best = known.length > 1 ? Math.max(...known) : null
                 return (
                   <tr key={product.id}>
-                    <td style={{ padding: '4px', fontSize: '15px', fontWeight: 800, color: text }}>{product.name}</td>
+                    <td style={{ padding: '4px', fontSize: '15px', fontWeight: 800, color: text }}>
+                      {product.sku && <span style={{ color: muted, fontWeight: 700, marginRight: '8px' }}>{product.sku}</span>}
+                      {product.name}
+                    </td>
                     {figureCell('all', total(product.id), false)}
                     {stores.map((store) => {
                       if (notListed(product.id, store.id)) {

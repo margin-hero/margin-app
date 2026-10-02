@@ -16,15 +16,18 @@ export default async function OpportunitiesPage() {
   }
   const { products, stores, cell, total, notListed } = result
 
+  // "OnBuy · Arkmat": channel first, then the store name
+  const storeName = (store: { name: string; platform: string }) => (store.platform ? `${store.platform} · ${store.name}` : store.name)
+
   // Products making a profit somewhere that aren't listed in every store yet, best margin first
   const opportunities = products
     .map((product) => {
       let best: { margin: number; store: string } | null = null
       for (const store of stores) {
         const m = cellPercent(cell(product.id, store.id))
-        if (m !== null && (best === null || m > best.margin)) best = { margin: m, store: store.name }
+        if (m !== null && (best === null || m > best.margin)) best = { margin: m, store: storeName(store) }
       }
-      const missing = stores.filter((store) => notListed(product.id, store.id)).map((store) => store.name)
+      const missing = stores.filter((store) => notListed(product.id, store.id)).map(storeName)
       const profitPence = Math.round(total(product.id)?.marginPence ?? 0)
       return { ...product, best, missing, profitPence }
     })
@@ -51,7 +54,7 @@ export default async function OpportunitiesPage() {
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={thStyle}>Product</th>
+                  <th style={thStyle}>SKU · Product</th>
                   <th style={thStyle}>Best margin</th>
                   <th style={thStyle}>Net profit so far</th>
                   <th style={thStyle}>Not listed in</th>
@@ -60,7 +63,7 @@ export default async function OpportunitiesPage() {
               <tbody>
                 {opportunities.map((o) => (
                   <tr key={o.id}>
-                    <td style={{ ...tdStyle, fontWeight: 800 }}>{o.name}</td>
+                    <td style={{ ...tdStyle, fontWeight: 800 }}>{o.sku && <span style={{ color: muted, fontWeight: 700, marginRight: '8px' }}>{o.sku}</span>}{o.name}</td>
                     <td style={tdStyle}>
                       <span style={{ color: marginTier(o.best!.margin, ranges).fg, fontWeight: 800 }}>{o.best!.margin}%</span>
                       <span style={{ color: muted }}> on {o.best!.store}</span>
