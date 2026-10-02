@@ -135,7 +135,7 @@ Enter the amount including any VAT you pay, and choose the VAT rate (wages, rate
 
 **Where you see it:**
 - **Channel Overview:** each store's share of overheads and its net after overheads, plus a business total for the dates you pick.
-- **Grid:** switch to **After overheads** at the top. The grid covers all time, so it uses overheads from your first order date to your last.
+- **Margins:** switch to **After overheads** at the top. Overheads are shared over the period you pick (All time = your first order date to your last).
 
 This is a management view to show your true margin. It isn't a replacement for your accountant's figures.
 
@@ -272,7 +272,8 @@ The CSV has no shipping column, so Margin Hero uses the shipping costs you've se
 
 Once your sales are in, head to the **Dashboards** menu:
 
-- **Grid:** margin for every product on every channel, colour-coded (red under 10%, yellow 10–20%, green 20%+).
+- **Margins:** net margin % and net profit £ (per unit or total) for every product in every store, colour-coded by your margin thresholds (set in **Settings**). Pick a period (All time, YTD, quarter, 30/90 days or your own dates) and click **%** or **£** under any column to sort high to low. "Not listed" means the product isn't mapped in that store.
+- **Opportunities:** products making a profit in one store that aren't listed in your other stores yet, best margin first.
 - **Channel Overview:** how each marketplace is doing overall.
 - **SKU Detail:** a closer look at a single product.
 - **Trends:** how your margin changes over time.

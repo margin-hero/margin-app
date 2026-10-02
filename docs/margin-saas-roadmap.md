@@ -122,8 +122,8 @@ Design decisions to make before/during build:
   3. **Per product (future):** override for individual products, e.g. a high-volume commodity line that's healthy at 8%.
   Most specific wins: product → store → overall.
 - **Colour thresholds are per-tenant, not hardcoded** — a 10% margin might be fine for a high-volume commodity product, bad for a niche one. Let tenants set their own green/amber/red cutoffs.
-- **Empty cells ("—") are an expansion signal** — a SKU not listed on a channel could later become a soft CTA ("not yet listed here").
-- **Grid needs sort/filter** — by lowest margin, by channel, by category — to stay useful once a tenant has more than a handful of SKUs.
+- ✅ **Empty cells ("—") are an expansion signal** — a SKU not listed on a channel could later become a soft CTA ("not yet listed here"). (Done 2026-10-02: `/margins` (was `/grid`) shows "Not listed" vs "—" (listed, no sales), and `/opportunities` lists profitable products not yet listed in every store.)
+- **Grid needs sort/filter** — by lowest margin, by channel, by category — to stay useful once a tenant has more than a handful of SKUs. (Sort by any store's % or £ done 2026-10-02 on `/margins`; category filter still to do.)
 - **Bundle SKUs need visual distinction** — a bundle has different shipping economics to a single unit; the grid should make clear when a margin figure reflects a bundle sale vs a single sale, or the swing looks like an error.
 
 ---

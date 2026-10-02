@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Grid3x3, ScanSearch, Percent, TrendingUp,
+  LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
   FileUp, ShoppingCart, Music2, Building2,
   Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen,
   type LucideIcon,
@@ -16,10 +16,10 @@ const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: L
     label: 'Dashboards',
     links: [
       { href: '/channel-overview', label: 'Channel Overview', icon: LayoutDashboard },
-      { href: '/grid', label: 'Grid', icon: Grid3x3 },
+      { href: '/margins', label: 'Margins', icon: Grid3x3 },
       { href: '/sku-detail', label: 'SKU Detail', icon: ScanSearch },
-      { href: '/margins', label: 'Margins', icon: Percent },
       { href: '/trends', label: 'Trends', icon: TrendingUp },
+      { href: '/opportunities', label: 'Opportunities', icon: Lightbulb },
     ],
   },
   {
@@ -95,7 +95,7 @@ export default function Nav() {
         transition: 'width 0.2s ease',
       }}
     >
-      <Link href="/grid" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', marginBottom: '28px', textDecoration: 'none', color: text, whiteSpace: 'nowrap' }}>
+      <Link href="/margins" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', marginBottom: '28px', textDecoration: 'none', color: text, whiteSpace: 'nowrap' }}>
         <span style={{ fontSize: '22px', color: lime, fontWeight: 900 }}>↗</span>
         {!collapsed && <span style={{ ...display, fontSize: '15px' }}>Margin Hero</span>}
       </Link>

@@ -5,7 +5,7 @@ import Nav from '@/components/Nav'
 import MissingCostsBanner from '@/components/MissingCostsBanner'
 import { bg } from '@/lib/theme'
 
-const DASHBOARDS = ['/grid', '/channel-overview', '/sku-detail', '/margins', '/trends']
+const DASHBOARDS = ['/margins', '/channel-overview', '/sku-detail', '/trends', '/opportunities']
 
 // Public marketing pages: no sidebar
 const PUBLIC_PAGES = ['/', '/pricing']
