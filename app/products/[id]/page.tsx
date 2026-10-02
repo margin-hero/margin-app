@@ -7,6 +7,7 @@ import { loadStores, Store, storeLabel } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
 import Link from 'next/link'
+import { vatSplitNote } from '@/lib/format'
 import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Product = {
@@ -338,7 +339,7 @@ export default function ProductDetailPage() {
             <tr>
               <th style={thStyle}>Type</th>
               <th style={thStyle}>Description</th>
-              <th style={thStyle}>Amount</th>
+              <th style={thStyle}>Amount (inc. VAT)</th>
               <th style={thStyle}>VAT Rate</th>
               <th style={thStyle}>Effective From</th>
               <th style={thStyle}></th>
@@ -367,7 +368,8 @@ export default function ProductDetailPage() {
                     <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Optional" style={smallInput} />
                   </td>
                   <td style={tdStyle}>
-                    <input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={smallInput} />
+                    <input placeholder="£ inc. VAT" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={smallInput} />
+                    {vatSplitNote(editAmount, editVatRate) && <div style={{ fontSize: '11px', color: muted, marginTop: '4px', maxWidth: '220px' }}>{vatSplitNote(editAmount, editVatRate)}</div>}
                   </td>
                   <td style={tdStyle}>
                     <select value={editVatRate} onChange={(e) => setEditVatRate(e.target.value)} style={inputStyle}>
@@ -429,7 +431,7 @@ export default function ProductDetailPage() {
             style={{ ...inputStyle, width: '170px' }}
           />
           <input
-            placeholder="Amount £"
+            placeholder="£ inc. VAT"
             value={newAmount}
             onChange={(e) => setNewAmount(e.target.value)}
             style={{ ...inputStyle, width: '100px' }}
@@ -451,6 +453,10 @@ export default function ProductDetailPage() {
           </div>
           <button onClick={addCogsRow} style={primaryButton}>Add Cost</button>
         </div>
+        <p style={{ ...help, marginTop: '10px' }}>
+          Enter the amount <strong>including VAT</strong>, i.e. what you actually pay. If a store is VAT registered, the VAT is taken off for you.
+          {vatSplitNote(newAmount, newVatRate) && <><br /><span style={{ color: text }}>{vatSplitNote(newAmount, newVatRate)}</span></>}
+        </p>
         {newComponentType && (
           <p style={{ ...help, marginTop: '10px' }}>
             {costTypes.find((t) => t.code === newComponentType)?.description}
@@ -502,7 +508,7 @@ export default function ProductDetailPage() {
             <tr>
               <th style={thStyle}>Store</th>
               <th style={thStyle}>Qty</th>
-              <th style={thStyle}>Cost</th>
+              <th style={thStyle}>Cost (inc. VAT)</th>
               <th style={thStyle}>VAT Rate</th>
               <th style={thStyle}>Service Level</th>
               <th style={thStyle}>Effective From</th>
@@ -525,7 +531,8 @@ export default function ProductDetailPage() {
                     <input value={editQty} onChange={(e) => setEditQty(e.target.value)} style={{ ...smallInput, width: '70px' }} />
                   </td>
                   <td style={tdStyle}>
-                    <input value={editShippingCost} onChange={(e) => setEditShippingCost(e.target.value)} style={smallInput} />
+                    <input placeholder="£ inc. VAT" value={editShippingCost} onChange={(e) => setEditShippingCost(e.target.value)} style={smallInput} />
+                    {vatSplitNote(editShippingCost, editShippingVat) && <div style={{ fontSize: '11px', color: muted, marginTop: '4px', maxWidth: '220px' }}>{vatSplitNote(editShippingCost, editShippingVat)}</div>}
                   </td>
                   <td style={tdStyle}>
                     <select value={editShippingVat} onChange={(e) => setEditShippingVat(e.target.value)} style={inputStyle}>
@@ -586,7 +593,7 @@ export default function ProductDetailPage() {
             style={{ ...inputStyle, width: '60px' }}
           />
           <input
-            placeholder="Cost £"
+            placeholder="£ inc. VAT"
             value={newShippingCost}
             onChange={(e) => setNewShippingCost(e.target.value)}
             style={{ ...inputStyle, width: '100px' }}
@@ -611,6 +618,10 @@ export default function ProductDetailPage() {
           </div>
           <button onClick={addShippingRow} style={primaryButton}>Add Rule</button>
         </div>
+        <p style={{ ...help, marginTop: '10px' }}>
+          Enter the cost <strong>including VAT</strong>, i.e. what you actually pay. If a store is VAT registered, the VAT is taken off for you.
+          {vatSplitNote(newShippingCost, newShippingVat) && <><br /><span style={{ color: text }}>{vatSplitNote(newShippingCost, newShippingVat)}</span></>}
+        </p>
       </section>
     </div>
   )

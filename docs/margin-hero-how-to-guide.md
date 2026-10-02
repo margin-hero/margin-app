@@ -121,7 +121,7 @@ Overheads are costs that can't be tied to one order: wages, rent, business rates
 - **Recurring:** weekly, every 4 weeks, monthly, quarterly or yearly, from a start date until an optional end date. Choosing monthly means it repeats every month until you stop it.
 - **One-off, spread over months:** for a single payment. Spread a trade show fee over 1 month, or a new machine over its useful life (e.g. 36 months), so one month doesn't look like a disaster.
 
-Enter the amount including any VAT you pay, and choose the VAT rate (wages, rates and insurance are usually 0%).
+Enter the amount **including any VAT you pay** (what actually leaves your bank), and choose the VAT rate (wages, rates and insurance are usually 0%). If you're VAT registered, Margin Hero takes the VAT off for you: £120 at 20% VAT counts as £100. The form shows this as you type.
 
 **When things change:**
 - **The amount changes** (e.g. rent goes up): use **Change amount** with the date it starts. Earlier periods keep the old amount.

@@ -190,6 +190,16 @@ export default function OverheadsPage() {
   const netFor = (o: Overhead) => (o.store_id ? !!setup.storeVat.get(o.store_id) : setup.businessVatRegistered)
   const last30 = setup.overheads.reduce((sum, o) => sum + overheadInRange(o, addDays(t, -29), t, netFor(o)), 0)
   const monthlyRunRate = setup.overheads.filter(isActive).reduce((sum, o) => sum + (perDayPence(o, netFor(o)) * 365) / 12, 0)
+  // Live explanation of what an amount (entered inc. VAT) counts as, so it's clear the VAT is taken off when registered
+  const vatPreview = (amountText: string, vatText: string, netOfVat: boolean) => {
+    if (!validAmount(amountText) || vatText === '') return null
+    const gross = toPence(amountText)
+    const vatPence = Math.round((gross * Number(vatText)) / (1 + Number(vatText)))
+    if (vatPence === 0) return `${pounds(gross)} counted (no VAT on this).`
+    return netOfVat
+      ? `${pounds(gross)} inc. VAT = ${pounds(gross - vatPence)} + ${pounds(vatPence)} VAT. VAT registered, so ${pounds(gross - vatPence)} is counted (you reclaim the VAT).`
+      : `Not VAT registered, so the full ${pounds(gross)} is counted (the ${pounds(vatPence)} VAT is a cost to you).`
+  }
   const vatSelect = (value: string, onChange: (v: string) => void) => (
     <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
       <option value="">VAT rate...</option>
@@ -264,7 +274,7 @@ export default function OverheadsPage() {
               spread over <input value={spreadMonths} onChange={(e) => setSpreadMonths(e.target.value)} style={{ ...inputStyle, width: '60px', margin: '0 6px' }} /> months
             </label>
           )}
-          <input placeholder="Amount £" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...inputStyle, width: '110px' }} />
+          <input placeholder="£ inc. VAT" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ ...inputStyle, width: '120px' }} />
           {vatSelect(vat, setVat)}
           <label style={{ fontSize: '13px', color: muted }}>
             {kind === 'recurring' ? 'from' : 'on'} <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ ...inputStyle, marginLeft: '6px' }} />
@@ -277,8 +287,13 @@ export default function OverheadsPage() {
           )}
           <button onClick={addOverhead} style={primaryButton}>Add</button>
         </div>
+        {vatPreview(amount, vat, storeId ? !!setup.storeVat.get(storeId) : setup.businessVatRegistered) && (
+          <p style={{ fontSize: '13px', color: text, margin: '10px 0 0' }}>
+            {vatPreview(amount, vat, storeId ? !!setup.storeVat.get(storeId) : setup.businessVatRegistered)}
+          </p>
+        )}
         <p style={{ fontSize: '12px', color: dim, margin: '10px 0 0' }}>
-          Amount is per {kind === 'recurring' ? 'payment (e.g. per month)' : 'purchase'}, including any VAT you pay.
+          Enter the amount <strong style={{ color: muted }}>including VAT</strong>, i.e. what you actually pay, per {kind === 'recurring' ? 'payment (e.g. per month)' : 'purchase'}. If you&apos;re VAT registered, the VAT is taken off for you.
           {kind === 'one_off' && ' Spread big purchases over their useful life, e.g. a machine over 36 months, so one month doesn\'t look like a disaster.'}
         </p>
       </div>
@@ -325,13 +340,14 @@ export default function OverheadsPage() {
                       <td style={{ ...tdStyle, fontSize: '13px' }}>
                         {editingId === o.id ? (
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                            <input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={{ ...inputStyle, width: '100px' }} />
+                            <input placeholder="£ inc. VAT" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={{ ...inputStyle, width: '110px' }} />
                             {vatSelect(editVat, setEditVat)}
+                            <div style={{ fontSize: '12px', color: muted, width: '100%' }}>{vatPreview(editAmount, editVat, netFor(o)) ?? 'Amount including VAT.'}</div>
                           </div>
                         ) : (
                           <>
                             {describeSchedule(o)}
-                            <span style={{ color: muted }}> · {(o.vat_rate * 100).toFixed(0)}% VAT</span>
+                            <span style={{ color: muted }}> · {o.vat_rate > 0 ? `inc. ${(o.vat_rate * 100).toFixed(0)}% VAT` : 'no VAT'}</span>
                             {ended && <span style={{ color: dim }}> · ended</span>}
                             {future && <span style={{ color: amber }}> · starts {o.start_date}</span>}
                           </>
@@ -363,7 +379,7 @@ export default function OverheadsPage() {
                         <td colSpan={5} style={{ ...tdStyle, background: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '13px', color: muted }}>New amount</span>
-                            <input placeholder="£" value={changeAmount} onChange={(e) => setChangeAmount(e.target.value)} style={{ ...inputStyle, width: '110px' }} />
+                            <input placeholder="£ inc. VAT" value={changeAmount} onChange={(e) => setChangeAmount(e.target.value)} style={{ ...inputStyle, width: '110px' }} />
                             <label style={{ fontSize: '13px', color: muted }}>
                               from <input type="date" value={changeFrom} onChange={(e) => setChangeFrom(e.target.value)} style={{ ...inputStyle, marginLeft: '6px' }} />
                             </label>
