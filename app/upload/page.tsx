@@ -64,7 +64,7 @@ export default function UploadPage() {
     setOrders(normalized)
     setInvalidRows(invalid)
     setStatus(
-      `Parsed ${normalized.length} rows — review below, then confirm.` +
+      `Found ${normalized.length} rows — review below, then confirm.` +
       (invalid.length ? ` ${invalid.length} row(s) can't be imported (missing order number, SKU, quantity, or date not written as YYYY-MM-DD): spreadsheet row ${invalid.join(', ')}.` : '')
     )
   }

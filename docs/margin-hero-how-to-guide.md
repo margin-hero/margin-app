@@ -226,6 +226,32 @@ The **transaction / accounting export** from that retailer's seller portal, save
 
 ---
 
+## OnBuy
+
+**Page:** Import → **OnBuy**
+**File type:** Excel (.xlsx) or CSV
+
+### What you need
+The **transaction report** from OnBuy Seller Control Panel (one row per order line, with columns like "Order Number", "Items £" and "Total Fees Inc. TAX £").
+
+### Steps
+1. Go to **Import → OnBuy**.
+2. **Choose your OnBuy store first.** No OnBuy store yet? Add one in **Manage → Stores**.
+3. Choose your transaction report.
+4. Check the preview. It shows each order, the date paid, quantity, sale price, delivery charged, OnBuy's fees and OnBuy's own Net Proceeds. If any row doesn't add up to Net Proceeds, you'll see a warning.
+5. Click **Confirm Import**.
+
+### What Margin Hero takes from the report
+- **Order date:** the "Date Paid" column.
+- **Sale price:** "Items £" (what the customer paid, including VAT).
+- **VAT on the sale:** OnBuy only shows this when it collects the VAT itself (mostly overseas sellers). For UK sellers, Margin Hero works it out from the product's VAT rate (e.g. £39.95 at 20% includes £6.66 VAT). Check the product's VAT rate on its product page.
+- **Fees:** "Total Fees Inc. TAX £": the sales fee **and** any Boost fee, plus VAT on them ("Fees TAX").
+- **Delivery charged to the customer:** "Delivery £", recorded separately as income.
+- **Your shipping cost:** OnBuy doesn't report what you paid the courier, so Margin Hero uses the shipping costs you've set up for that product.
+- **Refunds and other non-sale rows** are skipped for now.
+
+---
+
 ## Generic CSV / Excel upload (any other channel)
 
 Use this for a store that doesn't have its own import page yet, such as **Argos** or **Shopify**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.

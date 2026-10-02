@@ -134,7 +134,7 @@ export default function TikTokImportPage() {
       setPreview(normalized.slice(0, 20))
       ;(window as any).__tiktokOrders = normalized
       setStatus(
-        `Parsed ${normalized.length} order lines. Skipped ${refundsSkipped} fully refunded or refund-only rows (refunds are handled later).` +
+        `Found ${normalized.length} order lines. Skipped ${refundsSkipped} fully refunded or refund-only rows (refunds are handled later).` +
         (noMatch > 0 ? `WARNING: ${noMatch} rows had no catalog match. Best fix: add their TikTok SKU IDs on the Mappings page (one by one, or with the TikTok catalog upload there), then choose this file again. If you confirm now anyway, those rows are held back (don't tick "Create new products" here, or you'll get products named after TikTok's numeric IDs).` : 'All SKUs matched your catalog.')
       )
     }
@@ -144,7 +144,7 @@ export default function TikTokImportPage() {
   async function handleImport() {
     const orders: NormalizedOrder[] = (window as any).__tiktokOrders || []
     if (orders.length === 0) {
-      setStatus('No parsed data to import.')
+      setStatus('Nothing to import yet: please choose a file first.')
       return
     }
     if (!store) {
@@ -191,14 +191,14 @@ export default function TikTokImportPage() {
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
-                  <td style={tdStyle}>£{(row.saleVatPence / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>£{((row.saleVatPence ?? 0) / 100).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           </div>
           <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm Import (all parsed rows, not just preview)
+            Confirm import (every order line in the file, not just the ones shown)
           </button>
         </div>
       )}

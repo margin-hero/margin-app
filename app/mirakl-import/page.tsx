@@ -84,14 +84,14 @@ export default function MiraklImportPage() {
       setAllOrders(normalized)
       setPreview(normalized.slice(0, 20))
       setSkippedRefunds(refundRows.length)
-      setStatus(`Parsed ${normalized.length} order lines. Skipped ${refundRows.length} refund-related rows (handled later). Review below, then confirm.`)
+      setStatus(`Found ${normalized.length} order lines. Skipped ${refundRows.length} refund-related rows (handled later). Review below, then confirm.`)
     }
     reader.readAsBinaryString(file)
   }
 
   async function handleImport() {
     if (allOrders.length === 0) {
-      setStatus('No parsed data to import.')
+      setStatus('Nothing to import yet: please choose a file first.')
       return
     }
     if (!store) {
@@ -147,7 +147,7 @@ export default function MiraklImportPage() {
           </table>
           </div>
           <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm Import (all parsed rows, not just preview)
+            Confirm import (every order line in the file, not just the ones shown)
           </button>
         </div>
       )}

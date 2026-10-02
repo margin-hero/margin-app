@@ -37,7 +37,7 @@ export default function AmazonImportPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setStatus('Parsing file, this may take a moment for large files...')
+    setStatus('Reading file, this may take a moment for large files...')
 
     Papa.parse<AmazonRow>(file, {
       header: true,
@@ -104,14 +104,14 @@ export default function AmazonImportPage() {
 
         setAllOrders(normalized)
         setPreview(normalized.slice(0, 20))
-        setStatus(`Parsed ${normalized.length} order lines from ${orderRows.length} raw rows. Showing first 20 below — review, then confirm import.`)
+        setStatus(`Found ${normalized.length} order lines (from ${orderRows.length} rows in the file). Showing first 20 below — review, then confirm import.`)
       },
     })
   }
 
   async function handleImport() {
     if (allOrders.length === 0) {
-      setStatus('No parsed data to import.')
+      setStatus('Nothing to import yet: please choose a file first.')
       return
     }
     if (!store) {
@@ -163,7 +163,7 @@ export default function AmazonImportPage() {
           </table>
           </div>
           <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm Import (all parsed rows, not just preview)
+            Confirm import (every order line in the file, not just the ones shown)
           </button>
         </div>
       )}

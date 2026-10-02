@@ -8,7 +8,7 @@ import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
 import Link from 'next/link'
 import { vatSplitNote } from '@/lib/format'
-import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
+import { lime, red, amber, muted, text, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Product = {
   id: string
@@ -60,11 +60,14 @@ export default function ProductDetailPage() {
   const [newAmount, setNewAmount] = useState('')
   const [newVatRate, setNewVatRate] = useState('')
   const [newEffectiveFrom, setNewEffectiveFrom] = useState(today())
+  const [newEffectiveTouched, setNewEffectiveTouched] = useState(false) // true once the date is picked by hand
   const [newQty, setNewQty] = useState('')
   const [newShippingCost, setNewShippingCost] = useState('')
   const [newShippingVat, setNewShippingVat] = useState('')
   const [newServiceLevel, setNewServiceLevel] = useState('standard')
   const [newShippingEffectiveFrom, setNewShippingEffectiveFrom] = useState(today())
+  const [newShippingEffectiveTouched, setNewShippingEffectiveTouched] = useState(false)
+  const [firstOrderDate, setFirstOrderDate] = useState<string | null>(null) // earliest order for this product, any store
   const [newShippingStoreId, setNewShippingStoreId] = useState('')
 
   const [editingCogsId, setEditingCogsId] = useState<string | null>(null)
@@ -72,6 +75,7 @@ export default function ProductDetailPage() {
   const [editDescription, setEditDescription] = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editVatRate, setEditVatRate] = useState('')
+  const [editEffectiveFrom, setEditEffectiveFrom] = useState('')
 
   const [editingShippingId, setEditingShippingId] = useState<string | null>(null)
   const [editQty, setEditQty] = useState('')
@@ -79,6 +83,7 @@ export default function ProductDetailPage() {
   const [editShippingVat, setEditShippingVat] = useState('')
   const [editServiceLevel, setEditServiceLevel] = useState('standard')
   const [editShippingStoreId, setEditShippingStoreId] = useState('')
+  const [editShippingEffectiveFrom, setEditShippingEffectiveFrom] = useState('')
 
   async function loadAll() {
     const { data: productData } = await supabase
@@ -112,11 +117,33 @@ export default function ProductDetailPage() {
       .eq('master_product_id', productId)
     setProfileAssignments(assignmentData || [])
     setCostTypes(await loadCostTypes())
+
+    const { data: firstOrder } = await supabase
+      .from('order_margins')
+      .select('order_date')
+      .eq('master_product_id', productId)
+      .order('order_date')
+      .limit(1)
+    setFirstOrderDate(firstOrder?.[0]?.order_date ?? null)
   }
 
   useEffect(() => {
     loadAll()
   }, [productId])
+
+  // Default "effective from": the first cost of a type (or the first shipping rule) should cover
+  // every past order, so it starts at the product's first order date. A further cost of a type
+  // that already has one is usually a genuine price change, so it starts today.
+  useEffect(() => {
+    if (newEffectiveTouched) return
+    const existing = cogs.some((c) => c.component_type === newComponentType && (c.description || '') === newDescription.trim())
+    setNewEffectiveFrom(firstOrderDate && !existing ? firstOrderDate : today())
+  }, [firstOrderDate, cogs, newComponentType, newDescription, newEffectiveTouched])
+
+  useEffect(() => {
+    if (newShippingEffectiveTouched) return
+    setNewShippingEffectiveFrom(firstOrderDate && shipping.length === 0 ? firstOrderDate : today())
+  }, [firstOrderDate, shipping, newShippingEffectiveTouched])
 
   async function updateProductVatRate(rate: number) {
     await supabase.from('master_products').update({ vat_rate: rate }).eq('id', productId)
@@ -145,7 +172,7 @@ export default function ProductDetailPage() {
     setNewDescription('')
     setNewAmount('')
     setNewVatRate('')
-    setNewEffectiveFrom(today())
+    setNewEffectiveTouched(false)
     setStatus('Cost added.')
     loadAll()
   }
@@ -156,6 +183,7 @@ export default function ProductDetailPage() {
     setEditDescription(row.description || '')
     setEditAmount((row.amount_pence / 100).toString())
     setEditVatRate(row.vat_rate.toString())
+    setEditEffectiveFrom(row.effective_from)
   }
 
   async function saveCogsEdit(id: string) {
@@ -166,6 +194,7 @@ export default function ProductDetailPage() {
         description: editDescription.trim() || null,
         amount_pence: Math.round(parseFloat(editAmount) * 100),
         vat_rate: parseFloat(editVatRate),
+        effective_from: editEffectiveFrom,
       })
       .eq('id', id)
     if (error) {
@@ -204,7 +233,7 @@ export default function ProductDetailPage() {
     setNewQty('')
     setNewShippingCost('')
     setNewShippingVat('')
-    setNewShippingEffectiveFrom(today())
+    setNewShippingEffectiveTouched(false)
     setStatus('Shipping rule added.')
     loadAll()
   }
@@ -216,6 +245,7 @@ export default function ProductDetailPage() {
     setEditShippingVat(row.vat_rate.toString())
     setEditServiceLevel(row.service_level)
     setEditShippingStoreId(row.store_id || '')
+    setEditShippingEffectiveFrom(row.effective_from)
   }
 
   async function saveShippingEdit(id: string) {
@@ -227,6 +257,7 @@ export default function ProductDetailPage() {
         vat_rate: parseFloat(editShippingVat),
         service_level: editServiceLevel,
         store_id: editShippingStoreId || null,
+        effective_from: editShippingEffectiveFrom,
       })
       .eq('id', id)
     if (error) {
@@ -295,6 +326,17 @@ export default function ProductDetailPage() {
   const smallInput: React.CSSProperties = { ...inputStyle, width: '100px' }
   const cancelButton: React.CSSProperties = { ...linkButton, color: muted }
   const deleteButton: React.CSSProperties = { ...linkButton, color: red }
+  // Under a date box: when this product's first order was, in amber if the date misses some orders
+  const niceDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const dateHint = (date: string) => {
+    if (!firstOrderDate || !date) return null
+    const missesOrders = date > firstOrderDate
+    return (
+      <div style={{ fontSize: '11px', color: missesOrders ? amber : muted, marginTop: '4px', maxWidth: '240px' }}>
+        First order for this product: {niceDate(firstOrderDate)}.{missesOrders ? ` Orders before ${niceDate(date)} won't get this cost.` : ''}
+      </div>
+    )
+  }
   const help: React.CSSProperties = { color: muted, fontSize: '13px', lineHeight: 1.5, margin: '0 0 12px' }
 
   return (
@@ -378,7 +420,10 @@ export default function ProductDetailPage() {
                       <option value="0.2">20%</option>
                     </select>
                   </td>
-                  <td style={tdStyle}>{row.effective_from}</td>
+                  <td style={tdStyle}>
+                    <input type="date" value={editEffectiveFrom} onChange={(e) => setEditEffectiveFrom(e.target.value)} style={inputStyle} />
+                    {dateHint(editEffectiveFrom)}
+                  </td>
                   <td style={tdStyle}>
                     <button onClick={() => saveCogsEdit(row.id)} style={linkButton}>Save</button>
                     <button onClick={() => setEditingCogsId(null)} style={cancelButton}>Cancel</button>
@@ -446,10 +491,11 @@ export default function ProductDetailPage() {
             <input
               type="date"
               value={newEffectiveFrom}
-              onChange={(e) => setNewEffectiveFrom(e.target.value)}
+              onChange={(e) => { setNewEffectiveFrom(e.target.value); setNewEffectiveTouched(true) }}
               style={inputStyle}
             />
             <div style={{ fontSize: '11px', color: muted, marginTop: '4px' }}>Effective from — today for a new price, or an earlier date if backfilling history</div>
+            {dateHint(newEffectiveFrom)}
           </div>
           <button onClick={addCogsRow} style={primaryButton}>Add Cost</button>
         </div>
@@ -546,7 +592,10 @@ export default function ProductDetailPage() {
                       <option value="express">Express</option>
                     </select>
                   </td>
-                  <td style={tdStyle}>{row.effective_from}</td>
+                  <td style={tdStyle}>
+                    <input type="date" value={editShippingEffectiveFrom} onChange={(e) => setEditShippingEffectiveFrom(e.target.value)} style={inputStyle} />
+                    {dateHint(editShippingEffectiveFrom)}
+                  </td>
                   <td style={tdStyle}>
                     <button onClick={() => saveShippingEdit(row.id)} style={linkButton}>Save</button>
                     <button onClick={() => setEditingShippingId(null)} style={cancelButton}>Cancel</button>
@@ -611,10 +660,11 @@ export default function ProductDetailPage() {
             <input
               type="date"
               value={newShippingEffectiveFrom}
-              onChange={(e) => setNewShippingEffectiveFrom(e.target.value)}
+              onChange={(e) => { setNewShippingEffectiveFrom(e.target.value); setNewShippingEffectiveTouched(true) }}
               style={inputStyle}
             />
             <div style={{ fontSize: '11px', color: muted, marginTop: '4px' }}>Effective from</div>
+            {dateHint(newShippingEffectiveFrom)}
           </div>
           <button onClick={addShippingRow} style={primaryButton}>Add Rule</button>
         </div>

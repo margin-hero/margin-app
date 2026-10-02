@@ -8,12 +8,12 @@ export type NormalizedOrder = {
   orderDate: string // 'YYYY-MM-DD'
   qty: number
   salePriceGrossPence: number
-  saleVatPence: number
+  saleVatPence: number | null // null = the channel doesn't report it: worked out from the product's VAT rate
   feesGrossPence: number
   feesVatPence: number
   actualShippingCostPence?: number | null
   shippingRevenueGrossPence?: number
-  shippingRevenueVatPence?: number
+  shippingRevenueVatPence?: number | null // null = worked out from the product's VAT rate
 }
 
 export type ImportResult = {
@@ -130,6 +130,30 @@ export async function importOrdersForStore(
 
   if (result.errors.length > 0) return result
 
+  // Some channels (e.g. OnBuy) don't report the VAT inside the sale price for UK sellers.
+  // For those orders, work it out from each product's VAT rate (VAT = gross × rate ÷ (1 + rate)).
+  const vatRateByListing = new Map<unknown, number>()
+  if (orders.some((o) => o.saleVatPence === null || o.shippingRevenueVatPence === null)) {
+    onProgress?.('Looking up product VAT rates...')
+    const listingIds = Array.from(new Set(orders.map((o) => skuToListingId.get(o.sku)).filter((id) => id !== undefined)))
+    for (let i = 0; i < listingIds.length; i += 200) {
+      const { data: rates, error: ratesError } = await supabase
+        .from('platform_listings')
+        .select('id, master_products(vat_rate)')
+        .in('id', listingIds.slice(i, i + 200))
+      if (ratesError) {
+        result.errors.push(`Error loading product VAT rates: ${ratesError.message}`)
+        return result
+      }
+      // A product without a VAT rate is treated as standard rate (20%)
+      rates.forEach((r: any) => vatRateByListing.set(r.id, Number(r.master_products?.vat_rate ?? 0.2)))
+    }
+  }
+  const vatFromGross = (grossPence: number, listingId: unknown) => {
+    const rate = vatRateByListing.get(listingId) ?? 0.2
+    return Math.round((grossPence * rate) / (1 + rate))
+  }
+
   onProgress?.('Preparing rows...')
   const candidateRows: any[] = []
   for (const order of orders) {
@@ -138,18 +162,19 @@ export async function importOrdersForStore(
       result.skippedNoSku.push(order.sku)
       continue
     }
+    const shippingGross = order.shippingRevenueGrossPence ?? 0
     candidateRows.push({
       platform_listing_id: listingId,
       external_id: order.externalId,
       order_date: order.orderDate,
       qty: order.qty,
       sale_price_gross_pence: order.salePriceGrossPence,
-      sale_vat_pence: order.saleVatPence,
+      sale_vat_pence: order.saleVatPence ?? vatFromGross(order.salePriceGrossPence, listingId),
       fees_gross_pence: order.feesGrossPence,
       fees_vat_pence: order.feesVatPence,
       actual_shipping_cost_pence: order.actualShippingCostPence ?? null,
-      shipping_revenue_gross_pence: order.shippingRevenueGrossPence ?? 0,
-      shipping_revenue_vat_pence: order.shippingRevenueVatPence ?? 0,
+      shipping_revenue_gross_pence: shippingGross,
+      shipping_revenue_vat_pence: order.shippingRevenueVatPence === null ? vatFromGross(shippingGross, listingId) : (order.shippingRevenueVatPence ?? 0),
     })
   }
 
