@@ -8,6 +8,7 @@ import { marginTier, red, green, amber, muted, dim, text, border, pageStyle, eye
 import { pounds, percent } from '@/lib/format'
 import DateRangeBar from '@/components/DateRangeBar'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
+import { loadStores } from '@/lib/stores'
 
 type MarginRow = {
   channel: string
@@ -19,7 +20,9 @@ type MarginRow = {
 }
 
 type ChannelCard = {
-  channel: string
+  storeId: string
+  storeName: string
+  platform: string // e.g. OnBuy: the card's main title
   totalSalesPence: number
   totalQty: number
   orderCount: number
@@ -54,7 +57,7 @@ export default function ChannelOverviewPage() {
 
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
-    const [{ data: rows }, overheadSetup] = await Promise.all([fetchAll((from, to) =>
+    const [{ data: rows }, overheadSetup, stores] = await Promise.all([fetchAll((from, to) =>
       supabase
         .from('order_margins')
         .select('channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence')
@@ -62,33 +65,37 @@ export default function ChannelOverviewPage() {
         .lte('order_date', dateTo)
         .order('order_line_item_id')
         .range(from, to)
-    ), loadOverheadSetup()])
+    ), loadOverheadSetup(), loadStores()])
 
     // Share the overheads falling in this date range across these sales
     const marginRows = (rows || []) as MarginRow[]
     const allocation = allocateOverheads(marginRows, overheadSetup, dateFrom, dateTo)
-    const overheadByChannel = new Map<string, number>()
-    marginRows.forEach((r, i) => overheadByChannel.set(r.channel, (overheadByChannel.get(r.channel) || 0) + allocation.shares[i]))
+    const overheadByStore = new Map<string, number>()
+    marginRows.forEach((r, i) => overheadByStore.set(r.store_id, (overheadByStore.get(r.store_id) || 0) + allocation.shares[i]))
 
-    const byChannel = new Map<string, MarginRow[]>()
+    // One card per store (by id, so two stores with the same name stay separate)
+    const byStore = new Map<string, MarginRow[]>()
     for (const row of marginRows) {
-      if (!byChannel.has(row.channel)) byChannel.set(row.channel, [])
-      byChannel.get(row.channel)!.push(row)
+      if (!byStore.has(row.store_id)) byStore.set(row.store_id, [])
+      byStore.get(row.store_id)!.push(row)
     }
 
     const result: ChannelCard[] = []
-    for (const [channel, groupRows] of byChannel) {
+    for (const [storeId, groupRows] of byStore) {
+      const store = stores.find((st) => st.id === storeId)
       const totalRevenue = groupRows.reduce((s, r) => s + r.revenue_pence, 0)
       const totalProductCost = groupRows.reduce((s, r) => s + r.product_cost_pence, 0)
       const totalNetProfit = groupRows.reduce((s, r) => s + r.margin_pence, 0)
       const totalQty = groupRows.reduce((s, r) => s + r.effective_qty, 0)
       const orderCount = groupRows.length
       const grossProfit = totalRevenue - totalProductCost
-      const overhead = Math.round(overheadByChannel.get(channel) || 0)
+      const overhead = Math.round(overheadByStore.get(storeId) || 0)
       const netAfterOverheads = totalNetProfit - overhead
 
       result.push({
-        channel,
+        storeId,
+        storeName: store?.name ?? groupRows[0].channel,
+        platform: store?.platforms?.name ?? '',
         totalSalesPence: totalRevenue,
         totalQty,
         orderCount,
@@ -179,8 +186,9 @@ export default function ChannelOverviewPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px', marginTop: '20px' }}>
           {cards.map((c) => (
-            <div key={c.channel} style={{ ...cardStyle, marginTop: 0 }}>
-              <p style={{ ...cardTitle, margin: '0 0 12px', color: text }}>{c.channel}</p>
+            <div key={c.storeId} style={{ ...cardStyle, marginTop: 0 }}>
+              <p style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: text }}>{c.platform || c.storeName}</p>
+              <p style={{ ...cardTitle, margin: '2px 0 12px' }}>{c.platform ? c.storeName : ' '}</p>
               <p style={{ fontSize: '30px', fontWeight: 800, margin: '0 0 4px' }}>{pounds(c.totalSalesPence)}</p>
               <p style={{ fontSize: '12px', color: dim, margin: '0 0 14px' }}>
                 {c.orderCount} orders · {c.totalQty} units · {pounds(c.aovPence)} avg order
