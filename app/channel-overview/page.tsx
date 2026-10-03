@@ -11,6 +11,7 @@ import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 import { loadStores } from '@/lib/stores'
 
 type MarginRow = {
+  order_line_item_id: string
   channel: string
   store_id: string
   effective_qty: number
@@ -23,6 +24,7 @@ type ChannelCard = {
   storeId: string
   storeName: string
   platform: string // e.g. OnBuy: the card's main title
+  grossSalesPence: number // what customers paid, inc. VAT and delivery
   totalSalesPence: number
   totalQty: number
   orderCount: number
@@ -57,15 +59,26 @@ export default function ChannelOverviewPage() {
 
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
-    const [{ data: rows }, overheadSetup, stores] = await Promise.all([fetchAll((from, to) =>
+    const [{ data: rows }, { data: grossRows }, overheadSetup, stores] = await Promise.all([fetchAll((from, to) =>
       supabase
         .from('order_margins')
-        .select('channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence')
+        .select('order_line_item_id, channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
         .order('order_line_item_id')
         .range(from, to)
+    ),
+    // Gross sales (inc. VAT and delivery) aren't in order_margins, so read them from the order lines
+    fetchAll((from, to) =>
+      supabase
+        .from('order_line_items')
+        .select('id, sale_price_gross_pence, shipping_revenue_gross_pence')
+        .gte('order_date', dateFrom)
+        .lte('order_date', dateTo)
+        .order('id')
+        .range(from, to)
     ), loadOverheadSetup(), loadStores()])
+    const grossById = new Map((grossRows || []).map((g) => [g.id, Number(g.sale_price_gross_pence) + Number(g.shipping_revenue_gross_pence || 0)]))
 
     // Share the overheads falling in this date range across these sales
     const marginRows = (rows || []) as MarginRow[]
@@ -96,6 +109,7 @@ export default function ChannelOverviewPage() {
         storeId,
         storeName: store?.name ?? groupRows[0].channel,
         platform: store?.platforms?.name ?? '',
+        grossSalesPence: groupRows.reduce((s, r) => s + (grossById.get(r.order_line_item_id) || 0), 0),
         totalSalesPence: totalRevenue,
         totalQty,
         orderCount,
@@ -130,6 +144,8 @@ export default function ChannelOverviewPage() {
     return marginTier(pct, ranges).fg
   }
 
+  const oneLine: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+
   const row = (label: string, value: React.ReactNode, color: string = text, divider = false) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '7px 0', borderTop: divider ? `1px solid ${border}` : 'none' }}>
       <span style={{ color: muted }}>{label}</span>
@@ -141,7 +157,7 @@ export default function ChannelOverviewPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Dashboards</p>
       <h1 style={pageTitle}>Channel Overview</h1>
-      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s share of overheads.</p>
+      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s share of overheads. Gross sales is what customers paid (including VAT and delivery); net sales takes off the VAT for VAT-registered stores, and margins are worked out from net sales.</p>
 
       <DateRangeBar
         from={rangeFrom}
@@ -187,10 +203,21 @@ export default function ChannelOverviewPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px', marginTop: '20px' }}>
           {cards.map((c) => (
             <div key={c.storeId} style={{ ...cardStyle, marginTop: 0 }}>
-              <p style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: text }}>{c.platform || c.storeName}</p>
-              <p style={{ ...cardTitle, margin: '2px 0 12px' }}>{c.platform ? c.storeName : ' '}</p>
-              <p style={{ fontSize: '30px', fontWeight: 800, margin: '0 0 4px' }}>{pounds(c.totalSalesPence)}</p>
-              <p style={{ fontSize: '12px', color: dim, margin: '0 0 14px' }}>
+              {/* Every heading line is kept to one line (long names are cut short with "…") so the
+                  rows below line up across cards */}
+              <p style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: text, ...oneLine }} title={c.platform || c.storeName}>{c.platform || c.storeName}</p>
+              <p style={{ ...cardTitle, margin: '2px 0 12px', ...oneLine }} title={c.storeName}>{c.platform ? c.storeName : ' '}</p>
+              <div style={{ display: 'flex', gap: '20px', margin: '0 0 4px' }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: '11px', color: muted, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gross sales</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, ...oneLine }}>{pounds(c.grossSalesPence)}</p>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: '11px', color: muted, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Net sales</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, ...oneLine }}>{pounds(c.totalSalesPence)}</p>
+                </div>
+              </div>
+              <p style={{ fontSize: '12px', color: dim, margin: '6px 0 14px', ...oneLine }}>
                 {c.orderCount} orders · {c.totalQty} units · {pounds(c.aovPence)} avg order
               </p>
               {row('Gross margin', percent(c.grossMarginPercent), marginColor(c.grossMarginPercent), true)}
