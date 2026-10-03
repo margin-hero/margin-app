@@ -1,5 +1,6 @@
 'use client'
 
+import { ukDate } from '@/lib/format'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { loadCourierServices, CourierService, priceOn, today, testTenantId } from '@/lib/shipping'
@@ -83,7 +84,7 @@ export default function CouriersPage() {
       setStatus(error.message.includes('duplicate') ? 'There is already a price starting on that date. Edit that one instead.' : `Error: ${error.message}`)
       return
     }
-    setStatus(`New price saved from ${changeFrom}. Orders before then keep the old price.`)
+    setStatus(`New price saved from ${ukDate(changeFrom)}. Orders before then keep the old price.`)
     setChangePrice('')
     setChangeFrom(today())
     load()
@@ -204,7 +205,7 @@ export default function CouriersPage() {
                     </td>
                     <td style={tdStyle}>
                       {current ? pounds(current.price_pence) : <span style={{ color: red }}>none yet</span>}
-                      {future.length > 0 && <span style={{ color: muted, fontSize: '12px', marginLeft: '8px' }}>→ {pounds(future[0].price_pence)} from {future[0].effective_from}</span>}
+                      {future.length > 0 && <span style={{ color: muted, fontSize: '12px', marginLeft: '8px' }}>→ {pounds(future[0].price_pence)} from {ukDate(future[0].effective_from)}</span>}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {editServiceId === s.id ? (
@@ -228,7 +229,7 @@ export default function CouriersPage() {
                           <tbody>
                             {s.courier_service_prices.map((p) => (
                               <tr key={p.id}>
-                                <td style={{ padding: '4px 16px 4px 0', color: muted, fontSize: '13px' }}>from {p.effective_from}</td>
+                                <td style={{ padding: '4px 16px 4px 0', color: muted, fontSize: '13px' }}>from {ukDate(p.effective_from)}</td>
                                 <td style={{ padding: '4px 16px 4px 0', color: text, fontWeight: 700 }}>
                                   {editPriceId === p.id ? (
                                     <input value={editPriceValue} onChange={(e) => setEditPriceValue(e.target.value)} style={{ ...inputStyle, width: '90px' }} />

@@ -19,3 +19,17 @@ export function vatSplitNote(amountText: string, vatRateText: string): string | 
   if (vat === 0) return `${pounds(gross)} counted everywhere (no VAT on this).`
   return `${pounds(gross)} inc. VAT = ${pounds(gross - vat)} + ${pounds(vat)} VAT. VAT-registered stores count ${pounds(gross - vat)}; other stores count the full ${pounds(gross)}.`
 }
+
+// UK-friendly date for display: "2026-09-01" -> "01-09-2026". Dates are still stored
+// and compared as YYYY-MM-DD; only use this when showing a date.
+export function ukDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : iso
+}
+
+// "2026-09" -> "Sep 2026" (chart labels)
+export function ukMonth(yearMonth: string): string {
+  const [y, m] = yearMonth.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+}

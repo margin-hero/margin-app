@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { readSpreadsheet } from '@/lib/readSpreadsheet'
+import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
@@ -44,14 +44,14 @@ export default function UploadPage() {
     parsedRows.forEach((row, i) => {
       const qty = parseInt(row.qty)
       // Rows without an order number, SKU, valid date or quantity can't be imported safely
-      if (!row.external_id?.trim() || !row.platform_sku?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.order_date?.trim() || '') || !(qty > 0)) {
+      if (!row.external_id?.trim() || !row.platform_sku?.trim() || !toIsoDate(row.order_date || '') || !(qty > 0)) {
         invalid.push(i + 2) // +2 = spreadsheet row number (header is row 1)
         return
       }
       normalized.push({
         sku: row.platform_sku.trim(),
         externalId: row.external_id.trim(),
-        orderDate: row.order_date.trim(),
+        orderDate: toIsoDate(row.order_date)!,
         qty,
         salePriceGrossPence: pence(row.sale_price_pounds),
         saleVatPence: pence(row.sale_vat_pounds),
@@ -65,7 +65,7 @@ export default function UploadPage() {
     setInvalidRows(invalid)
     setStatus(
       `Found ${normalized.length} rows — review below, then confirm.` +
-      (invalid.length ? ` ${invalid.length} row(s) can't be imported (missing order number, SKU, quantity, or date not written as YYYY-MM-DD): spreadsheet row ${invalid.join(', ')}.` : '')
+      (invalid.length ? ` ${invalid.length} row(s) can't be imported (missing order number, SKU, quantity, or a date that isn't DD-MM-YYYY, DD/MM/YYYY or YYYY-MM-DD): spreadsheet row ${invalid.join(', ')}.` : '')
     )
   }
 

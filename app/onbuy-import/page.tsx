@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { readSpreadsheet } from '@/lib/readSpreadsheet'
 import { Store } from '@/lib/stores'
-import { pounds } from '@/lib/format'
+import { pounds, ukDate } from '@/lib/format'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
 import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
@@ -148,7 +148,7 @@ export default function OnBuyImportPage() {
                   <tr key={row.externalId + row.sku}>
                     <td style={tdStyle}>{row.externalId}</td>
                     <td style={tdStyle}>{row.sku}</td>
-                    <td style={tdStyle}>{row.orderDate}</td>
+                    <td style={tdStyle}>{ukDate(row.orderDate)}</td>
                     <td style={tdStyle}>{row.qty}</td>
                     <td style={tdStyle}>{pounds(row.salePriceGrossPence)}</td>
                     <td style={tdStyle}>{pounds(row.shippingRevenueGrossPence ?? 0)}</td>

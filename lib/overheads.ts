@@ -1,3 +1,4 @@
+import { ukDate } from './format'
 import { supabase } from './supabase'
 import { fetchAll } from './fetchAll'
 
@@ -101,10 +102,10 @@ export function overheadInRange(o: Overhead, from: string, to: string, netOfVat:
 export function describeSchedule(o: Overhead): string {
   const pounds = `£${(o.amount_pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   if (o.kind === 'one_off') {
-    return `${pounds} one-off on ${o.start_date}, spread over ${o.spread_months} month${o.spread_months === 1 ? '' : 's'}`
+    return `${pounds} one-off on ${ukDate(o.start_date)}, spread over ${o.spread_months} month${o.spread_months === 1 ? '' : 's'}`
   }
   const freq = FREQUENCIES.find((f) => f.code === o.frequency)?.label.toLowerCase()
-  return `${pounds} ${freq} from ${o.start_date}${o.end_date ? ` to ${o.end_date}` : ''}`
+  return `${pounds} ${freq} from ${ukDate(o.start_date)}${o.end_date ? ` to ${ukDate(o.end_date)}` : ''}`
 }
 
 // ---- Loading ----

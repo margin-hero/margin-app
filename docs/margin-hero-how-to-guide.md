@@ -69,7 +69,7 @@ One row per cost. The products must already exist (add them with Catalog Import 
 | `description` | Optional. Use it to tell apart two costs of the same type, e.g. two "Other" costs | `Tissue paper` |
 | `amount` | The cost in pounds, **including any VAT you pay** | `0.85` |
 | `vat_rate` | `0`, `5` or `20`. Required: there's no default, because VAT differs per cost (imports and in-house labour are usually 0%) | `20` |
-| `effective_from` | The date the cost starts, written `2026-01-01`. Date it on or before the oldest order it should apply to. | `2026-01-01` |
+| `effective_from` | The date the cost starts, e.g. `01-01-2026`, `01/01/2026` or `2026-01-01` (always day before month). Date it on or before the oldest order it should apply to. | `01-01-2026` |
 
 **Landed cost:** either enter one **Landed cost (all-in)**, or break it down into **Product cost**, **Inbound freight** and **Import duty**. Don't do both for the same product, or it's counted twice. Margin Hero will warn you if you do.
 
@@ -268,7 +268,7 @@ Your file needs these column headings in the first row, spelled exactly like thi
 | Column | What to put in it | Example |
 |---|---|---|
 | `external_id` | The order number from the channel. It must be different for every line. | `ORD-10045` |
-| `order_date` | The date of the sale, written year-month-day | `2026-09-14` |
+| `order_date` | The date of the sale, e.g. `14-09-2026`, `14/09/2026` or `2026-09-14` (always day before month) | `14-09-2026` |
 | `platform_sku` | Your SKU for this product on that channel | `MUG-BLUE-01` |
 | `qty` | How many were sold | `2` |
 | `sale_price_pounds` | What the customer paid, **including VAT**, in pounds | `24.99` |

@@ -1,5 +1,6 @@
 'use client'
 
+import { ukDate } from '@/lib/format'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -142,7 +143,7 @@ export default function CostsPage() {
     if (r.ordersNoCost === 0) return null
     // A cost exists but starts after some orders → it needs backdating, not adding
     if (r.landedPence !== null || r.futureCostFrom) {
-      return `${r.ordersNoCost} order line(s) before the cost starts: backdate it to ${r.earliestNoCost} or earlier`
+      return `${r.ordersNoCost} order line(s) before the cost starts: backdate it to ${ukDate(r.earliestNoCost)} or earlier`
     }
     return `${r.ordersNoCost} order line(s) have no product cost (showing inflated margin)`
   }

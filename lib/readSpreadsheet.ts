@@ -45,3 +45,20 @@ function cellToText(key: string, value: unknown, dateColumns: string[]): string 
   }
   return String(value ?? '').trim()
 }
+
+// A typed date from a spreadsheet -> "YYYY-MM-DD", or null if it isn't a real date.
+// Accepts 2026-09-01, and UK day-first 01-09-2026 / 01/09/2026 / 1/9/2026 (any time after
+// the date is ignored). Never US month-first.
+export function toIsoDate(text: string): string | null {
+  const value = (text || '').trim()
+  let y: string, m: string, d: string
+  const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\b/)
+  const uk = value.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b/)
+  if (iso) [, y, m, d] = iso
+  else if (uk) [, d, m, y] = uk
+  else return null
+  const result = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+  // Reject impossible dates like 31-02-2026
+  const check = new Date(`${result}T00:00:00Z`)
+  return !isNaN(check.getTime()) && check.toISOString().slice(0, 10) === result ? result : null
+}

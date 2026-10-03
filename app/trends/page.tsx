@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
-import { pounds } from '@/lib/format'
+import { pounds, ukMonth } from '@/lib/format'
 import {
   chartRevenue, chartProfit, panelRaised, border, muted, text, red,
   pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, marginTier,
@@ -67,7 +67,7 @@ export default function TrendsPage() {
 
   const months = Array.from(byMonth.entries()).sort(([a], [b]) => a.localeCompare(b))
   const chartData = months.map(([month, v]) => ({
-    month,
+    month: ukMonth(month),
     Revenue: v.revenuePence / 100,
     'Net profit': v.profitPence / 100,
   }))

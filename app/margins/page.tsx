@@ -2,7 +2,7 @@ import { connection } from 'next/server'
 import Link from 'next/link'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadSkuStoreMargins, cellPercent, cellPerUnitPence, MarginCell } from '@/lib/skuStoreMargins'
-import { pounds } from '@/lib/format'
+import { pounds, ukDate } from '@/lib/format'
 import { lime, bg, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend } from '@/lib/theme'
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
@@ -158,7 +158,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
       <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '18px' }}>
           <p style={{ ...cardTitle, margin: 0 }}>
-            Net margin % and net profit {perUnit ? 'per unit' : 'total'}{includeOverheads ? ' after overheads' : ''} · {range ? `${range.from} to ${range.to}` : 'all time'}
+            Net margin % and net profit {perUnit ? 'per unit' : 'total'}{includeOverheads ? ' after overheads' : ''} · {range ? `${ukDate(range.from)} to ${ukDate(range.to)}` : 'all time'}
           </p>
           <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
             <span><span style={{ color: red }}>●</span> {legend[0]}</span>

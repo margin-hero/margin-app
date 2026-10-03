@@ -2,7 +2,7 @@ import { connection } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadMarginRanges } from '@/lib/marginRanges'
-import { pounds } from '@/lib/format'
+import { pounds, ukDate } from '@/lib/format'
 import { red, muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle, marginTier } from '@/lib/theme'
 
 // Unlisted page (not in the sidebar): every order line with its cost breakdown, for
@@ -55,7 +55,7 @@ export default async function OrderLinesPage() {
                 const margin = row.margin_percent === null ? null : Number(row.margin_percent)
                 return (
                   <tr key={row.order_line_item_id}>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: muted }}>{row.order_date}</td>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: muted }}>{ukDate(row.order_date)}</td>
                     <td style={tdStyle}>{row.product_name}</td>
                     <td style={tdStyle}>{row.channel}</td>
                     <td style={num}>{row.qty}</td>

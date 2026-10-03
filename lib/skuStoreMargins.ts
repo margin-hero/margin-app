@@ -1,3 +1,4 @@
+import { ukDate } from './format'
 import { supabase } from './supabase'
 import { fetchAll } from './fetchAll'
 import { loadOverheadSetup, allocateOverheads } from './overheads'
@@ -74,7 +75,7 @@ export async function loadSkuStoreMargins(
     const to = range?.to ?? dates[dates.length - 1]
     const allocation = allocateOverheads(data, await loadOverheadSetup(), from, to)
     overheadShares = allocation.shares
-    overheadNote = `Includes £${(allocation.totalPence / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} of overheads from ${from} to ${to}, shared across sales.`
+    overheadNote = `Includes £${(allocation.totalPence / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} of overheads from ${ukDate(from)} to ${ukDate(to)}, shared across sales.`
   }
 
   // Sum revenue, margin and units per product × store FIRST; percentages come from the totals

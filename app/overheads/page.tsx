@@ -1,5 +1,6 @@
 'use client'
 
+import { ukDate } from '@/lib/format'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
@@ -113,7 +114,7 @@ export default function OverheadsPage() {
   // Genuine change: end the old amount the day before, start the new one (history kept)
   async function changeAmountFrom(o: Overhead) {
     if (!validAmount(changeAmount) || !changeFrom || changeFrom <= o.start_date) {
-      setStatus(`Enter the new amount and a start date after ${o.start_date}.`)
+      setStatus(`Enter the new amount and a start date after ${ukDate(o.start_date)}.`)
       return
     }
     const { error: endError } = await supabase.from('overheads').update({ end_date: addDays(changeFrom, -1) }).eq('id', o.id)
@@ -140,13 +141,13 @@ export default function OverheadsPage() {
     }
     setChangingId(null)
     setChangeAmount('')
-    setStatus(`${o.name} changes to £${Number(changeAmount).toFixed(2)} from ${changeFrom}. Earlier periods keep the old amount.`)
+    setStatus(`${o.name} changes to £${Number(changeAmount).toFixed(2)} from ${ukDate(changeFrom)}. Earlier periods keep the old amount.`)
     load()
   }
 
   async function stopFrom(o: Overhead) {
     if (!stopDate || stopDate < o.start_date) {
-      setStatus(`The last day must be on or after ${o.start_date}.`)
+      setStatus(`The last day must be on or after ${ukDate(o.start_date)}.`)
       return
     }
     const { error } = await supabase.from('overheads').update({ end_date: stopDate }).eq('id', o.id)
@@ -155,7 +156,7 @@ export default function OverheadsPage() {
       return
     }
     setStoppingId(null)
-    setStatus(`${o.name} stops after ${stopDate}.`)
+    setStatus(`${o.name} stops after ${ukDate(stopDate)}.`)
     load()
   }
 
@@ -349,7 +350,7 @@ export default function OverheadsPage() {
                             {describeSchedule(o)}
                             <span style={{ color: muted }}> · {o.vat_rate > 0 ? `inc. ${(o.vat_rate * 100).toFixed(0)}% VAT` : 'no VAT'}</span>
                             {ended && <span style={{ color: dim }}> · ended</span>}
-                            {future && <span style={{ color: amber }}> · starts {o.start_date}</span>}
+                            {future && <span style={{ color: amber }}> · starts {ukDate(o.start_date)}</span>}
                           </>
                         )}
                       </td>

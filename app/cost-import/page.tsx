@@ -1,10 +1,11 @@
 'use client'
 
+import { ukDate } from '@/lib/format'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { readSpreadsheet } from '@/lib/readSpreadsheet'
+import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
 import { loadCostTypes, CostType } from '@/lib/costTypes'
 import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, linkButton } from '@/lib/theme'
 
@@ -114,7 +115,7 @@ export default function CostImportPage() {
       const description = (r.description || '').trim() || null
       const amountText = (r.amount || '').replace('£', '').replace(/,/g, '').trim()
       const vatText = (r.vat_rate || '').trim()
-      const effectiveFrom = (r.effective_from || '').trim()
+      const effectiveFrom = toIsoDate(r.effective_from || '') ?? (r.effective_from || '').trim()
 
       if (!sku && !typeText && !amountText && !vatText && !effectiveFrom) return // blank row
 
@@ -126,7 +127,7 @@ export default function CostImportPage() {
       if (amountText === '' || !Number.isFinite(amount) || amount < 0) return problems.push({ row, message: `amount "${r.amount}" isn't a valid amount in pounds.` })
       const vatRate = parseVatRate(vatText)
       if (vatRate === null) return problems.push({ row, message: `vat_rate "${vatText}" must be 0, 5 or 20 (a deliberate choice per cost, so it can't be left empty).` })
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return problems.push({ row, message: `effective_from "${effectiveFrom}" must be a date written as YYYY-MM-DD (or an Excel date cell).` })
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return problems.push({ row, message: `effective_from "${effectiveFrom}" isn't a date: write it as DD-MM-YYYY, DD/MM/YYYY or YYYY-MM-DD (or use an Excel date cell).` })
 
       const amountPence = Math.round(amount * 100)
       const key = keyOf(productId, type.code, description, effectiveFrom)
@@ -136,7 +137,7 @@ export default function CostImportPage() {
           alreadyThere++
           return
         }
-        return problems.push({ row, message: `${sku} already has "${type.label}"${description ? ` (${description})` : ''} from ${effectiveFrom} at £${(existingPence / 100).toFixed(2)}. Not changed: to correct it use Edit costs, or for a genuine price change use a new effective_from date.` })
+        return problems.push({ row, message: `${sku} already has "${type.label}"${description ? ` (${description})` : ''} from ${ukDate(effectiveFrom)} at £${(existingPence / 100).toFixed(2)}. Not changed: to correct it use Edit costs, or for a genuine price change use a new effective_from date.` })
       }
       const earlier = planned.get(key)
       if (earlier) {
@@ -200,7 +201,7 @@ export default function CostImportPage() {
         <p style={{ fontSize: '14px', color: muted, margin: '0 0 12px', lineHeight: 1.6 }}>
           CSV or Excel, <strong style={{ color: text }}>one row per cost</strong>. Columns: <code>standard_sku</code>, <code>cost_type</code>,{' '}
           <code>description</code> (optional), <code>amount</code> (£, including any VAT you pay), <code>vat_rate</code> (0, 5 or 20, required),{' '}
-          <code>effective_from</code> (YYYY-MM-DD, required: date it before your oldest order it should apply to).
+          <code>effective_from</code> (a date such as 01-09-2026, required: date it before your oldest order it should apply to).
         </p>
         <button onClick={downloadTemplate} style={{ ...linkButton, padding: 0 }}>Download template ↓</button>
         <div style={{ marginTop: '18px' }}>

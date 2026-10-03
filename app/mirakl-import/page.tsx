@@ -1,5 +1,6 @@
 'use client'
 
+import { ukDate } from '@/lib/format'
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
@@ -136,7 +137,7 @@ export default function MiraklImportPage() {
               {preview.map((row) => (
                 <tr key={row.externalId}>
                   <td style={tdStyle}>{row.sku}</td>
-                  <td style={tdStyle}>{row.orderDate}</td>
+                  <td style={tdStyle}>{ukDate(row.orderDate)}</td>
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>

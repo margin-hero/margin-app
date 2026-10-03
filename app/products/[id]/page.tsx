@@ -7,7 +7,7 @@ import { loadStores, Store, storeLabel } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
 import Link from 'next/link'
-import { vatSplitNote } from '@/lib/format'
+import { vatSplitNote, ukDate } from '@/lib/format'
 import { lime, red, amber, muted, text, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 type Product = {
@@ -327,13 +327,12 @@ export default function ProductDetailPage() {
   const cancelButton: React.CSSProperties = { ...linkButton, color: muted }
   const deleteButton: React.CSSProperties = { ...linkButton, color: red }
   // Under a date box: when this product's first order was, in amber if the date misses some orders
-  const niceDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   const dateHint = (date: string) => {
     if (!firstOrderDate || !date) return null
     const missesOrders = date > firstOrderDate
     return (
       <div style={{ fontSize: '11px', color: missesOrders ? amber : muted, marginTop: '4px', maxWidth: '240px' }}>
-        First order for this product: {niceDate(firstOrderDate)}.{missesOrders ? ` Orders before ${niceDate(date)} won't get this cost.` : ''}
+        First order for this product: {ukDate(firstOrderDate)}.{missesOrders ? ` Orders before ${ukDate(date)} won't get this cost.` : ''}
       </div>
     )
   }
@@ -440,7 +439,7 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>{row.description || ''}</td>
                   <td style={tdStyle}>£{(row.amount_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
-                  <td style={tdStyle}>{row.effective_from}</td>
+                  <td style={tdStyle}>{ukDate(row.effective_from)}</td>
                   <td style={tdStyle}>
                     <button onClick={() => startEditCogs(row)} style={linkButton}>
                       Edit
@@ -608,7 +607,7 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>£{(row.courier_cost_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
                   <td style={tdStyle}>{row.service_level}</td>
-                  <td style={tdStyle}>{row.effective_from}</td>
+                  <td style={tdStyle}>{ukDate(row.effective_from)}</td>
                   <td style={tdStyle}>
                     <button onClick={() => startEditShipping(row)} style={linkButton}>
                       Edit
