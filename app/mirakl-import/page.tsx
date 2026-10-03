@@ -55,10 +55,17 @@ export default function MiraklImportPage() {
       }
 
       const normalized: NormalizedOrder[] = []
+      const noOrderAmount: string[] = [] // order lines held back because the file has no sale price for them
       for (const [orderLineId, groupRows] of groups) {
         const first = groupRows[0]
         const sumByType = (type: string) =>
           groupRows.filter((r) => r['Type'] === type).reduce((sum, r) => sum + (parseFloat(r['Amount']) || 0), 0)
+        const hasType = (type: string) => groupRows.some((r) => r['Type'] === type)
+        // Some retailers (e.g. B&Q) give the sale VAT as its own "tax" row, with "Order amount"
+        // net of VAT. Others (e.g. Debenhams) have no tax rows: "Order amount" is the full
+        // price including VAT, so the VAT is worked out from the product's VAT rate (null).
+        const saleTaxReported = hasType('Order amount tax')
+        const shippingTaxReported = hasType('Shipping tax')
 
         const orderAmount = sumByType('Order amount')
         const orderAmountTax = sumByType('Order amount tax')
@@ -67,25 +74,38 @@ export default function MiraklImportPage() {
         const commission = sumByType('Commission')
         const commissionTax = sumByType('Commission tax')
 
+        // A line with fees but no "Order amount" (e.g. a blank row from a damaged CSV) would
+        // otherwise import as a £0 sale, so hold it back and say so
+        if (!hasType('Order amount') || orderAmount <= 0) {
+          noOrderAmount.push(String(orderLineId).trim())
+          continue
+        }
+
         normalized.push({
           sku: String(first['Offer SKU']).trim(),
           externalId: String(orderLineId).trim(),
           orderDate: parseMiraklDate(first['Transaction Date'] || first['Date created']),
           qty: parseInt(first['Quantity']) || 1,
           salePriceGrossPence: Math.round((orderAmount + orderAmountTax) * 100),
-          saleVatPence: Math.round(orderAmountTax * 100),
+          saleVatPence: saleTaxReported ? Math.round(orderAmountTax * 100) : null,
           feesGrossPence: Math.round(Math.abs(commission + commissionTax) * 100),
           feesVatPence: Math.round(Math.abs(commissionTax) * 100),
           actualShippingCostPence: null, // Mirakl doesn't report real courier cost — uses your shipping_rules instead
           shippingRevenueGrossPence: Math.round((shippingCharge + shippingTax) * 100),
-          shippingRevenueVatPence: Math.round(shippingTax * 100),
+          shippingRevenueVatPence: shippingTaxReported ? Math.round(shippingTax * 100) : null,
         })
       }
 
       setAllOrders(normalized)
       setPreview(normalized.slice(0, 20))
       setSkippedRefunds(refundRows.length)
-      setStatus(`Found ${normalized.length} order lines. Skipped ${refundRows.length} refund-related rows (handled later). Review below, then confirm.`)
+      setStatus(
+        `Found ${normalized.length} order lines. Skipped ${refundRows.length} refund-related rows (handled later).` +
+        (noOrderAmount.length
+          ? ` Warning: held back ${noOrderAmount.length} order line(s) with no "Order amount" in the file, so they won't be imported: ${noOrderAmount.slice(0, 10).join(', ')}${noOrderAmount.length > 10 ? ' and more' : ''}. Check the file (a blank row usually means it was damaged when saved as CSV).`
+          : '') +
+        ' Review below, then confirm.'
+      )
     }
     reader.readAsBinaryString(file)
   }
@@ -129,6 +149,7 @@ export default function MiraklImportPage() {
                 <th style={thStyle}>Order Date</th>
                 <th style={thStyle}>Qty</th>
                 <th style={thStyle}>Sale Price</th>
+                <th style={thStyle}>Sale VAT</th>
                 <th style={thStyle}>Fees</th>
                 <th style={thStyle}>Shipping Revenue</th>
               </tr>
@@ -140,6 +161,7 @@ export default function MiraklImportPage() {
                   <td style={tdStyle}>{ukDate(row.orderDate)}</td>
                   <td style={tdStyle}>{row.qty}</td>
                   <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
+                  <td style={tdStyle}>{row.saleVatPence === null ? 'From product rate' : `£${(row.saleVatPence / 100).toFixed(2)}`}</td>
                   <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>£{((row.shippingRevenueGrossPence || 0) / 100).toFixed(2)}</td>
                 </tr>

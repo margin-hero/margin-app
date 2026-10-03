@@ -220,6 +220,7 @@ The **transaction / accounting export** from that retailer's seller portal, save
 
 ### What Margin Hero takes from the report
 - **Sale price:** the order amount plus its VAT.
+- **VAT on the sale:** some retailers (e.g. B&Q) show the VAT as its own row, and Margin Hero uses that. Others (e.g. Debenhams) don't: their order amount already includes VAT, so Margin Hero works the VAT out from the product's VAT rate (the preview shows "From product rate"). Check each product's VAT rate on its product page.
 - **Fees:** the retailer's commission plus its VAT.
 - **Shipping charged to the customer:** recorded separately as income.
 - **Your shipping cost:** these reports don't include what you paid the courier, so Margin Hero always uses the shipping costs you've set up for that product. Make sure these are filled in.
