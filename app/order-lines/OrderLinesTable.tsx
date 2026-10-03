@@ -47,18 +47,25 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
     if (!window.confirm(`Permanently delete ${ids.length} order line(s)? This can't be undone (re-upload the file to bring them back).`)) return
     setBusy(true)
     setStatus('Deleting...')
-    // In batches, so a big selection doesn't make one request too long
+    // In batches, so a big selection doesn't make one request too long. Count what was really
+    // deleted: if the database's row security blocks it, nothing is deleted and no error is given.
+    let deleted = 0
     for (let i = 0; i < ids.length; i += 200) {
-      const { error } = await supabase.from('order_line_items').delete().in('id', ids.slice(i, i + 200))
+      const { data, error } = await supabase.from('order_line_items').delete().in('id', ids.slice(i, i + 200)).select('id')
       if (error) {
         setStatus(`Error deleting: ${error.message}`)
         setBusy(false)
         router.refresh()
         return
       }
+      deleted += data?.length ?? 0
     }
     setSelected(new Set())
-    setStatus(`Deleted ${ids.length} order line(s).`)
+    setStatus(
+      deleted === ids.length
+        ? `Deleted ${deleted} order line(s).`
+        : `Warning: only ${deleted} of ${ids.length} order line(s) were deleted. The database blocked the rest (check the delete permission migration has been run).`
+    )
     setBusy(false)
     router.refresh()
   }

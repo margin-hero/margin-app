@@ -22,7 +22,7 @@
 - **Lock down everything before real data goes live.** Right now every app page on marginhero.co.uk works without logging in, and the temporary `dev_allow_all_TEMPORARY` policies let the public anon key read and change every table. Checklist:
   1. Supabase Auth: every page except `/` and `/pricing` requires login (redirect to a login page otherwise).
   2. Replace every `dev_allow_all_TEMPORARY` policy with tenant-scoped RLS (see above); check the views respect it.
-  3. Remove or hide testing-only tools: `/order-lines` (unlisted, has **Delete selected** for order lines, added 2026-10-03), or restrict them to an admin user.
+  3. Remove or hide testing-only tools: `/order-lines` (unlisted, has **Delete selected** for order lines, added 2026-10-03), or restrict them to an admin user. Also undo migration `20261003100000_allow_delete_order_lines_TEMPORARY.sql` (delete grant + `dev_allow_delete_TEMPORARY` policy on `order_line_items`).
   4. Re-check destructive actions (delete costs / listings / orders) only affect the user's own tenant.
 - ~~**Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.**~~ Done 2026-09-30.
 - ~~**TikTok sale VAT for VAT-registered stores.**~~ Done 2026-10-02 (importEngine works it out from the product's VAT rate; OnBuy uses the same). Original note: TikTok settlement reports show £0 VAT for UK-established sellers (TikTok only fills it when it collects the VAT itself), so the importer records the whole sale as net revenue. For a VAT-registered store that overstates revenue and margin by the VAT. Fix: when the report's VAT is £0 and the store is VAT registered, work out the VAT from each product's VAT rate (`master_products.vat_rate`) at import time.
