@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadSkuStoreMargins, cellPercent, cellPerUnitPence, MarginCell } from '@/lib/skuStoreMargins'
 import { pounds, ukDate } from '@/lib/format'
-import { lime, bg, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend } from '@/lib/theme'
+import { lime, bg, panel, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend } from '@/lib/theme'
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -85,14 +85,25 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   }
 
   const pill = (on: boolean): React.CSSProperties => ({ fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: '999px', textDecoration: 'none', background: on ? lime : 'transparent', color: on ? bg : muted, border: `1px solid ${on ? lime : border}` })
-  const headStyle: React.CSSProperties = { fontSize: '12px', color: muted, fontWeight: 600, padding: '4px', textAlign: 'center', verticalAlign: 'bottom' }
+  // Every store column is the same fixed width, so the grid stays neat however long the
+  // store names are, and a dozen stores still fit. Long names are cut short ("…") with
+  // the full name on hover. The product column stays pinned on the left when scrolling.
+  const PRODUCT_COL = 240
+  const STORE_COL = 96
+  const GAP = 6
+  const tableWidth = PRODUCT_COL + (stores.length + 1) * STORE_COL + (stores.length + 3) * GAP
+  const oneLine: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+  const pinned: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: panel }
+  const headStyle: React.CSSProperties = { fontSize: '11px', color: muted, fontWeight: 600, padding: '4px 2px', textAlign: 'center', verticalAlign: 'bottom', overflow: 'hidden' }
   const cellStyle = (bgColour: string, fg: string, outlined = false): React.CSSProperties => ({
     background: bgColour,
     color: fg,
     textAlign: 'center',
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: 800,
-    padding: '10px 6px',
+    padding: '9px 4px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
     borderRadius: '10px',
     outline: outlined ? `2px solid ${fg}` : 'none',
     outlineOffset: '-2px',
@@ -119,7 +130,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
     return (
       <td key={key} style={cellStyle(tier.bg, tier.fg, outlined)}>
         {m === null ? '—' : `${m}%`}
-        {gbp !== null && <div style={{ fontSize: '12px', fontWeight: 600, color: text, marginTop: '2px' }}>{pounds(gbp)}</div>}
+        {gbp !== null && <div style={{ fontSize: '11px', fontWeight: 600, color: text, marginTop: '2px' }}>{pounds(gbp)}</div>}
       </td>
     )
   }
@@ -167,17 +178,25 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'separate', borderSpacing: '6px', width: '100%', minWidth: `${280 + stores.length * 120}px` }}>
+          <table style={{ borderCollapse: 'separate', borderSpacing: `${GAP}px`, tableLayout: 'fixed', width: `${tableWidth}px` }}>
+            <colgroup>
+              <col style={{ width: `${PRODUCT_COL}px` }} />
+              {[{ id: 'all' }, ...stores].map((c) => <col key={c.id} style={{ width: `${STORE_COL}px` }} />)}
+            </colgroup>
             <thead>
               <tr>
-                <th style={{ ...headStyle, textAlign: 'left' }}>
+                <th style={{ ...headStyle, ...pinned, textAlign: 'left', fontSize: '12px' }}>
                   <Link href={href({ sort: '', by: '', dir: '' })} style={{ color: sort === 'name' ? lime : muted, textDecoration: 'none' }}>SKU · Product{sort === 'name' ? ' (A–Z)' : ''}</Link>
                 </th>
-                <th style={{ ...headStyle, color: text }}>All stores{sortLinks('all')}</th>
+                <th style={{ ...headStyle, color: text }}>
+                  <div style={{ ...oneLine, fontWeight: 800, fontSize: '12px' }}>All stores</div>
+                  <div>{' '}</div>
+                  {sortLinks('all')}
+                </th>
                 {stores.map((store) => (
-                  <th key={store.id} style={headStyle}>
-                    <div style={{ color: text, fontWeight: 800 }}>{store.platform || store.name}</div>
-                    {store.platform && <div>{store.name}</div>}
+                  <th key={store.id} style={headStyle} title={store.platform ? `${store.platform}: ${store.name}` : store.name}>
+                    <div style={{ ...oneLine, color: text, fontWeight: 800, fontSize: '12px' }}>{store.platform || store.name}</div>
+                    <div style={oneLine}>{store.platform ? store.name : ' '}</div>
                     {sortLinks(store.id)}
                   </th>
                 ))}
@@ -189,15 +208,18 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
                 const best = known.length > 1 ? Math.max(...known) : null
                 return (
                   <tr key={product.id}>
-                    <td style={{ padding: '4px', fontSize: '15px', fontWeight: 800, color: text }}>
-                      {product.sku && <span style={{ color: muted, fontWeight: 700, marginRight: '8px' }}>{product.sku}</span>}
-                      {product.name}
+                    <td style={{ ...pinned, padding: '4px', fontSize: '14px', fontWeight: 800, color: text }} title={`${product.sku} ${product.name}`}>
+                      {/* Up to two lines, then cut short with "…" */}
+                      <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3 }}>
+                        {product.sku && <span style={{ color: muted, fontWeight: 700, marginRight: '8px' }}>{product.sku}</span>}
+                        {product.name}
+                      </div>
                     </td>
                     {figureCell('all', total(product.id), false)}
                     {stores.map((store) => {
                       if (notListed(product.id, store.id)) {
                         return (
-                          <td key={store.id} style={{ ...cellStyle('transparent', dim), border: `1px dashed ${border}`, fontSize: '12px', fontWeight: 600 }}>Not listed</td>
+                          <td key={store.id} style={{ ...cellStyle('transparent', dim), border: `1px dashed ${border}`, fontSize: '11px', fontWeight: 600 }}>Not listed</td>
                         )
                       }
                       const c = cell(product.id, store.id)

@@ -26,7 +26,7 @@
   4. Re-check destructive actions (delete costs / listings / orders) only affect the user's own tenant.
 - ~~**Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.**~~ Done 2026-09-30.
 - ~~**TikTok sale VAT for VAT-registered stores.**~~ Done 2026-10-02 (importEngine works it out from the product's VAT rate; OnBuy uses the same). Original note: TikTok settlement reports show £0 VAT for UK-established sellers (TikTok only fills it when it collects the VAT itself), so the importer records the whole sale as net revenue. For a VAT-registered store that overstates revenue and margin by the VAT. Fix: when the report's VAT is £0 and the store is VAT registered, work out the VAT from each product's VAT rate (`master_products.vat_rate`) at import time.
-- **Refunds and returns.** Every importer currently skips refund rows (Amazon refunds and SAFE-T reimbursements, TikTok refund-only rows, Mirakl refund types), so revenue and margins are overstated for any product that gets returns. Needs: importing refunds as their own lines linked to the original sale (by order / order-line ID), the refunded revenue and refunded fees, whether the item came back resaleable (cost recovered) or not (cost lost), and showing refund rate per SKU per store.
+- **Refunds and returns.** Every importer currently skips refund rows (Amazon refunds and SAFE-T reimbursements, TikTok refund-only rows, Mirakl refund types), so revenue and margins are overstated for any product that gets returns. Needs: importing refunds as their own lines linked to the original sale (by order / order-line ID), the refunded revenue and refunded fees, whether the item came back resaleable (cost recovered) or not (cost lost), and showing refund rate per SKU per store. Full plan: **Refunds and returns** in Phase 1.
 
 ---
 
@@ -108,6 +108,34 @@ Ads are often the single biggest cost after the product itself, and a SKU can lo
   - **CSV / Excel upload (Argos, Shopify, others):** no ad cost column today. Shopify / own-site ads come from Google / Meta reports or manual entry.
 - **Pricing:** included on every plan, like everything else.
 
+**Refunds and returns (its own piece, added 2026-10-03)**
+
+Returns quietly eat margin, and some SKUs are far worse than others. Scope: what refunds do to margin, plus a **refund % per SKU** so the problem products stand out.
+
+- **Data:** refunds as their own lines linked to the original sale (order / order-line ID, SKU, store, refund date), with refunded revenue, any fees the channel gives back or keeps, and VAT. Dated by refund date so any dashboard range works.
+- **Was the item resaleable?** Back in stock (product cost recovered) or written off (product cost lost); a default per store, editable per refund. Plus return postage / restocking costs where the seller pays them.
+- **Sources, per importer** (all currently skip refund rows):
+  - Amazon: refund rows and SAFE-T reimbursements in the settlement report
+  - TikTok: refund-only rows (same-row refunds are already netted into "Net sales")
+  - Mirakl (B&Q, The Range, Debenhams, Tesco): "Order amount refund", "Shipping charge refund", "Commission refund" and their tax rows
+  - OnBuy: refund rows in the transaction report (currently skipped as non-sales)
+  - CSV / Excel upload: a refund column or refund rows
+- **Metrics** (sums first, then ratios):
+  - **Refund % by SKU** = refunded units ÷ units sold (also by value: refunded revenue ÷ revenue), per store and across all stores
+  - Net profit after refunds; cost of returns per SKU
+- **Where it shows:** a refund % column / sort on Margins, a Refunds dashboard (worst SKUs first), the order-line breakdown, and an alert when a SKU's refund % passes a threshold.
+- **Margin order:** refunds reduce revenue and Net profit for the period they happen in. Gross only changes when the product cost is lost (item written off).
+
+**Product categories (parent / child, added 2026-10-03)**
+
+- Each product can have a **parent category** and a **child category** (e.g. Garden → Power Tools). Optional; a product with no category shows as "Uncategorised".
+- **Data:** a `product_categories` table (tenant, name, optional parent) with `master_products.category_id` pointing at the child (or a parent with no children). Two levels only.
+- **Setting it:** on the product page, a `category` / `subcategory` pair of columns in Catalog Import, and bulk "set category" on the Products list.
+- **Using it:**
+  - Filter and group on Margins (category subtotals: sum first, then %), Channel Overview, Trends and Opportunities
+  - Margin by category, and refund % by category (once refunds are in)
+  - Later: per-category margin colour ranges and overhead reports, and category benchmarking (Phase 3)
+
 **Dashboard (priority)**
 - **Overview page**: total revenue, total margin, margin %, order count — filterable by date range, defaulting to "last 7 days" and "this month"
 - **SKU × channel comparison view**: the standardised SKU as rows, platforms as columns, margin % per cell — this is your headline differentiator over single-platform tools like Sellerboard, so it deserves real design attention, not a bolted-on table
@@ -136,7 +164,7 @@ Design decisions to make before/during build:
   Most specific wins: product → store → overall.
 - **Colour thresholds are per-tenant, not hardcoded** — a 10% margin might be fine for a high-volume commodity product, bad for a niche one. Let tenants set their own green/amber/red cutoffs.
 - ✅ **Empty cells ("—") are an expansion signal** — a SKU not listed on a channel could later become a soft CTA ("not yet listed here"). (Done 2026-10-02: `/margins` (was `/grid`) shows "Not listed" vs "—" (listed, no sales), and `/opportunities` lists profitable products not yet listed in every store.)
-- **Grid needs sort/filter** — by lowest margin, by channel, by category — to stay useful once a tenant has more than a handful of SKUs. (Sort by any store's % or £ done 2026-10-02 on `/margins`; category filter still to do.)
+- **Grid needs sort/filter** — by lowest margin, by channel, by category — to stay useful once a tenant has more than a handful of SKUs. (Sort by any store's % or £ done 2026-10-02 on `/margins`; category filter comes with **Product categories** above.)
 - **Bundle SKUs need visual distinction** — a bundle has different shipping economics to a single unit; the grid should make clear when a margin figure reflects a bundle sale vs a single sale, or the swing looks like an error.
 
 ---
