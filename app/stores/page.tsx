@@ -47,7 +47,8 @@ export default function StoresPage() {
       vat_registered: newVatRegistered,
     })
     if (error) {
-      setStatus(`Error creating store: ${error.message}`)
+      // 23505 = a store with this name already exists on this channel
+      setStatus(error.code === '23505' ? `Error: you already have a store called "${newName}" on this channel. Use a different name.` : `Error creating store: ${error.message}`)
       return
     }
     setNewName('')

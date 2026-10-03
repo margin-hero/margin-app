@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { readSpreadsheet } from '@/lib/readSpreadsheet'
-import { loadStores, Store, isTikTokStore } from '@/lib/stores'
+import { loadStores, Store, storeLabel, isTikTokStore } from '@/lib/stores'
 import { lime, red, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, linkButton } from '@/lib/theme'
 
 // One row per listing: a product in 3 stores = 3 rows. A row with only
@@ -64,7 +64,15 @@ export default function CatalogImportPage() {
       return
     }
     const stores = (await loadStores()).filter((s) => s.tenant_id === tenant.id)
-    const storeByName = new Map(stores.map((s) => [s.name.trim().toLowerCase(), s]))
+    // The `store` column can be the store name, or "Name (Platform)" as shown in the store
+    // dropdowns. The second form is needed when two platforms have a store with the same name.
+    const storesByName = new Map<string, Store[]>()
+    stores.forEach((s) => {
+      const key = s.name.trim().toLowerCase()
+      storesByName.set(key, [...(storesByName.get(key) || []), s])
+    })
+    const storeByLabel = new Map(stores.map((s) => [`${s.name.trim()} (${s.platforms?.name ?? ''})`.toLowerCase(), s]))
+    stores.forEach((s) => storeByLabel.set(storeLabel(s).toLowerCase(), s))
 
     const { data: products, error: productsError } = await fetchAll((from, to) =>
       supabase.from('master_products').select('id, standard_sku').eq('tenant_id', tenant.id).order('id').range(from, to)
@@ -121,8 +129,12 @@ export default function CatalogImportPage() {
 
       let store: Store | undefined
       if (storeName) {
-        store = storeByName.get(storeName.toLowerCase())
-        if (!store) return problems.push({ row, message: `Store "${storeName}" doesn't exist. Add it on the Stores page first (the name must match).` })
+        const sameName = storesByName.get(storeName.toLowerCase()) || []
+        if (sameName.length > 1) {
+          return problems.push({ row, message: `More than one store is called "${storeName}". Write it with its channel, e.g. ${sameName.map((s) => `"${s.name} (${s.platforms?.name})"`).join(' or ')}.` })
+        }
+        store = sameName[0] ?? storeByLabel.get(storeName.toLowerCase())
+        if (!store) return problems.push({ row, message: `Store "${storeName}" doesn't exist. Add it on the Stores page first (the name must match, or use "Name (Channel)").` })
       }
 
       const existingProductId = productIdBySku.get(standardSku)

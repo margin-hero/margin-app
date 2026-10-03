@@ -41,7 +41,7 @@ Use this to add products and their SKU in each store, all at once, before import
 |---|---|---|
 | `standard_sku` | Your own SKU for the product. This is how Margin Hero groups it across stores. | `MUG-01` |
 | `name` | The product name | `Blue Mug` |
-| `store` | The store name, exactly as it appears on **Manage → Stores** | `Amazon UK` |
+| `store` | The store name, exactly as it appears on **Manage → Stores**. If two channels have a store with the same name, add the channel in brackets, e.g. `Ark Rubber Ltd (B&Q)` | `Amazon UK` |
 | `store_sku` | The SKU that store's sales reports use for this product. For TikTok, use your **Seller SKU**, not TikTok's numeric ID. | `AMZ-MUG-01` |
 | `units_per_sale` | Optional. For bundles: how many units one sale contains. Leave empty for 1. | `2` |
 
