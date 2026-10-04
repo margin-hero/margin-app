@@ -144,7 +144,7 @@ This is a management view to show your true margin. It isn't a replacement for y
 ## Amazon
 
 **Page:** Import → **Amazon**
-**File type:** CSV (settlement report)
+**File type:** the settlement report as Amazon gives it (tab-separated .txt), or saved as CSV or Excel (.xlsx). If you open it in Excel, check long numbers (such as SKUs with leading zeros) survive before saving.
 
 ### What you need
 Your **settlement report** from Amazon Seller Central, downloaded in the "flat file" format. In Seller Central this is usually under **Reports → Payments → All Statements**, where you can download each settlement period.

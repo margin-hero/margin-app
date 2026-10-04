@@ -2,7 +2,7 @@
 
 import { ukDate } from '@/lib/format'
 import { useState } from 'react'
-import Papa from 'papaparse'
+import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
@@ -21,10 +21,10 @@ type AmazonRow = {
   'posted-date': string
 }
 
+// Amazon's own file says e.g. "31.08.2026 10:12:13 UTC"; once saved from Excel it may be
+// a date cell (read as 2026-08-31) or 31/08/2026. All UK day-first.
 function parseAmazonDate(dateStr: string): string {
-  const datePart = dateStr.split(' ')[0]
-  const [day, month, year] = datePart.split('.')
-  return `${year}-${month}-${day}`
+  return toIsoDate(dateStr) ?? ''
 }
 
 export default function AmazonImportPage() {
@@ -34,80 +34,92 @@ export default function AmazonImportPage() {
   const [store, setStore] = useState<Store | null>(null)
   const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
     setStatus('Reading file, this may take a moment for large files...')
 
-    Papa.parse<AmazonRow>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const orderRows = results.data.filter((row) => row['transaction-type'] === 'Order')
+    // Amazon's settlement report is tab-separated text (.txt); .csv and Excel (.xlsx) work too
+    let data: AmazonRow[]
+    try {
+      data = (await readSpreadsheet(file, ['posted-date'])) as unknown as AmazonRow[]
+    } catch (err) {
+      setStatus(`Error reading file: ${err instanceof Error ? err.message : String(err)}`)
+      return
+    }
 
-        const groups = new Map<string, AmazonRow[]>()
-        for (const row of orderRows) {
-          const key = row['order-item-code']
-          if (!key) continue
-          if (!groups.has(key)) groups.set(key, [])
-          groups.get(key)!.push(row)
+    const orderRows = data.filter((row) => row['transaction-type'] === 'Order')
+
+    const groups = new Map<string, AmazonRow[]>()
+    for (const row of orderRows) {
+      const key = row['order-item-code']
+      if (!key) continue
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(row)
+    }
+
+    const shippingByOrderId = new Map<string, number>()
+    for (const row of data) {
+      if (
+        row['transaction-type'] === 'other-transaction' &&
+        row['amount-description'] === 'Shipping label purchase'
+      ) {
+        const orderId = row['order-id']
+        const amt = Math.abs(parseFloat(row.amount))
+        shippingByOrderId.set(orderId, (shippingByOrderId.get(orderId) || 0) + amt)
+      }
+    }
+
+    const normalized: NormalizedOrder[] = []
+    for (const [orderItemCode, rows] of groups) {
+      const first = rows[0]
+      let principal = 0
+      let tax = 0
+      let fees = 0
+
+      for (const row of rows) {
+        const amt = parseFloat(row.amount)
+        if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Principal') {
+          principal += amt
+        } else if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Tax') {
+          tax += amt
+        } else if (row['amount-type'] === 'ItemFees') {
+          fees += Math.abs(amt)
         }
+      }
 
-        const shippingByOrderId = new Map<string, number>()
-        for (const row of results.data) {
-          if (
-            row['transaction-type'] === 'other-transaction' &&
-            row['amount-description'] === 'Shipping label purchase'
-          ) {
-            const orderId = row['order-id']
-            const amt = Math.abs(parseFloat(row.amount))
-            shippingByOrderId.set(orderId, (shippingByOrderId.get(orderId) || 0) + amt)
-          }
-        }
+      const feesGrossPence = Math.round(fees * 100)
+      const feesVatPence = Math.round(feesGrossPence - feesGrossPence / 1.2)
+      const orderId = first['order-id']
 
-        const normalized: NormalizedOrder[] = []
-        for (const [orderItemCode, rows] of groups) {
-          const first = rows[0]
-          let principal = 0
-          let tax = 0
-          let fees = 0
+      normalized.push({
+        sku: first.sku,
+        externalId: orderItemCode,
+        orderDate: parseAmazonDate(first['posted-date']),
+        qty: parseInt(first['quantity-purchased']) || 1,
+        salePriceGrossPence: Math.round((principal + tax) * 100),
+        saleVatPence: Math.round(tax * 100),
+        feesGrossPence,
+        feesVatPence,
+        actualShippingCostPence: shippingByOrderId.has(orderId)
+          ? Math.round(shippingByOrderId.get(orderId)! * 100)
+          : null,
+      })
+    }
 
-          for (const row of rows) {
-            const amt = parseFloat(row.amount)
-            if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Principal') {
-              principal += amt
-            } else if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Tax') {
-              tax += amt
-            } else if (row['amount-type'] === 'ItemFees') {
-              fees += Math.abs(amt)
-            }
-          }
+    // A date that couldn't be read would put the sale on the wrong day, so stop here
+    const badDates = normalized.filter((o) => !o.orderDate).length
+    if (badDates > 0) {
+      setAllOrders([])
+      setPreview([])
+      setStatus(`Error: ${badDates} order line(s) have a posted-date that couldn't be read. Expected a UK date like 31.08.2026 or 31/08/2026.`)
+      return
+    }
 
-          const feesGrossPence = Math.round(fees * 100)
-          const feesVatPence = Math.round(feesGrossPence - feesGrossPence / 1.2)
-          const orderId = first['order-id']
-
-          normalized.push({
-            sku: first.sku,
-            externalId: orderItemCode,
-            orderDate: parseAmazonDate(first['posted-date']),
-            qty: parseInt(first['quantity-purchased']) || 1,
-            salePriceGrossPence: Math.round((principal + tax) * 100),
-            saleVatPence: Math.round(tax * 100),
-            feesGrossPence,
-            feesVatPence,
-            actualShippingCostPence: shippingByOrderId.has(orderId)
-              ? Math.round(shippingByOrderId.get(orderId)! * 100)
-              : null,
-          })
-        }
-
-        setAllOrders(normalized)
-        setPreview(normalized.slice(0, 20))
-        setStatus(`Found ${normalized.length} order lines (from ${orderRows.length} rows in the file). Showing first 20 below — review, then confirm import.`)
-      },
-    })
+    setAllOrders(normalized)
+    setPreview(normalized.slice(0, 20))
+    setStatus(`Found ${normalized.length} order lines (from ${orderRows.length} rows in the file). Showing first 20 below — review, then confirm import.`)
   }
 
   async function handleImport() {
@@ -132,7 +144,7 @@ export default function AmazonImportPage() {
       <div style={cardStyle}>
       <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} value={store} onChange={setStore} />
       <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
-      <input type="file" accept=".csv" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px', display: 'block' }} />
+      <input type="file" accept=".txt,.tsv,.csv,.xlsx,.xls" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px', display: 'block' }} />
       {status && <p style={{ color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', lineHeight: 1.5 }}>{status}</p>}
       </div>
 
