@@ -56,7 +56,8 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - Test tenant is looked up by name (`.eq('name', 'Test Store')`) in `lib/importEngine.ts`, `/mappings`, `/catalog-import`, `/stores` and others. This is what gets replaced when Supabase Auth arrives.
 
 ## Code structure
-- `lib/supabase.ts`: shared Supabase client
+- `lib/supabase.ts`: shared Supabase client (browser, `@supabase/ssr`, session in a cookie). Server pages (`/margins`, `/opportunities`, `/order-lines`) must use `createServerSupabase()` from `lib/supabaseServer.ts` and pass it to shared helpers (`loadMarginRanges(db)`, `loadStores(db)`, `loadSkuStoreMargins(..., db)`, `loadOverheadSetup(db)`), or RLS will treat them as logged out.
+- Login: `proxy.ts` (Next 16's name for middleware) sends logged-out visitors to `/login`, except `OPEN_PATHS` (keep in step with `PUBLIC_PAGES` in `AppShell.tsx`) and `/api/*`. No sign-up page: users are created in Supabase and linked in `tenant_members`; `current_tenant_id()` (SQL) returns the logged-in user's tenant.
 - `lib/importEngine.ts`: shared SKU-matching / dedupe / insert logic. All platform importers must reuse this, not duplicate it (including `/upload`, the generic CSV importer).
 - `components/Nav.tsx`: collapsible left sidebar (Dashboards / Import / Manage groups). Rendered for every page by `components/AppShell.tsx` in `app/layout.tsx` (skipped on the public homepage `/`), so pages must NOT include `<Nav />` themselves. Add new pages to `NAV_GROUPS` with a `lucide-react` icon.
 - `NormalizedOrder.saleVatPence` / `shippingRevenueVatPence` may be `null` when a channel doesn't report sale VAT: `importEngine` then works it out from the product's `vat_rate` (gross × rate ÷ (1 + rate)).

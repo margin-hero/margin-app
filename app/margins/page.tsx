@@ -1,5 +1,6 @@
 import { connection } from 'next/server'
 import Link from 'next/link'
+import { createServerSupabase } from '@/lib/supabaseServer'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadSkuStoreMargins, cellPercent, cellPerUnitPence, MarginCell } from '@/lib/skuStoreMargins'
 import { pounds, ukDate } from '@/lib/format'
@@ -49,9 +50,10 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const period = custom ? null : PERIODS.find((p) => p.key === get('period')) ?? PERIODS[0]
   const range = custom ? { from: get('from'), to: get('to') } : period!.range()
 
-  const ranges = await loadMarginRanges()
+  const db = await createServerSupabase()
+  const ranges = await loadMarginRanges(db)
   const legend = marginLegend(ranges)
-  const result = await loadSkuStoreMargins(includeOverheads, range)
+  const result = await loadSkuStoreMargins(includeOverheads, range, db)
   if ('error' in result) {
     return <div style={{ ...pageStyle, color: red }}>Error: {result.error}</div>
   }

@@ -1,4 +1,5 @@
 import { connection } from 'next/server'
+import { createServerSupabase } from '@/lib/supabaseServer'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadSkuStoreMargins, cellPercent } from '@/lib/skuStoreMargins'
 import { pounds } from '@/lib/format'
@@ -7,10 +8,11 @@ import { red, muted, dim, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, c
 export default async function OpportunitiesPage() {
   // Render on every visit so the list shows live data, not a snapshot from build time
   await connection()
-  const ranges = await loadMarginRanges()
+  const db = await createServerSupabase()
+  const ranges = await loadMarginRanges(db)
 
   // Before overheads: overheads are mostly fixed, so listing in another store doesn't add to them
-  const result = await loadSkuStoreMargins(false)
+  const result = await loadSkuStoreMargins(false, null, db)
   if ('error' in result) {
     return <div style={{ ...pageStyle, color: red }}>Error: {result.error}</div>
   }

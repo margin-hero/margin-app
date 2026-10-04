@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
   FileUp, ShoppingCart, ShoppingBag, Music2, Building2,
-  Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen,
+  Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
   type LucideIcon,
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { lime, bg, border, text, muted, dim, font, display } from '@/lib/theme'
 
 const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: LucideIcon }[] }[] = [
@@ -75,7 +76,30 @@ export default function Nav() {
     } catch {}
   }
 
+  async function logOut() {
+    await supabase.auth.signOut()
+    window.location.assign('/login')
+  }
+
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
+
+  // Log out and Collapse buttons at the bottom
+  const footerButton: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    gap: '12px',
+    padding: '9px 12px',
+    borderRadius: '999px',
+    border: 'none',
+    background: 'transparent',
+    color: muted,
+    fontFamily: font,
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  }
 
   return (
     <aside
@@ -147,26 +171,20 @@ export default function Nav() {
       </nav>
 
       <button
+        onClick={logOut}
+        title={collapsed ? 'Log out' : undefined}
+        className="hover:bg-[#1B1C19] hover:!text-[#EBEEE0]"
+        style={{ ...footerButton, marginTop: '20px' }}
+      >
+        <LogOut size={18} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+        {!collapsed && 'Log out'}
+      </button>
+
+      <button
         onClick={toggle}
         title={collapsed ? 'Expand menu' : 'Collapse menu'}
         className="hover:bg-[#1B1C19] hover:!text-[#EBEEE0]"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          gap: '12px',
-          marginTop: '20px',
-          padding: '9px 12px',
-          borderRadius: '999px',
-          border: 'none',
-          background: 'transparent',
-          color: muted,
-          fontFamily: font,
-          fontSize: '14px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
+        style={footerButton}
       >
         <ToggleIcon size={18} strokeWidth={2.2} style={{ flexShrink: 0 }} />
         {!collapsed && 'Collapse'}

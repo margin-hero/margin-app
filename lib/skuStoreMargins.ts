@@ -1,4 +1,5 @@
 import { ukDate } from './format'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { fetchAll } from './fetchAll'
 import { loadOverheadSetup, allocateOverheads } from './overheads'
@@ -30,11 +31,12 @@ export function cellPerUnitPence(cell: MarginCell | null): number | null {
 
 export async function loadSkuStoreMargins(
   includeOverheads: boolean,
-  range: { from: string; to: string } | null = null // null = all time
+  range: { from: string; to: string } | null = null, // null = all time
+  db: SupabaseClient = supabase // server pages pass createServerSupabase()
 ): Promise<{ error: string } | SkuStoreMargins> {
   const [{ data, error }, { data: listings, error: listingsError }] = await Promise.all([
     fetchAll((from, to) => {
-      let q = supabase
+      let q = db
         .from('order_margins')
         .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence')
       if (range) q = q.gte('order_date', range.from).lte('order_date', range.to)
@@ -42,7 +44,7 @@ export async function loadSkuStoreMargins(
     }),
     // Which products are listed in which stores, so "not listed" can be told apart from "listed, no sales"
     fetchAll((from, to) =>
-      supabase
+      db
         .from('platform_listings')
         .select('id, master_product_id, store_id, master_products(name, standard_sku), stores(name, platforms(name))')
         .order('id')
@@ -73,7 +75,7 @@ export async function loadSkuStoreMargins(
     const dates = data.map((r) => r.order_date).sort()
     const from = range?.from ?? dates[0]
     const to = range?.to ?? dates[dates.length - 1]
-    const allocation = allocateOverheads(data, await loadOverheadSetup(), from, to)
+    const allocation = allocateOverheads(data, await loadOverheadSetup(db), from, to)
     overheadShares = allocation.shares
     overheadNote = `Includes £${(allocation.totalPence / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} of overheads from ${ukDate(from)} to ${ukDate(to)}, shared across sales.`
   }

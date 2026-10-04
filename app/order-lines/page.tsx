@@ -1,5 +1,5 @@
 import { connection } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerSupabase } from '@/lib/supabaseServer'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadStores } from '@/lib/stores'
@@ -11,12 +11,13 @@ import OrderLinesTable, { OrderLine } from './OrderLinesTable'
 export default async function OrderLinesPage() {
   // Render on every visit so this shows live data, not a snapshot from build time
   await connection()
+  const supabase = await createServerSupabase()
 
   const [{ data, error }, { data: products, error: productsError }, stores, ranges] = await Promise.all([
     fetchAll((from, to) => supabase.from('order_margins').select('*').order('order_date', { ascending: false }).order('order_line_item_id').range(from, to)),
     fetchAll((from, to) => supabase.from('master_products').select('id, standard_sku').order('id').range(from, to)),
-    loadStores(),
-    loadMarginRanges(),
+    loadStores(supabase),
+    loadMarginRanges(supabase),
   ])
 
   if (error || productsError) {

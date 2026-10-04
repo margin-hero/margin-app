@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 // A store is one shop on one platform, e.g. "TikTok – Brand A" or "Amazon FR".
@@ -11,8 +12,9 @@ export type Store = {
   platforms: { name: string; integration_type: string } | null
 }
 
-export async function loadStores(): Promise<Store[]> {
-  const { data } = await supabase
+// Server pages pass their own client (createServerSupabase) as `db`
+export async function loadStores(db: SupabaseClient = supabase): Promise<Store[]> {
+  const { data } = await db
     .from('stores')
     .select('id, tenant_id, platform_id, name, vat_registered, platforms(name, integration_type)')
     .order('name')
