@@ -39,9 +39,8 @@ export default function StoresPage() {
       setStatus('Please enter a store name and choose a platform.')
       return
     }
-    const { data: tenant } = await supabase.from('tenants').select('id').eq('name', 'Test Store').single()
     const { error } = await supabase.from('stores').insert({
-      tenant_id: tenant?.id,
+      // tenant_id is filled in by the database (the logged-in user's tenant)
       platform_id: newPlatformId,
       name: newName,
       vat_registered: newVatRegistered,

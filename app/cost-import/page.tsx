@@ -82,7 +82,7 @@ export default function CostImportPage() {
       typeByName.set(t.code.toLowerCase(), t)
     })
 
-    const { data: tenant } = await supabase.from('tenants').select('id').eq('name', 'Test Store').single()
+    const { data: tenant } = await supabase.from('tenants').select('id').single() // RLS: only your own tenant is visible
     if (!tenant) {
       setStatus('Could not find the tenant.')
       return

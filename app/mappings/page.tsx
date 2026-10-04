@@ -98,9 +98,8 @@ export default function MappingsPage() {
       setStatus('Please enter both a SKU and a name.')
       return
     }
-    const { data: tenant } = await supabase.from('tenants').select('id').eq('name', 'Test Store').single()
     const { error } = await supabase.from('master_products').insert({
-      tenant_id: tenant?.id,
+      // tenant_id is filled in by the database (the logged-in user's tenant)
       standard_sku: newSku,
       name: newName,
     })

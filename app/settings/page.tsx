@@ -29,10 +29,12 @@ export default function SettingsPage() {
       setStatus('Enter two numbers, with green starting at or above where red ends.')
       return
     }
+    // An update needs a filter, so target the logged-in user's tenant
+    const { data: tenantId } = await supabase.rpc('current_tenant_id')
     const { error } = await supabase
       .from('tenants')
       .update({ margin_red_below: red_, margin_green_from: green_ })
-      .eq('name', 'Test Store')
+      .eq('id', tenantId)
     setStatus(error ? `Error saving: ${error.message}` : 'Saved. Every dashboard now uses these ranges.')
   }
 

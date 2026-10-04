@@ -58,7 +58,7 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - `tiktok_sku_catalog`: maps TikTok numeric SKU IDs → seller SKUs, per TikTok store (`isTikTokStore()` = platform named 'TikTok'). Edited on `/mappings` (a TikTok SKU ID is required on every TikTok listing; one ID can only belong to one store SKU; bulk upload via `components/TikTokCatalogUpload.tsx`) and via the optional `tiktok_sku_id` column in `/catalog-import`. `/tiktok-catalog` just redirects to `/mappings`.
 - `order_margins` (view): revenue_pence, product_cost_pence, total_cost_pence, margin_pence, margin_percent, price_per_unit_pence, etc.
 - `sku_channel_margins` (view): per SKU x channel margins. No longer used by any page (`/margins` reads `order_margins` and aggregates itself)
-- Test tenant is looked up by name (`.eq('name', 'Test Store')`) in `lib/importEngine.ts`, `/mappings`, `/catalog-import`, `/stores` and others. This is what gets replaced when Supabase Auth arrives.
+- The current tenant comes from the login: RLS only returns the logged-in user's own `tenants` row, so read it with `.from('tenants').select(...).single()` (no name filter). For an update/delete filter, use `supabase.rpc('current_tenant_id')`. New rows get `tenant_id` by default. Never look a tenant up by name.
 
 ## Code structure
 - `lib/supabase.ts`: shared Supabase client (browser, `@supabase/ssr`, session in a cookie). Server pages (`/margins`, `/opportunities`, `/order-lines`) must use `createServerSupabase()` from `lib/supabaseServer.ts` and pass it to shared helpers (`loadMarginRanges(db)`, `loadStores(db)`, `loadSkuStoreMargins(..., db)`, `loadOverheadSetup(db)`), or RLS will treat them as logged out.

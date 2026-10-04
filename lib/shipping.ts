@@ -12,7 +12,7 @@ export function today(): string {
 }
 
 export async function testTenantId(): Promise<string | null> {
-  const { data } = await supabase.from('tenants').select('id').eq('name', 'Test Store').single()
+  const { data } = await supabase.from('tenants').select('id').single() // RLS: only your own tenant is visible
   return data?.id ?? null
 }
 

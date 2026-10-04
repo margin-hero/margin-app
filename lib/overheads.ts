@@ -114,7 +114,7 @@ export function describeSchedule(o: Overhead): string {
 // Server pages pass their own client (createServerSupabase) as `db`
 export async function loadOverheadSetup(db: SupabaseClient = supabase) {
   const [{ data: tenant }, overheads, { data: stores }] = await Promise.all([
-    db.from('tenants').select('id, vat_registered, overhead_allocation_basis').eq('name', 'Test Store').single(),
+    db.from('tenants').select('id, vat_registered, overhead_allocation_basis').single(), // RLS: only your own tenant is visible
     fetchAll((from, to) => db.from('overheads').select('*').order('start_date').order('id').range(from, to)),
     db.from('stores').select('id, vat_registered'),
   ])
