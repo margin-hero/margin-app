@@ -199,7 +199,7 @@ The Mappings page shows each TikTok listing's SKU ID, and flags any that are mis
 
 ---
 
-## B&Q, The Range, Debenhams, Tesco (Mirakl marketplaces)
+## B&Q, The Range, Debenhams, Tesco, Argos (Mirakl marketplaces)
 
 These retailers all use the same marketplace system behind the scenes (called Mirakl), so they share one import page. You just tell it which retailer the file came from.
 
@@ -256,7 +256,7 @@ The **transaction report** from OnBuy Seller Control Panel (one row per order li
 
 ## Generic CSV / Excel upload (any other channel)
 
-Use this for a store that doesn't have its own import page yet, such as **Argos** or **Shopify**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
+Use this for a store that doesn't have its own import page yet, such as **Shopify**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
 
 **Page:** Import → **CSV / Excel**
 **File type:** CSV or Excel (.xlsx). Only the first sheet of an Excel file is read.

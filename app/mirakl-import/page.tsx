@@ -181,7 +181,7 @@ export default function MiraklImportPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Import</p>
       <h1 style={pageTitle}>Mirakl Import</h1>
-      <p style={pageIntro}>Used for B&Q, The Range, Debenhams, and Tesco — same underlying report format, different retailer.</p>
+      <p style={pageIntro}>Used for B&Q, The Range, Debenhams, Tesco and Argos — same underlying report format, different retailer.</p>
 
       <div style={cardStyle}>
 
