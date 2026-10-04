@@ -23,7 +23,12 @@ Values live in `.env.local` locally (git-ignored) and in Vercel project settings
 - **Database changes:** do NOT run SQL against Supabase directly. Write SQL as migration files in `supabase/migrations/` (create the folder if missing) and tell me to run them in the Supabase SQL editor. Views that pages depend on (mainly `order_margins`) need extra care. List which pages are affected.
 - **Before saying a task is done:** run `npm run build` and fix any TypeScript errors. Vercel builds fail on TS errors.
 - **Git:** show me what changed before committing. Use clear commit messages. Don't push without asking.
-- **RLS reminder:** real RLS policies and Supabase Auth are deliberately deferred. We're using one test tenant for now. Don't implement them unasked, but remind me when a change makes them more important (e.g. anything going public-facing).
+- **RLS (row-level security) is live** (migration `20261004140000_rls_lockdown.sql`): every tenant table has `tenant_id uuid not null default public.current_tenant_id()` and one policy, `tenant_isolation` (`for all to authenticated using/with check (tenant_id = public.current_tenant_id())`). In every new-table migration:
+  - Add that `tenant_id` column and policy, `enable row level security`, and `grant select, insert, update, delete ... to authenticated` (never `anon`). No allow-all policies.
+  - Shared lists (like `platforms`) get a read-only `for select to authenticated using (true)` policy instead.
+  - Every view must be `with (security_invoker = true)`, including when re-creating `order_margins` with `create or replace view`, or it leaks other tenants' data.
+  - The SQL editor isn't logged in, so hand-written inserts there must give `tenant_id` explicitly.
+  - The service-role key bypasses RLS: server-side only, never in client code.
 
 ## Money & margin rules (important, these bugs have happened before)
 - All money is stored and calculated in **integer pence** (`*_pence` columns). Watch for fractional-penny rounding in VAT splits.
