@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
+import { loadStores, storeLabel } from '@/lib/stores'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { marginTier, red, green, muted, dim, text, lime, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
 import { pounds, percent } from '@/lib/format'
@@ -12,6 +13,7 @@ type MarginRow = {
   master_product_id: string
   product_name: string
   channel: string
+  store_id: string
   order_date: string
   effective_qty: number
   revenue_pence: number
@@ -21,7 +23,8 @@ type MarginRow = {
 }
 
 type ChannelStats = {
-  channel: string
+  storeId: string
+  channel: string // store label, e.g. "Ark Rubber Ltd (B&Q)"
   totalSalesPence: number
   totalQty: number
   grossProfitPence: number
@@ -60,7 +63,7 @@ export default function SkuDetailPage() {
     const { data: rows } = await fetchAll((from, to) =>
       supabase
         .from('order_margins')
-        .select('master_product_id, product_name, channel, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence')
+        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
         .order('order_line_item_id')
@@ -72,10 +75,12 @@ export default function SkuDetailPage() {
     )
 
     const skuMap = new Map((products || []).map((p) => [p.id, p.standard_sku]))
+    const storeById = new Map((await loadStores()).map((st) => [st.id, st]))
 
     const byProductChannel = new Map<string, MarginRow[]>()
     for (const row of (rows || []) as MarginRow[]) {
-      const key = `${row.master_product_id}|${row.channel}`
+      // By store, not store name: two stores can share a name on different platforms
+      const key = `${row.master_product_id}|${row.store_id}`
       if (!byProductChannel.has(key)) byProductChannel.set(key, [])
       byProductChannel.get(key)!.push(row)
     }
@@ -91,7 +96,8 @@ export default function SkuDetailPage() {
       const grossProfit = totalRevenue - totalProductCost
 
       const channelStats: ChannelStats = {
-        channel: first.channel,
+        storeId: first.store_id,
+        channel: storeById.has(first.store_id) ? storeLabel(storeById.get(first.store_id)) : first.channel,
         totalSalesPence: totalRevenue,
         totalQty,
         grossProfitPence: grossProfit,
@@ -168,7 +174,7 @@ export default function SkuDetailPage() {
                 </thead>
                 <tbody>
                   {group.channels.map((c) => (
-                    <tr key={c.channel}>
+                    <tr key={c.storeId}>
                       <td style={tdStyle}>{c.channel}</td>
                       <td style={{ ...num, color: marginColor(c.grossMarginPercent) }}>{percent(c.grossMarginPercent)}</td>
                       <td style={{ ...num, color: marginColor(c.netMarginPercent) }}>{percent(c.netMarginPercent)}</td>
