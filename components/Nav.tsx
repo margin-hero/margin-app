@@ -10,7 +10,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { lime, bg, border, text, muted, dim, font, display } from '@/lib/theme'
+import Logo from '@/components/Logo'
+import { lime, bg, border, text, muted, dim, font } from '@/lib/theme'
 
 const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: LucideIcon }[] }[] = [
   {
@@ -120,9 +121,8 @@ export default function Nav() {
         transition: 'width 0.2s ease',
       }}
     >
-      <Link href="/margins" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', marginBottom: '28px', textDecoration: 'none', color: text, whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: '22px', color: lime, fontWeight: 900 }}>↗</span>
-        {!collapsed && <span style={{ ...display, fontSize: '15px' }}>Margin Hero</span>}
+      <Link href="/margins" aria-label="Margin Hero" style={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', padding: collapsed ? 0 : '0 10px', marginBottom: '28px', textDecoration: 'none', color: text, whiteSpace: 'nowrap' }}>
+        <Logo size={24} showText={!collapsed} />
       </Link>
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '22px', flex: 1 }}>

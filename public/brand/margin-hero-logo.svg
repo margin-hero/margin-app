@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 48" width="340" height="48">
+  <title>Margin Hero</title>
+  <g transform="translate(-8 -8)" fill="none" stroke="#D2FF00" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 48 V20 L30 38 L49 17"/>
+    <path d="M37 16 H50 V26"/>
+    <path d="M50 37 V48"/>
+  </g>
+  <!-- LIVE TEXT: replace with outlined paths once the Mona Sans font file is available -->
+  <text x="58" y="35" fill="#EBEEE0" font-family="'Mona Sans', sans-serif" font-weight="900" font-stretch="125%" font-size="30" letter-spacing="-0.3">MARGIN HERO</text>
+</svg>
