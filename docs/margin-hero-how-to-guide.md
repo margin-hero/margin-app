@@ -254,9 +254,35 @@ The **transaction report** from OnBuy Seller Control Panel (one row per order li
 
 ---
 
+## Shopify
+
+**Page:** Import → **Shopify**
+**File type:** CSV (Excel also works)
+
+### What you need
+1. **Orders export** (required): in the Shopify admin, **Orders → Export**, choose the date range, **CSV for Excel, Numbers, or other spreadsheet programs**.
+2. **Payment transactions export** (optional, if you use Shopify Payments): **Finances → Payouts → Export transactions**. This is where Shopify's card fees are, matched to each order by order number.
+
+### Steps
+1. Go to **Import → Shopify** and choose your Shopify store.
+2. Choose the orders export, then (optionally) the payment transactions export.
+3. Check the preview. The last column shows Shopify's order total with a ✓ when Margin Hero's reading of the order adds up to it.
+4. Click **Confirm Import**.
+
+### What Margin Hero takes from the files
+- **Sale price:** each product's price × quantity, minus its own discount. A discount on the whole order (e.g. a discount code) is shared across the order's products by price.
+- **Shipping charged to the customer:** shared across the order's products by price, recorded as income.
+- **VAT:** worked out from each product's VAT rate, so an order mixing standard and zero-rated items is handled correctly.
+- **Fees:** Shopify Payments fees from the transactions export. Without that file, fees count as £0 (the page warns you).
+- **PayPal orders:** PayPal's fees aren't in either Shopify file, so they count as £0 for now. The page tells you how many PayPal orders there were.
+- **Skipped:** cancelled, refunded, voided and unpaid orders, and items with no SKU (e.g. custom items or tips). Partly refunded orders are imported as the original sale for now (refunds come later).
+- **Your shipping cost:** Shopify doesn't report what you paid the courier, so the shipping costs set up for each product are used.
+
+---
+
 ## Generic CSV / Excel upload (any other channel)
 
-Use this for a store that doesn't have its own import page yet, such as **Shopify**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
+Use this for a store that doesn't have its own import page yet, such as **eBay**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
 
 **Page:** Import → **CSV / Excel**
 **File type:** CSV or Excel (.xlsx). Only the first sheet of an Excel file is read.

@@ -88,7 +88,7 @@ export default function UploadPage() {
       <p style={eyebrow}>Import</p>
       <h1 style={pageTitle}>CSV / Excel Upload</h1>
       <p style={pageIntro}>
-        For any store without its own import page (e.g. Shopify). Choose the store, pick your CSV or Excel (.xlsx) file, review the rows, then confirm.
+        For any store without its own import page (e.g. eBay). Choose the store, pick your CSV or Excel (.xlsx) file, review the rows, then confirm.
       </p>
 
       <div style={cardStyle}>
