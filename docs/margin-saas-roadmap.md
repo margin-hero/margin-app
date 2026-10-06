@@ -175,6 +175,18 @@ Before buying stock or listing a new product, the seller enters the numbers and 
   - Margin by category, and refund % by category (once refunds are in)
   - Later: per-category margin colour ranges and overhead reports, and category benchmarking (Phase 3)
 
+**Knowledge base for customer service (added 2026-10-06)**
+
+Answers for customer questions ("why is my margin lower than Amazon says?", "why was this order skipped?"), built from the app's own logic, but explaining *what* the numbers mean, not *how* Margin Hero works them out. The detailed calculation rules are the product's edge and stay private.
+
+- **Two layers:**
+  - **Customer-facing help centre** (public, or in-app): what each figure means (Gross / Net profit, margin %, refund rate, overhead share), how to download each channel's report, what each import message means and how to fix it (unmapped SKUs, missing costs, held-back lines), and FAQs. Outcome-level only, e.g. "refunds count in the period they happen and the item is treated as back in stock".
+  - **Internal support notes** (private, never published): the full logic per channel and per figure, for whoever answers support (you, staff, or an AI assistant), so answers are consistent and right.
+- **What stays private (the "secret sauce"):** per-channel parsing rules (which columns / fee types are used, how order-level fees and discounts are shared across lines), VAT workarounds when a channel doesn't report it, refund unit and lag logic, overhead allocation method details, and the SQL behind the views. Standard definitions customers need to trust the numbers (e.g. margin = net profit ÷ net sales) are fine to publish.
+- **Source:** start from `docs/margin-hero-how-to-guide.md` (already customer-friendly) and review it against the list above before publishing, since it currently explains some calculations in detail. CLAUDE.md and the migrations become the internal notes.
+- **AI support assistant (later):** if one answers customers, give it only the customer-facing layer, never the internal notes, so it can't be talked into revealing the calculations. It can hand anything deeper to a person.
+- **Keep it up to date:** each new feature or channel adds its customer-facing page and internal note in the same change (like the how-to guide rule in CLAUDE.md).
+
 **Dashboard (priority)**
 - **Overview page**: total revenue, total margin, margin %, order count — filterable by date range, defaulting to "last 7 days" and "this month"
 - **SKU × channel comparison view**: the standardised SKU as rows, platforms as columns, margin % per cell — this is your headline differentiator over single-platform tools like Sellerboard, so it deserves real design attention, not a bolted-on table
