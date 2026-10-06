@@ -31,6 +31,7 @@ Update this file as each case is tested (date + what was checked).
 | Case | Status |
 |---|---|
 | Single-line sale (MFN) | ✅ 2026-10-04 |
+| **Do Amazon's fees include 20% UK VAT?** | ⬜ ASSUMED (1/6 reclaimed). Check a monthly Amazon fee invoice (VAT charged by Amazon UK, or reverse charge?) |
 | Shipping label purchase | ✅ 2026-10-04 (£5.83 inc VAT) |
 | Full refund + RefundCommission + return label | ✅ 2026-10-06 (LL-1, −£18.84 refund line) |
 | Multi-item order | 🟡 |
@@ -45,8 +46,12 @@ Update this file as each case is tested (date + what was checked).
 ### TikTok Shop
 | Case | Status |
 |---|---|
-| Single-line sale | 🟡 confirm against TikTok's payout |
-| **Fee column names** (to split TikTok's own fees) | ⬜ need the header row |
+| Single-line sale | ✅ 2026-10-06 (LW-3: £43.95 − £10.40 fees = £33.55 settlement; net profit £9.70 matches the seller's spreadsheet bar 1p half-penny VAT rounding) |
+| Fee column names (split TikTok's own fees) | ✅ 2026-10-06: commission 9%, affiliate 10%, Smart Promotion fee 3.5% (→ advertising), shipping service fee £0.50 |
+| Do TikTok's own fees include 20% UK VAT? | ✅ Smart Promotion fee confirmed 2026-10-06 by invoice ("Campaign Service Fee - Smart promotion program fee" £0.63 + £0.13 VAT = £0.76), so statement fees are VAT-inclusive and 1/6 is right. 🟡 commission and shipping service fee invoices: quick check still worth doing |
+| 19-digit IDs read exactly (CSV and Excel) | ✅ 2026-10-06 (the old importer rounded them) |
+| Multi-tab statement (order tab found by its columns) | 🟡 |
+| Campaign / GMV Max fees, Managed service plan | 🟡 mapped (advertising / other fees), need a row with them |
 | Seller-funded vs platform-funded discount | 🟡 |
 | Affiliate commission | 🟡 split out as `affiliate` |
 | Refund on the same row (netted into Net sales) | 🟡 |

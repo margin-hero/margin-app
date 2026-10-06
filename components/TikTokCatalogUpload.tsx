@@ -49,14 +49,24 @@ export default function TikTokCatalogUpload({ onSaved }: { onSaved: () => void }
       }
 
       const found: CatalogRow[] = []
+      let rounded = 0
       for (let i = headerRow + 1; i < grid.length; i++) {
-        const skuId = String(grid[i]?.[idCol] ?? '').trim()
+        const cell = grid[i]?.[idCol]
+        // A 19-digit ID stored as a number has lost its last digits (Excel keeps 15), so it can't be trusted
+        if (typeof cell === 'number' && !Number.isSafeInteger(cell)) {
+          rounded++
+          continue
+        }
+        const skuId = String(cell ?? '').trim()
         const sellerSku = String(grid[i]?.[skuCol] ?? '').trim()
         // Real SKU IDs are purely numeric; this skips the template's instruction rows
         if (skuId && sellerSku && /^\d+$/.test(skuId)) found.push({ skuId, sellerSku })
       }
       setRows(found)
-      setStatus(`Found ${found.length} SKU IDs. Check the preview, then save.`)
+      setStatus(
+        `Found ${found.length} SKU IDs. Check the preview, then save.` +
+        (rounded ? ` Warning: skipped ${rounded} SKU ID(s) stored as rounded numbers (the file was probably opened and saved in Excel). Download it again from TikTok and upload it without opening it.` : '')
+      )
     }
     reader.readAsArrayBuffer(file)
   }

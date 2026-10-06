@@ -39,8 +39,8 @@ export const INCLUDED: { title: string; items: string[] }[] = [
   {
     title: 'Every UK channel',
     items: [
-      'Amazon, eBay, Shopify, Temu, OnBuy, B&Q, The Range, Debenhams, Tesco and Argos imports',
-      'TikTok Shop coming soon, plus any other channel via CSV or Excel upload',
+      'Amazon, TikTok Shop, eBay, Shopify, Temu, OnBuy, B&Q, The Range, Debenhams, Tesco and Argos imports',
+      'Plus any other channel via CSV or Excel upload',
       'Unlimited stores, including several shops on the same marketplace',
       'Unlimited SKUs and products',
     ],

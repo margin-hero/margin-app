@@ -209,20 +209,22 @@ The Store SKUs page shows each TikTok listing's SKU ID, and flags any that are m
 ### Importing your sales report
 
 **Page:** Import → **TikTok**
-**File type:** Excel (.xlsx)
+**File type:** Excel (.xlsx) or CSV, exactly as TikTok gives it
 
-1. In TikTok Seller Center, download your **settlement / statement report** from the Finance section as an Excel file.
-2. Go to **Import → TikTok**, choose the TikTok store, and choose that file.
-3. Read the message at the top of the preview:
-   - **"All SKUs matched your catalog"**: you're good to go. Click **Confirm import**.
-   - **"X rows had no catalog match"**: some products in this report don't have a TikTok SKU ID yet. The best fix is to add them on the Store SKUs page first, then choose the sales file again. If you confirm anyway, those rows are simply held back (leave **Create new products** unticked, or you'll get products named after TikTok's long numbers). Uploading the same file again later only adds the missing orders.
+1. In TikTok Seller Center, download your **statement** from the Finance section. If it's an Excel file with several tabs, upload the whole file: Margin Hero finds the tab with the order lines itself.
+2. **Don't open and re-save it in Excel first.** TikTok's order and SKU IDs are 19 digits long and Excel rounds them (e.g. to 1.72964E+18), after which they can't be matched. If that's happened, download the file again.
+3. Go to **Import → TikTok**, choose the TikTok store, and choose the file.
+4. Check the preview: each order, your SKU and TikTok's SKU ID, net sales, fees, shipping and TikTok's own settlement amount. Then read the message above it:
+   - No warnings: click **Confirm import**.
+   - **"TikTok SKU ID(s) aren't on any product yet"**: some products in this report don't have their TikTok SKU ID yet. The best fix is to add them (on the product's page, or the TikTok catalog upload on Store SKUs) first, then choose the sales file again. If you confirm anyway, those rows are simply held back (leave **Create new products** unticked, or you'll get products named after TikTok's long numbers). Uploading the same file again later only adds the missing orders.
 
 ### What Margin Hero takes from the report
 - **Sale price:** "Net sales" for the item. That's the price after any discounts you funded yourself and after any refund shown on the same row. Discounts TikTok pays for don't reduce your sale price.
 - **Fully refunded orders are left out.** If an order was refunded in full, it isn't imported. If the refund appears on a later row, the original sale is still counted for now (TikTok refunds aren't imported yet).
 - **VAT on the sale:** TikTok only shows VAT here when it collects the VAT itself (mostly for overseas sellers). For UK sellers it's usually £0, so Margin Hero works the VAT out from the product's VAT rate instead (the preview shows "From product rate"). Check each product's VAT rate on its product page. Orders imported before 2 Oct 2026 were saved with £0 VAT: delete and re-import them to correct this.
-- **Fees:** all of TikTok's fees. TikTok's own fees (commission, shipping service fee, Smart Promotion fee and so on) are treated as including 20% VAT. Affiliate commission paid to creators is treated as having no VAT.
-- **Shipping cost:** the shipping amount from the report if there is one, otherwise the shipping costs you've set up for that product.
+- **Fees:** the "Fees" total, split by type: TikTok Shop commission fee, Shipping service fee, Managed service plan (per order fee), campaign / Smart Promotion / GMV Max fees (advertising), and affiliate commission. TikTok's own fees include 20% VAT; affiliate commission paid to creators has no VAT. Any fee column Margin Hero doesn't recognise yet is still counted, and the import message says so.
+- **Shipping cost:** "Shipping" (what TikTok charged for the label) if there is one, otherwise the shipping costs you've set up for that product.
+- **Check:** net sales minus fees and shipping should equal TikTok's "Total settlement amount" for every row; the preview warns if not.
 
 ---
 

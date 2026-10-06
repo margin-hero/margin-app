@@ -18,7 +18,7 @@ const CHANNELS: { name: string; live: boolean }[] = [
   { name: 'OnBuy', live: true },
   { name: 'Shopify', live: true },
   { name: 'Temu', live: true },
-  { name: 'TikTok Shop', live: false },
+  { name: 'TikTok Shop', live: true },
   { name: 'More channels', live: false },
 ]
 
