@@ -30,6 +30,20 @@ export function storeLabel(store: { name: string; platforms: { name: string } | 
   return `${store.name} (${platform})`
 }
 
+// Channels whose reports show their own numeric SKU ID instead of your SKU. Each listing in
+// these stores needs that ID too (saved in channel_sku_ids, per store), so sales can be matched.
+const SKU_ID_CHANNELS = ['TikTok', 'Temu']
+
+// e.g. 'Temu' for a Temu store, or null if the channel's reports use your own SKU
+export function skuIdChannel(store: { platforms: { name: string } | null } | undefined | null): string | null {
+  const platform = store?.platforms?.name
+  return platform && SKU_ID_CHANNELS.includes(platform) ? platform : null
+}
+
+export function usesSkuIds(store: { platforms: { name: string } | null } | undefined | null): boolean {
+  return skuIdChannel(store) !== null
+}
+
 // TikTok stores need a TikTok SKU ID on each listing (TikTok reports use numeric SKU IDs)
 export function isTikTokStore(store: { platforms: { name: string } | null } | undefined | null): boolean {
   return store?.platforms?.name === 'TikTok'

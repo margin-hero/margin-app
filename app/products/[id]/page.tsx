@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import StoreListings, { Listing, TikTokId, loadTikTokIds } from '@/components/StoreListings'
+import StoreListings, { Listing, ChannelSkuId, loadChannelSkuIds } from '@/components/StoreListings'
 import NextStep from '@/components/NextStep'
 import { loadStores, Store, storeLabel } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
@@ -60,7 +60,7 @@ export default function ProductDetailPage() {
   const [status, setStatus] = useState('')
   const [listings, setListings] = useState<Listing[]>([])
   const [allProducts, setAllProducts] = useState<{ id: string; name: string; standard_sku: string }[]>([])
-  const [tiktokIds, setTiktokIds] = useState<TikTokId[]>([])
+  const [skuIds, setSkuIds] = useState<ChannelSkuId[]>([])
   const [isNew, setIsNew] = useState(false) // just added on the Products page
   const [editingDetails, setEditingDetails] = useState(false)
   const [editSku, setEditSku] = useState('')
@@ -131,7 +131,7 @@ export default function ProductDetailPage() {
       supabase.from('master_products').select('id, name, standard_sku').order('standard_sku').order('id').range(from, to)
     )
     setAllProducts(productList || [])
-    setTiktokIds(await loadTikTokIds())
+    setSkuIds(await loadChannelSkuIds())
 
     setProfiles(await loadShippingProfiles())
     const { data: assignmentData } = await supabase
@@ -488,7 +488,7 @@ export default function ProductDetailPage() {
             No stores yet. <Link href="/stores" style={{ color: amber, fontWeight: 700 }}>Add your stores</Link> first, then come back here.
           </p>
         ) : (
-          <StoreListings productId={productId} listings={listings} stores={stores} allProducts={allProducts} tiktokIds={tiktokIds} onChanged={listingsChanged} />
+          <StoreListings productId={productId} listings={listings} stores={stores} allProducts={allProducts} skuIds={skuIds} onChanged={listingsChanged} />
         )}
       </section>
 

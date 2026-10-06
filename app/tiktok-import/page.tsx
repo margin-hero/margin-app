@@ -70,7 +70,7 @@ export default function TikTokImportPage() {
       // Load the saved SKU ID -> Seller SKU catalog
       const { data: catalogRows, error: catalogError } = await fetchAll((from, to) =>
         supabase
-          .from('tiktok_sku_catalog')
+          .from('channel_sku_ids')
           .select('sku_id, seller_sku')
           .eq('store_id', store.id)
           .order('sku_id')

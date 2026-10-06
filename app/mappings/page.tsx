@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadStores, Store, isTikTokStore } from '@/lib/stores'
 import TikTokCatalogUpload from '@/components/TikTokCatalogUpload'
-import StoreListings, { Listing, TikTokId, loadTikTokIds } from '@/components/StoreListings'
+import StoreListings, { Listing, ChannelSkuId, loadChannelSkuIds } from '@/components/StoreListings'
 import NextStep from '@/components/NextStep'
 import { lime, muted, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, inputStyle, statusColor } from '@/lib/theme'
 
@@ -21,7 +21,7 @@ type Product = {
 export default function StoreSkusPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [stores, setStores] = useState<Store[]>([])
-  const [tiktokIds, setTiktokIds] = useState<TikTokId[]>([])
+  const [skuIds, setSkuIds] = useState<ChannelSkuId[]>([])
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
 
@@ -36,11 +36,11 @@ export default function StoreSkusPage() {
           .range(from, to)
       ),
       loadStores(),
-      loadTikTokIds(),
+      loadChannelSkuIds(),
     ])
     setProducts((productData as any) || [])
     setStores(storeList)
-    setTiktokIds(ids)
+    setSkuIds(ids)
   }
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function StoreSkusPage() {
             listings={product.platform_listings}
             stores={stores}
             allProducts={products}
-            tiktokIds={tiktokIds}
+            skuIds={skuIds}
             onChanged={changed}
           />
         </section>

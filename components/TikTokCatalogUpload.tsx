@@ -10,7 +10,7 @@ import { muted, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, linkButto
 type CatalogRow = { skuId: string; sellerSku: string }
 
 // Bulk-fills TikTok SKU IDs from TikTok's product catalog export (SKU ID + Seller SKU).
-// Lives on the Mappings page; saves into tiktok_sku_catalog for the chosen TikTok store.
+// Lives on the Mappings page; saves into channel_sku_ids for the chosen TikTok store.
 export default function TikTokCatalogUpload({ onSaved }: { onSaved: () => void }) {
   const [open, setOpen] = useState(false)
   const [store, setStore] = useState<Store | null>(null)
@@ -70,7 +70,7 @@ export default function TikTokCatalogUpload({ onSaved }: { onSaved: () => void }
       setStatus('No SKU IDs to save. Choose a file first.')
       return
     }
-    const { error } = await supabase.from('tiktok_sku_catalog').upsert(
+    const { error } = await supabase.from('channel_sku_ids').upsert(
       rows.map((r) => ({ tenant_id: store.tenant_id, store_id: store.id, sku_id: r.skuId, seller_sku: r.sellerSku })),
       { onConflict: 'store_id,sku_id' }
     )

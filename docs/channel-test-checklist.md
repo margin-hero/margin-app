@@ -97,11 +97,21 @@ Update this file as each case is tested (date + what was checked).
 | Refund | ⬜ need an example |
 | Does adding a Custom label fill it in on past sales in a new report? | ⬜ you to check in Seller Hub |
 
-### CSV / Excel upload (Temu and others)
+### Temu
+| Case | Status |
+|---|---|
+| Single-line sale | ✅ 2026-10-06 (LL-1: £47.67 + £9.54 VAT − £4.72 fee = £52.49 Total; fee = 8.25% + VAT) |
+| Temu SKU ID → your SKU | ✅ 2026-10-06 via `channel_sku_ids`, like TikTok |
+| Seller discount / platform discount | ⬜ need an example (platform discount isn't used yet) |
+| Platform incentive (+ shipping, tax), Others | ⬜ need an example (flagged, not used yet) |
+| Shipping charged to the buyer | 🟡 |
+| Multi-item order | 🟡 |
+| Refund | ⬜ need an example |
+
+### CSV / Excel upload (any other channel)
 | Case | Status |
 |---|---|
 | Single-line sale | 🟡 |
-| Temu's own report | ⬜ need an example (may get its own importer) |
 
 ## Not channel-specific
 

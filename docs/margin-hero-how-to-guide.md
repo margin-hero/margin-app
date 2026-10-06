@@ -194,7 +194,7 @@ TikTok's sales reports don't show your own SKU codes. They show TikTok's long nu
 
 - **One product at a time:** on the product's page or **Manage → Store SKUs**, when you add or edit a listing in a TikTok store, fill in the **TikTok SKU ID** (it's required for TikTok stores). Find it in TikTok Seller Center on the product's page.
 - **A whole shop at once:** on **Manage → Store SKUs**, open **TikTok catalog upload**, choose the TikTok store, and upload your product list exported from TikTok Seller Center. The file needs columns called **SKU ID** and **Seller SKU** (TikTok's bulk-edit product template has these). Re-uploading is safe; it updates the existing IDs.
-- **With your full catalog:** in **Manage → Catalog Import**, fill in the optional `tiktok_sku_id` column for TikTok rows, with your Seller SKU as the `store_sku`.
+- **With your full catalog:** in **Manage → Catalog Import**, fill in the optional `channel_sku_id` column for TikTok rows, with your Seller SKU as the `store_sku`.
 
 The Store SKUs page shows each TikTok listing's SKU ID, and flags any that are missing.
 
@@ -300,6 +300,35 @@ The **transaction report** from eBay Seller Hub (**Payments → Reports**), for 
 
 ---
 
+## Temu
+
+**Page:** Import → **Temu**
+**File type:** CSV or Excel (.xlsx), the transaction export from Temu Seller Center
+
+### Temu SKU IDs
+Like TikTok, Temu's report doesn't show your own SKU. It shows Temu's **SKU ID** (a long number, e.g. `65242700715765`), and the "SKU" column is actually the product's title. So each product sold on Temu needs its Temu SKU ID as well as your SKU:
+- On the product's page (step 2, **Store SKUs**), add a store SKU for your Temu store: your own SKU as the store SKU, plus the **Temu SKU ID**.
+- Or in **Manage → Catalog Import**, fill in the `channel_sku_id` column for Temu rows.
+
+If a sales file has a Temu SKU ID that isn't on any product yet, you'll see a warning listing it when you choose the file. Add it, then choose the file again.
+
+### Steps
+1. Go to **Import → Temu** and **choose your Temu store first** (add one in **Manage → Stores** if needed).
+2. Choose the transaction export.
+3. Check the preview: your SKU, Temu's SKU ID, the sale price including VAT, shipping, Temu's fees and Temu's own Total. If a row doesn't add up to Temu's Total, you'll see a warning.
+4. Click **Confirm Import**.
+
+### What Margin Hero takes from the report
+- **Order date:** "Date/time".
+- **Sale price:** "Retail price" (before VAT) plus "Product Tax" (the VAT), less any discount you funded ("Seller discount").
+- **VAT on the sale:** "Product Tax", as Temu reports it.
+- **Shipping charged to the customer:** "Shipping" plus "Shipping Tax", recorded separately as income.
+- **Fees:** "Service fee (tax incl.)", Temu's commission, including 20% VAT.
+- **Your shipping cost:** taken from the shipping costs you've set up for that product.
+- **Not used yet:** platform discounts and incentives (paid by Temu) and "Others". Rows that have them are flagged so they can be checked. Refunds aren't imported yet.
+
+---
+
 ## Shopify
 
 **Page:** Import → **Shopify**
@@ -328,7 +357,7 @@ The **transaction report** from eBay Seller Hub (**Payments → Reports**), for 
 
 ## Generic CSV / Excel upload (any other channel)
 
-Use this for a store that doesn't have its own import page yet, such as **Temu**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
+Use this for a store that doesn't have its own import page yet. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
 
 **Page:** Import → **CSV / Excel**
 **File type:** CSV or Excel (.xlsx). Only the first sheet of an Excel file is read.

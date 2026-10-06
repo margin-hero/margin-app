@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
-import { Store, storeLabel, isTikTokStore } from '@/lib/stores'
+import { Store, storeLabel, usesSkuIds, skuIdChannel } from '@/lib/stores'
 import { red, amber, muted, dim, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
 
 export type Listing = {
@@ -14,12 +14,12 @@ export type Listing = {
   stores: { name: string; platforms: { name: string } | null } | null
 }
 
-export type TikTokId = { store_id: string; sku_id: string; seller_sku: string }
+export type ChannelSkuId = { store_id: string; sku_id: string; seller_sku: string }
 
-// TikTok SKU IDs per TikTok store (TikTok reports use these instead of your SKU)
-export async function loadTikTokIds(): Promise<TikTokId[]> {
+// Channel SKU IDs per store, for channels whose reports use their own ID instead of your SKU (TikTok, Temu)
+export async function loadChannelSkuIds(): Promise<ChannelSkuId[]> {
   const { data } = await fetchAll((from, to) =>
-    supabase.from('tiktok_sku_catalog').select('store_id, sku_id, seller_sku').order('store_id').order('sku_id').range(from, to)
+    supabase.from('channel_sku_ids').select('store_id, sku_id, seller_sku').order('store_id').order('sku_id').range(from, to)
   )
   return data || []
 }
@@ -31,43 +31,45 @@ export default function StoreListings({
   listings,
   stores,
   allProducts,
-  tiktokIds,
+  skuIds,
   onChanged,
 }: {
   productId: string
   listings: Listing[]
   stores: Store[]
   allProducts: { id: string; name: string; standard_sku: string }[] // for "Move to" (merging duplicates)
-  tiktokIds: TikTokId[]
+  skuIds: ChannelSkuId[]
   onChanged: (message: string) => void // reloads the page's data and shows the message
 }) {
   const [adding, setAdding] = useState(false)
   const [addStoreId, setAddStoreId] = useState('')
   const [addSku, setAddSku] = useState('')
   const [addUnits, setAddUnits] = useState('1')
-  const [addTikTokId, setAddTikTokId] = useState('')
+  const [addSkuId, setAddSkuId] = useState('')
 
   const [editingListingId, setEditingListingId] = useState<string | null>(null)
   const [editStoreId, setEditStoreId] = useState('')
   const [editSku, setEditSku] = useState('')
   const [editUnits, setEditUnits] = useState('1')
   const [editProductId, setEditProductId] = useState('')
-  const [editTikTokId, setEditTikTokId] = useState('')
+  const [editSkuId, setEditSkuId] = useState('')
 
   const idsFor = (storeId: string, sellerSku: string) =>
-    tiktokIds.filter((c) => c.store_id === storeId && c.seller_sku === sellerSku).map((c) => c.sku_id)
+    skuIds.filter((c) => c.store_id === storeId && c.seller_sku === sellerSku).map((c) => c.sku_id)
 
-  // Returns an error message, or null if this TikTok SKU ID can be used for this store SKU
-  function checkTikTokId(storeId: string, skuId: string, sellerSku: string): string | null {
-    if (!/^\d+$/.test(skuId)) return 'The TikTok SKU ID is the long number from TikTok Seller Centre (digits only).'
-    const taken = tiktokIds.find((c) => c.store_id === storeId && c.sku_id === skuId && c.seller_sku !== sellerSku)
-    return taken ? `TikTok SKU ID ${skuId} already belongs to store SKU "${taken.seller_sku}" in this shop.` : null
+  const idLabel = (storeId: string) => `${skuIdChannel(stores.find((st) => st.id === storeId)) ?? 'Channel'} SKU ID`
+
+  // Returns an error message, or null if this channel SKU ID can be used for this store SKU
+  function checkSkuId(storeId: string, skuId: string, sellerSku: string): string | null {
+    if (!/^\d+$/.test(skuId)) return `The ${idLabel(storeId)} is the long number from the channel's seller centre (digits only).`
+    const taken = skuIds.find((c) => c.store_id === storeId && c.sku_id === skuId && c.seller_sku !== sellerSku)
+    return taken ? `${idLabel(storeId)} ${skuId} already belongs to store SKU "${taken.seller_sku}" in this shop.` : null
   }
 
-  // One TikTok SKU ID per listing: replace whatever was stored for the old store SKU
-  async function saveTikTokId(store: Store, skuId: string, sellerSku: string, previousSellerSku: string) {
-    await supabase.from('tiktok_sku_catalog').delete().eq('store_id', store.id).in('seller_sku', [sellerSku, previousSellerSku])
-    return supabase.from('tiktok_sku_catalog').upsert(
+  // One channel SKU ID per listing: replace whatever was stored for the old store SKU
+  async function saveSkuId(store: Store, skuId: string, sellerSku: string, previousSellerSku: string) {
+    await supabase.from('channel_sku_ids').delete().eq('store_id', store.id).in('seller_sku', [sellerSku, previousSellerSku])
+    return supabase.from('channel_sku_ids').upsert(
       { tenant_id: store.tenant_id, store_id: store.id, sku_id: skuId, seller_sku: sellerSku },
       { onConflict: 'store_id,sku_id' }
     )
@@ -78,7 +80,7 @@ export default function StoreListings({
     setAddStoreId('')
     setAddSku('')
     setAddUnits('1')
-    setAddTikTokId('')
+    setAddSkuId('')
   }
 
   async function saveNewListing() {
@@ -87,14 +89,14 @@ export default function StoreListings({
       return
     }
     const addStore = stores.find((st) => st.id === addStoreId)
-    const tiktokId = addTikTokId.trim()
+    const skuId = addSkuId.trim()
     const knownIds = idsFor(addStoreId, addSku.trim())
-    if (isTikTokStore(addStore) && !tiktokId && knownIds.length === 0) {
-      onChanged('TikTok listings need their TikTok SKU ID, or orders for this product won\'t match.')
+    if (usesSkuIds(addStore) && !skuId && knownIds.length === 0) {
+      onChanged(`Listings in this store need the ${idLabel(addStoreId)}, or orders for this product won't match.`)
       return
     }
-    if (isTikTokStore(addStore) && tiktokId) {
-      const problem = checkTikTokId(addStoreId, tiktokId, addSku.trim())
+    if (usesSkuIds(addStore) && skuId) {
+      const problem = checkSkuId(addStoreId, skuId, addSku.trim())
       if (problem) {
         onChanged(problem)
         return
@@ -111,11 +113,11 @@ export default function StoreListings({
       onChanged(`Error adding store SKU: ${error.message}`)
       return
     }
-    if (addStore && isTikTokStore(addStore) && tiktokId) {
-      const { error: idError } = await saveTikTokId(addStore, tiktokId, addSku.trim(), addSku.trim())
+    if (addStore && usesSkuIds(addStore) && skuId) {
+      const { error: idError } = await saveSkuId(addStore, skuId, addSku.trim(), addSku.trim())
       if (idError) {
         setAdding(false)
-        onChanged(`Store SKU added, but saving the TikTok SKU ID failed: ${idError.message}`)
+        onChanged(`Store SKU added, but saving the ${idLabel(addStoreId)} failed: ${idError.message}`)
         return
       }
     }
@@ -129,21 +131,21 @@ export default function StoreListings({
     setEditSku(listing.platform_sku)
     setEditUnits(listing.units_per_sale.toString())
     setEditProductId(productId)
-    setEditTikTokId(idsFor(listing.store_id, listing.platform_sku)[0] || '')
+    setEditSkuId(idsFor(listing.store_id, listing.platform_sku)[0] || '')
   }
 
   async function saveEdit(listingId: string) {
     const original = listings.find((l) => l.id === listingId)
     const editStore = stores.find((st) => st.id === editStoreId)
-    const tiktokId = editTikTokId.trim()
+    const skuId = editSkuId.trim()
     const previousSku = original && original.store_id === editStoreId ? original.platform_sku : editSku
-    if (isTikTokStore(editStore)) {
-      if (!tiktokId) {
-        onChanged('TikTok listings need their TikTok SKU ID, or orders for this product won\'t match.')
+    if (usesSkuIds(editStore)) {
+      if (!skuId) {
+        onChanged(`Listings in this store need the ${idLabel(editStoreId)}, or orders for this product won't match.`)
         return
       }
       // Fine if the ID already belongs to this listing's old store SKU or its new one; a problem only if both checks fail
-      const problem = checkTikTokId(editStoreId, tiktokId, previousSku) && checkTikTokId(editStoreId, tiktokId, editSku)
+      const problem = checkSkuId(editStoreId, skuId, previousSku) && checkSkuId(editStoreId, skuId, editSku)
       if (problem) {
         onChanged(problem)
         return
@@ -163,10 +165,10 @@ export default function StoreListings({
       onChanged(`Error saving: ${error.message}`)
       return
     }
-    if (editStore && isTikTokStore(editStore)) {
-      const { error: idError } = await saveTikTokId(editStore, tiktokId, editSku, previousSku)
+    if (editStore && usesSkuIds(editStore)) {
+      const { error: idError } = await saveSkuId(editStore, skuId, editSku, previousSku)
       if (idError) {
-        onChanged(`Store SKU updated, but saving the TikTok SKU ID failed: ${idError.message}`)
+        onChanged(`Store SKU updated, but saving the ${idLabel(editStoreId)} failed: ${idError.message}`)
         return
       }
     }
@@ -181,7 +183,7 @@ export default function StoreListings({
 
   const cancelButton: React.CSSProperties = { ...linkButton, color: muted }
   const deleteButton: React.CSSProperties = { ...linkButton, color: red }
-  const hasTikTok = stores.some(isTikTokStore)
+  const hasSkuIds = stores.some(usesSkuIds)
 
   return (
     <>
@@ -193,7 +195,7 @@ export default function StoreListings({
                 <th style={thStyle}>Store</th>
                 <th style={thStyle}>Store SKU</th>
                 <th style={thStyle}>Units per sale</th>
-                {hasTikTok && <th style={thStyle}>TikTok SKU ID</th>}
+                {hasSkuIds && <th style={thStyle}>Channel SKU ID</th>}
                 <th style={thStyle}></th>
               </tr>
             </thead>
@@ -214,10 +216,10 @@ export default function StoreListings({
                     <td style={tdStyle}>
                       <input value={editUnits} onChange={(e) => setEditUnits(e.target.value)} style={{ ...inputStyle, width: '50px' }} />
                     </td>
-                    {hasTikTok && (
+                    {hasSkuIds && (
                       <td style={tdStyle}>
-                        {isTikTokStore(stores.find((st) => st.id === editStoreId)) ? (
-                          <input placeholder="Required" value={editTikTokId} onChange={(e) => setEditTikTokId(e.target.value)} style={{ ...inputStyle, width: '170px' }} />
+                        {usesSkuIds(stores.find((st) => st.id === editStoreId)) ? (
+                          <input placeholder="Required" value={editSkuId} onChange={(e) => setEditSkuId(e.target.value)} style={{ ...inputStyle, width: '170px' }} />
                         ) : <span style={{ color: dim }}>—</span>}
                       </td>
                     )}
@@ -236,9 +238,9 @@ export default function StoreListings({
                     <td style={tdStyle}>{storeLabel(listing.stores)}</td>
                     <td style={tdStyle}>{listing.platform_sku}</td>
                     <td style={tdStyle}>{listing.units_per_sale}</td>
-                    {hasTikTok && (
+                    {hasSkuIds && (
                       <td style={tdStyle}>
-                        {isTikTokStore(stores.find((st) => st.id === listing.store_id))
+                        {usesSkuIds(stores.find((st) => st.id === listing.store_id))
                           ? idsFor(listing.store_id, listing.platform_sku).join(', ') || <span style={{ color: amber, fontWeight: 700 }}>Missing: orders won&apos;t match</span>
                           : <span style={{ color: dim }}>—</span>}
                       </td>
@@ -265,11 +267,11 @@ export default function StoreListings({
           </select>
           <input placeholder="Store SKU" value={addSku} onChange={(e) => setAddSku(e.target.value)} style={{ ...inputStyle, width: '140px' }} />
           <input placeholder="Units/sale" value={addUnits} onChange={(e) => setAddUnits(e.target.value)} style={{ ...inputStyle, width: '70px' }} />
-          {isTikTokStore(stores.find((st) => st.id === addStoreId)) && (
+          {usesSkuIds(stores.find((st) => st.id === addStoreId)) && (
             idsFor(addStoreId, addSku.trim()).length > 0 ? (
-              <span style={{ fontSize: '13px', color: muted }}>TikTok SKU ID {idsFor(addStoreId, addSku.trim()).join(', ')} already on file</span>
+              <span style={{ fontSize: '13px', color: muted }}>{idLabel(addStoreId)} {idsFor(addStoreId, addSku.trim()).join(', ')} already on file</span>
             ) : (
-              <input placeholder="TikTok SKU ID (required)" value={addTikTokId} onChange={(e) => setAddTikTokId(e.target.value)} style={{ ...inputStyle, width: '210px' }} />
+              <input placeholder={`${idLabel(addStoreId)} (required)`} value={addSkuId} onChange={(e) => setAddSkuId(e.target.value)} style={{ ...inputStyle, width: '210px' }} />
             )
           )}
           <button onClick={saveNewListing} style={primaryButton}>Save</button>
