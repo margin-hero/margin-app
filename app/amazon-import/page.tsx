@@ -15,6 +15,7 @@ type AmazonRow = {
   'order-id': string
   'order-item-code': string
   'adjustment-id': string
+  'fulfillment-id': string // MFN = you ship it, AFN = Amazon ships it (FBA)
   'amount-type': string
   'amount-description': string
   amount: string
@@ -38,12 +39,18 @@ function amazonFeeType(description: string): FeeType {
   return 'other_fee' // e.g. VariableClosingFee, FixedClosingFee, DigitalServicesFee, GiftwrapChargeback
 }
 
+// Each sale / refund remembers whether Amazon fulfilled it, so it goes to the FBA store
+type AmazonOrder = NormalizedOrder & { fba: boolean }
+type AmazonRefund = NormalizedRefund & { fba: boolean }
+const isFba = (row: AmazonRow) => (row['fulfillment-id'] || '').trim().toUpperCase() === 'AFN'
+
 export default function AmazonImportPage() {
   const [status, setStatus] = useState<string>('')
-  const [preview, setPreview] = useState<NormalizedOrder[]>([])
-  const [allOrders, setAllOrders] = useState<NormalizedOrder[]>([])
-  const [allRefunds, setAllRefunds] = useState<NormalizedRefund[]>([])
-  const [store, setStore] = useState<Store | null>(null)
+  const [preview, setPreview] = useState<AmazonOrder[]>([])
+  const [allOrders, setAllOrders] = useState<AmazonOrder[]>([])
+  const [allRefunds, setAllRefunds] = useState<AmazonRefund[]>([])
+  const [store, setStore] = useState<Store | null>(null) // fulfilled by you (MFN)
+  const [fbaStore, setFbaStore] = useState<Store | null>(null) // fulfilled by Amazon (FBA)
   const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -83,7 +90,7 @@ export default function AmazonImportPage() {
       }
     }
 
-    const normalized: NormalizedOrder[] = []
+    const normalized: AmazonOrder[] = []
     for (const [orderItemCode, rows] of groups) {
       const first = rows[0]
       let principal = 0
@@ -121,6 +128,7 @@ export default function AmazonImportPage() {
         actualShippingCostPence: shippingByOrderId.has(orderId)
           ? Math.round(shippingByOrderId.get(orderId)! * 100)
           : null,
+        fba: isFba(first),
       })
     }
 
@@ -135,8 +143,8 @@ export default function AmazonImportPage() {
       refundGroups.get(key)!.push(row)
     }
 
-    const refunds: NormalizedRefund[] = []
-    const refundOrderIds = new Map<NormalizedRefund, string>()
+    const refunds: AmazonRefund[] = []
+    const refundOrderIds = new Map<AmazonRefund, string>()
     for (const [refundId, rows] of refundGroups) {
       const first = rows[0]
       let principal = 0
@@ -159,7 +167,8 @@ export default function AmazonImportPage() {
       const feesVatPence = Math.round(feesGrossPence - feesGrossPence / 1.2) // 20%, as for sales
       shareVat(feeBreakdown, feesVatPence)
 
-      const refund: NormalizedRefund = {
+      const refund: AmazonRefund = {
+        fba: isFba(first),
         sku: first.sku,
         externalId: refundId,
         originalExternalId: first['order-item-code'],
@@ -202,6 +211,18 @@ export default function AmazonImportPage() {
       })
     }
 
+    // Other account-level rows Margin Hero doesn't use yet (e.g. FBA storage fees, subscription):
+    // listed in the status so nothing is skipped silently
+    const HANDLED_OTHER = ['Shipping label purchase', 'Shipping label purchase for return']
+    const otherRows = new Map<string, number>()
+    for (const row of data) {
+      const type = (row['transaction-type'] || '').trim()
+      if (!type || type === 'Order' || type === 'Refund') continue
+      const what = row['amount-description'] || type
+      if (type === 'other-transaction' && HANDLED_OTHER.includes(what)) continue
+      otherRows.set(what, (otherRows.get(what) || 0) + 1)
+    }
+
     // A date that couldn't be read would put the sale on the wrong day, so stop here
     const badDates = normalized.filter((o) => !o.orderDate).length + refunds.filter((r) => !r.refundDate).length
     if (badDates > 0) {
@@ -215,8 +236,11 @@ export default function AmazonImportPage() {
     setAllOrders(normalized)
     setAllRefunds(refunds)
     setPreview(normalized.slice(0, 20))
+    const fbaLines = normalized.filter((o) => o.fba).length + refunds.filter((r) => r.fba).length
     setStatus(
-      `Found ${normalized.length} order lines and ${refunds.length} refunds (from ${data.length} rows in the file).` +
+      `Found ${normalized.length} order lines and ${refunds.length} refunds (from ${data.length} rows in the file)` +
+      (fbaLines ? `, of which ${fbaLines} were fulfilled by Amazon (FBA) and go to your FBA store.` : '.') +
+      (otherRows.size ? ` Not imported yet: ${Array.from(otherRows, ([t, n]) => `${n} × ${t}`).join(', ')} (account-level rows, e.g. FBA storage fees, come later).` : '') +
       (unmatchedLabels
         ? ` Warning: ${unmatchedLabels} return label(s) are for orders with no refund in this file, so they aren't counted (they're usually in the same file as the refund).`
         : '') +
@@ -229,22 +253,42 @@ export default function AmazonImportPage() {
       setStatus('Nothing to import yet: please choose a file first.')
       return
     }
-    if (!store) {
-      setStatus('Please choose which store this file is from first.')
+    const hasMfn = allOrders.some((o) => !o.fba) || allRefunds.some((r) => !r.fba)
+    const hasFba = allOrders.some((o) => o.fba) || allRefunds.some((r) => r.fba)
+    if (hasMfn && !store) {
+      setStatus('Please choose your Amazon store (fulfilled by you) first.')
+      return
+    }
+    if (hasFba && !fbaStore) {
+      setStatus(
+        'This file has orders fulfilled by Amazon (FBA). Choose your FBA store above, or add one on the Stores page ' +
+        '(e.g. "Amazon UK FBA", with "Fulfilled by the channel" ticked), then try again.'
+      )
       return
     }
 
-    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus, refunds: allRefunds })
-    setStatus(describeImportResult(result, store))
+    const messages: string[] = []
+    for (const [target, fba] of [[store, false], [fbaStore, true]] as const) {
+      const orders = allOrders.filter((o) => o.fba === fba)
+      const refunds = allRefunds.filter((r) => r.fba === fba)
+      if (!target || (orders.length === 0 && refunds.length === 0)) continue
+      const result = await importOrdersForStore(target, orders, setStatus, { createUnknownSkus, refunds })
+      messages.push(describeImportResult(result, target))
+    }
+    setStatus(messages.join(' '))
   }
 
   return (
     <div style={pageStyle}>
       <p style={eyebrow}>Import</p>
       <h1 style={pageTitle}>Amazon Import</h1>
-      <p style={pageIntro}>Upload the settlement report. Sales and refunds (with Amazon&apos;s refund fee and any return label) are imported together. SAFE-T reimbursements are skipped for now.</p>
+      <p style={pageIntro}>Upload the settlement report. Sales and refunds (with Amazon&apos;s refund fee and any return label) are imported together.
+        Orders Amazon fulfilled (FBA) go to your FBA store, the rest to your own-shipping store, from the same file. SAFE-T reimbursements and FBA storage fees are skipped for now.</p>
       <div style={cardStyle}>
-      <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} value={store} onChange={setStore} />
+      <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} storeFilter={(st) => !st.fulfilled_by_channel} label="Store (you ship)" value={store} onChange={setStore} />
+      <div style={{ marginTop: '10px' }}>
+        <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} storeFilter={(st) => st.fulfilled_by_channel} label="FBA store (Amazon ships)" optional value={fbaStore} onChange={setFbaStore} />
+      </div>
       <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
       <input type="file" accept=".txt,.tsv,.csv,.xlsx,.xls" onChange={handleFile} style={{ color: muted, fontSize: '14px', marginTop: '16px', display: 'block' }} />
       {status && <p style={{ color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', lineHeight: 1.5 }}>{status}</p>}
@@ -263,6 +307,7 @@ export default function AmazonImportPage() {
                   <th style={thStyle}>Qty</th>
                   <th style={thStyle}>Sale Price</th>
                   <th style={thStyle}>Fees</th>
+                  <th style={thStyle}>Shipped by</th>
                 </tr>
               </thead>
               <tbody>
@@ -273,6 +318,7 @@ export default function AmazonImportPage() {
                     <td style={tdStyle}>{row.qty}</td>
                     <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
                     <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
+                    <td style={tdStyle}>{row.fba ? 'Amazon (FBA)' : 'You'}</td>
                   </tr>
                 ))}
               </tbody>

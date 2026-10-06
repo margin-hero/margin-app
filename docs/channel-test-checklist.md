@@ -40,7 +40,9 @@ Update this file as each case is tested (date + what was checked).
 | **Promotions** ("Promotion" amount-type rows) | ⬜ currently ignored: a seller-funded discount would overstate revenue. Need an example |
 | **Shipping charged to the buyer** (ItemPrice "Shipping" / "ShippingTax") | ⬜ currently ignored. Need an example |
 | Gift wrap | ⬜ need an example |
-| FBA sale (fulfilment fees, no shipping lookup) | ⬜ next build |
+| FBA sale (routed to the FBA store, fulfilment fee, no shipping cost) | ✅ 2026-10-06 imported to the FBA store, LL-1-FBA auto-linked to LL-1 (£39.95, fees £11.53). Check the margin figures on /order-lines |
+| FBA storage / account-level fees | ⬜ need example rows |
+| Store-specific cost (e.g. FBA prep) | 🟡 |
 | SAFE-T reimbursement | ⬜ |
 
 ### TikTok Shop

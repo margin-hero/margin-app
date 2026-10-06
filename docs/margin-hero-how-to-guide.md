@@ -172,6 +172,15 @@ Your **settlement report** from Amazon Seller Central, downloaded in the "flat f
 5. Click **Confirm Import**.
 6. Read the message at the end. It tells you how many orders and refunds were imported and how many were skipped because you'd already imported them. Settlement reports overlap, so uploading the same report twice is safe: nothing is counted twice.
 
+### Amazon FBA
+Set up FBA as **its own store**, so you can compare FBA with orders you ship yourself, product by product:
+1. In **Manage → Stores**, add a store such as **Amazon UK FBA** on the Amazon platform, with **Fulfilled by the channel** ticked. Its orders then have no shipping cost of your own: Amazon's fulfilment fee is counted in its fees.
+2. Map your FBA SKUs to your products in that store (on the product's page, Store SKUs). An FBA SKU that's your SKU plus "FBA" (e.g. `LL-1-FBA`) is linked to `LL-1` automatically when you import.
+3. Add any FBA-only costs on the product's page with **Only Amazon UK FBA** chosen, e.g. prep, labelling, or inbound freight to Amazon's warehouse.
+4. On **Import → Amazon**, choose both stores ("Store (you ship)" and "FBA store (Amazon ships)") and upload the settlement as usual. Each order goes to the right store automatically; the preview shows who shipped each one.
+
+FBA storage fees and other account-level charges aren't imported yet; the import message lists them.
+
 ### What Margin Hero takes from the report
 - **Sale price:** what the customer paid for the item, including VAT.
 - **Fees:** all of Amazon's fees for that item (referral fee, FBA fees and so on).

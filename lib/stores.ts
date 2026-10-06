@@ -9,6 +9,7 @@ export type Store = {
   platform_id: string
   name: string
   vat_registered: boolean
+  fulfilled_by_channel: boolean // the channel ships the orders (e.g. Amazon FBA): no shipping cost of your own
   platforms: { name: string; integration_type: string } | null
 }
 
@@ -16,7 +17,7 @@ export type Store = {
 export async function loadStores(db: SupabaseClient = supabase): Promise<Store[]> {
   const { data } = await db
     .from('stores')
-    .select('id, tenant_id, platform_id, name, vat_registered, platforms(name, integration_type)')
+    .select('id, tenant_id, platform_id, name, vat_registered, fulfilled_by_channel, platforms(name, integration_type)')
     .order('name')
   return (data as any) || []
 }

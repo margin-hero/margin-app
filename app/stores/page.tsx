@@ -27,6 +27,7 @@ export default function StoresPage() {
   const [newName, setNewName] = useState('')
   const [newPlatformId, setNewPlatformId] = useState('')
   const [newVatRegistered, setNewVatRegistered] = useState(true)
+  const [newFulfilledByChannel, setNewFulfilledByChannel] = useState(false)
 
   // Renaming a store
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -71,15 +72,22 @@ export default function StoresPage() {
       platform_id: newPlatformId,
       name: newName,
       vat_registered: newVatRegistered,
+      fulfilled_by_channel: newFulfilledByChannel,
     })
     if (error) {
       // 23505 = a store with this name already exists on this channel
-      setStatus(error.code === '23505' ? `Error: you already have a store called "${newName}" on this channel. Use a different name.` : `Error creating store: ${error.message}`)
+      setStatus(
+        error.code === '23505'
+          ? `Error: you already have a store called "${newName}" on this channel. Use a different name` +
+            (newFulfilledByChannel ? `, e.g. "${newName} FBA", so the two are easy to tell apart on the dashboards.` : '.')
+          : `Error creating store: ${error.message}`
+      )
       return
     }
     setNewName('')
     setNewPlatformId('')
     setNewVatRegistered(true)
+    setNewFulfilledByChannel(false)
     setStatus('Store created.')
     loadAll()
   }
@@ -96,6 +104,17 @@ export default function StoresPage() {
     }
     setEditingId(null)
     setStatus('Store renamed.')
+    loadAll()
+  }
+
+  // Who ships this store's orders. Not dated: it applies to all of the store's orders.
+  async function toggleFulfilment(store: Store) {
+    const next = !store.fulfilled_by_channel
+    if (!window.confirm(next
+      ? `Mark ${store.name} as fulfilled by the channel (e.g. Amazon FBA)? Its orders will have no shipping cost of your own (the channel's fulfilment fee is in its fees). This applies to all of its orders.`
+      : `Mark ${store.name} as shipped by you? Its orders will use your shipping profiles and rules again. This applies to all of its orders.`)) return
+    const { error } = await supabase.from('stores').update({ fulfilled_by_channel: next }).eq('id', store.id)
+    setStatus(error ? `Error saving: ${error.message}` : `${store.name}: ${next ? 'fulfilled by the channel' : 'shipped by you'}.`)
     loadAll()
   }
 
@@ -182,11 +201,18 @@ export default function StoresPage() {
           <label style={{ fontSize: '14px', color: muted }}>
             <input type="checkbox" checked={newVatRegistered} onChange={(e) => setNewVatRegistered(e.target.checked)} /> VAT registered
           </label>
+          <label style={{ fontSize: '14px', color: muted }}>
+            <input type="checkbox" checked={newFulfilledByChannel} onChange={(e) => setNewFulfilledByChannel(e.target.checked)} /> Fulfilled by the channel (e.g. Amazon FBA)
+          </label>
           <button onClick={createStore} style={primaryButton}>
             Add
           </button>
         </div>
-        <p style={{ ...help, margin: '10px 0 0' }}>If the business becomes VAT registered later, add the date it changed under the store&apos;s VAT button below.</p>
+        <p style={{ ...help, margin: '10px 0 0' }}>
+          If the business becomes VAT registered later, add the date it changed under the store&apos;s VAT button below.
+          For Amazon FBA, add a separate store (e.g. &quot;Amazon UK FBA&quot;) with &quot;Fulfilled by the channel&quot; ticked: the Amazon
+          import sends FBA orders there from the same settlement file, so FBA and your own shipping compare side by side.
+        </p>
       </div>
 
       <div style={cardStyle}>
@@ -201,6 +227,7 @@ export default function StoresPage() {
                 <th style={thStyle}>Store</th>
                 <th style={thStyle}>Platform</th>
                 <th style={thStyle}>VAT</th>
+                <th style={thStyle}>Shipping</th>
                 <th style={thStyle}></th>
               </tr>
             </thead>
@@ -226,6 +253,10 @@ export default function StoresPage() {
                           <div key={u.id} style={{ color: amber, fontSize: '12px' }}>{vatLabel(u.vat_registered)} from {ukDate(u.effective_from)}</div>
                         ))}
                       </td>
+                      <td style={tdStyle}>
+                        {s.fulfilled_by_channel ? 'Channel ships (e.g. FBA)' : 'You ship'}{' '}
+                        <button onClick={() => toggleFulfilment(s)} style={{ ...linkButton, fontSize: '12px' }}>Change</button>
+                      </td>
                       <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {editingId === s.id ? (
                           <>
@@ -242,7 +273,7 @@ export default function StoresPage() {
                     </tr>
                     {vatOpenId === s.id && (
                       <tr>
-                        <td colSpan={4} style={{ ...tdStyle, background: 'rgba(255,255,255,0.03)', padding: '16px' }}>
+                        <td colSpan={5} style={{ ...tdStyle, background: 'rgba(255,255,255,0.03)', padding: '16px' }}>
                           <p style={{ ...help, color: text, fontWeight: 700 }}>VAT history for {s.name}</p>
                           <p style={help}>
                             Each order uses the VAT status on its own date. Registered: sales, costs, fees and shipping are counted without VAT.

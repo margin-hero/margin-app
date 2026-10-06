@@ -9,6 +9,7 @@ import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, d
 // "live" = import already works in the app. Update as new importers ship.
 const CHANNELS: { name: string; live: boolean }[] = [
   { name: 'Amazon', live: true },
+  { name: 'Amazon FBA', live: true },
   { name: 'eBay', live: true },
   { name: 'B&Q', live: true },
   { name: 'The Range', live: true },

@@ -101,14 +101,17 @@ export async function importOrdersForStore(
 
     // If a SKU exactly matches a master product's standard_sku (e.g. the same seller
     // SKU used across two stores), link it to that product — no new product needed.
+    // An Amazon FBA SKU that's a product's SKU plus "FBA" (e.g. LL-1-FBA) links to that product too.
     // Checked in batches: a very long list of SKUs won't fit in one request
+    const fbaBase = (sku: string) => sku.replace(/[-_ ]?FBA$/i, '')
+    const lookupSkus = Array.from(new Set([...newSkus, ...newSkus.map(fbaBase)]))
     const existingProductBySku = new Map<string, string>()
-    for (let i = 0; i < newSkus.length; i += 200) {
+    for (let i = 0; i < lookupSkus.length; i += 200) {
       const { data: existingProducts, error: existingProductsError } = await supabase
         .from('master_products')
         .select('id, standard_sku')
         .eq('tenant_id', store.tenant_id)
-        .in('standard_sku', newSkus.slice(i, i + 200))
+        .in('standard_sku', lookupSkus.slice(i, i + 200))
 
       if (existingProductsError) {
         result.errors.push(`Error checking existing products: ${existingProductsError.message}`)
@@ -118,7 +121,7 @@ export async function importOrdersForStore(
     }
 
     for (const sku of newSkus) {
-      let productId = existingProductBySku.get(sku)
+      let productId = existingProductBySku.get(sku) ?? (fbaBase(sku) !== sku ? existingProductBySku.get(fbaBase(sku)) : undefined)
 
       if (!productId && !options.createUnknownSkus) {
         result.unmappedSkus.push(sku) // held back: the orders are skipped below
@@ -342,7 +345,7 @@ export function describeImportResult(result: ImportResult, store: Store): string
     `Skipped ${result.skippedDuplicates} already-imported.`,
   ]
   if (result.autoLinked.length) {
-    parts.push(`Linked ${result.autoLinked.length} SKU(s) to existing products with the same SKU.`)
+    parts.push(`Linked ${result.autoLinked.length} SKU(s) to existing products with the same SKU (or the same SKU plus "FBA"): ${result.autoLinked.slice(0, 10).join(', ')}.`)
   }
   if (result.createdProducts.length) {
     parts.push(`Created ${result.createdProducts.length} new product(s) — add their costs in Products.`)

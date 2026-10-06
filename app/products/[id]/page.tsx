@@ -27,6 +27,7 @@ type CogsRow = {
   amount_pence: number
   vat_rate: number
   effective_from: string
+  store_id: string | null // null = all stores; set = this store only (e.g. FBA prep)
 }
 
 type ShippingRow = {
@@ -68,6 +69,7 @@ export default function ProductDetailPage() {
 
   const [newComponentType, setNewComponentType] = useState('')
   const [newDescription, setNewDescription] = useState('')
+  const [newCostStoreId, setNewCostStoreId] = useState('') // '' = all stores
   const [newAmount, setNewAmount] = useState('')
   const [newVatRate, setNewVatRate] = useState('')
   const [newEffectiveFrom, setNewEffectiveFrom] = useState(today())
@@ -84,6 +86,7 @@ export default function ProductDetailPage() {
   const [editingCogsId, setEditingCogsId] = useState<string | null>(null)
   const [editComponentType, setEditComponentType] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editCostStoreId, setEditCostStoreId] = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editVatRate, setEditVatRate] = useState('')
   const [editEffectiveFrom, setEditEffectiveFrom] = useState('')
@@ -106,7 +109,7 @@ export default function ProductDetailPage() {
 
     const { data: cogsData } = await supabase
       .from('cogs_components')
-      .select('id, component_type, description, amount_pence, vat_rate, effective_from')
+      .select('id, component_type, description, amount_pence, vat_rate, effective_from, store_id')
       .eq('master_product_id', productId)
       .order('component_type')
       .order('effective_from')
@@ -164,7 +167,7 @@ export default function ProductDetailPage() {
   // that already has one is usually a genuine price change, so it starts today.
   useEffect(() => {
     if (newEffectiveTouched) return
-    const existing = cogs.some((c) => c.component_type === newComponentType && (c.description || '') === newDescription.trim())
+    const existing = cogs.some((c) => c.component_type === newComponentType && (c.description || '') === newDescription.trim() && (c.store_id || '') === newCostStoreId)
     setNewEffectiveFrom(firstOrderDate && !existing ? firstOrderDate : today())
   }, [firstOrderDate, cogs, newComponentType, newDescription, newEffectiveTouched])
 
@@ -227,6 +230,7 @@ export default function ProductDetailPage() {
       master_product_id: productId,
       component_type: newComponentType,
       description: newDescription.trim() || null,
+      store_id: newCostStoreId || null,
       amount_pence: Math.round(parseFloat(newAmount) * 100),
       vat_rate: parseFloat(newVatRate),
       effective_from: newEffectiveFrom,
@@ -237,6 +241,7 @@ export default function ProductDetailPage() {
     }
     setNewComponentType('')
     setNewDescription('')
+    setNewCostStoreId('')
     setNewAmount('')
     setNewVatRate('')
     setNewEffectiveTouched(false)
@@ -248,6 +253,7 @@ export default function ProductDetailPage() {
     setEditingCogsId(row.id)
     setEditComponentType(row.component_type)
     setEditDescription(row.description || '')
+    setEditCostStoreId(row.store_id || '')
     setEditAmount((row.amount_pence / 100).toString())
     setEditVatRate(row.vat_rate.toString())
     setEditEffectiveFrom(row.effective_from)
@@ -259,6 +265,7 @@ export default function ProductDetailPage() {
       .update({
         component_type: editComponentType,
         description: editDescription.trim() || null,
+        store_id: editCostStoreId || null,
         amount_pence: Math.round(parseFloat(editAmount) * 100),
         vat_rate: parseFloat(editVatRate),
         effective_from: editEffectiveFrom,
@@ -497,7 +504,8 @@ export default function ProductDetailPage() {
         <p style={help}>
           <strong>Per unit</strong> costs are multiplied by the quantity sold (bundles included). <strong>Per order</strong> costs, like a box or pick &amp; pack,
           are charged once per order line. <strong>Landed cost</strong> types (all-in, or product cost + freight + duty) count in Gross Profit; everything counts in Net.
-          Two costs of the same type both apply if they have different descriptions.
+          Two costs of the same type both apply if they have different descriptions. A cost can apply to <strong>all stores</strong> or <strong>one store only</strong>
+          (e.g. FBA prep or inbound freight to Amazon for your FBA store); for the same type and description, a store&apos;s own cost is used instead of the all-stores one.
         </p>
         {hasDoubleCountRisk(cogs.filter((c) => c.effective_from <= today()).map((c) => c.component_type)) && (
           <p style={{ color: red, fontSize: '14px', fontWeight: 600 }}>
@@ -540,6 +548,10 @@ export default function ProductDetailPage() {
                   </td>
                   <td style={tdStyle}>
                     <input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Optional" style={smallInput} />
+                    <select value={editCostStoreId} onChange={(e) => setEditCostStoreId(e.target.value)} style={{ ...inputStyle, display: 'block', marginTop: '6px' }}>
+                      <option value="">All stores</option>
+                      {stores.map((st) => <option key={st.id} value={st.id}>Only {storeLabel(st)}</option>)}
+                    </select>
                   </td>
                   <td style={tdStyle}>
                     <input placeholder="£ inc. VAT" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} style={smallInput} />
@@ -569,14 +581,17 @@ export default function ProductDetailPage() {
                       {costTypes.find((t) => t.code === row.component_type)?.basis === 'per_order' ? 'per order' : 'per unit'}
                     </span>
                   </td>
-                  <td style={tdStyle}>{row.description || ''}</td>
+                  <td style={tdStyle}>
+                    {row.description || ''}
+                    {row.store_id && <div style={{ fontSize: '12px', color: muted }}>Only {storeLabel(stores.find((st) => st.id === row.store_id))}</div>}
+                  </td>
                   <td style={tdStyle}>£{(row.amount_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
                   <td style={tdStyle}>
                     {ukDate(row.effective_from)}
                     {/* The first entry of a cost starting after this product's first order: earlier orders miss it */}
                     {firstOrderDate && row.effective_from > firstOrderDate &&
-                      !cogs.some((c) => c.component_type === row.component_type && (c.description || '') === (row.description || '') && c.effective_from < row.effective_from) && (
+                      !cogs.some((c) => c.component_type === row.component_type && (c.description || '') === (row.description || '') && (c.store_id || '') === (row.store_id || '') && c.effective_from < row.effective_from) && (
                       <div style={{ fontSize: '11px', color: amber, marginTop: '4px', maxWidth: '220px' }}>
                         Starts after this product&apos;s first order ({ukDate(firstOrderDate)}), so earlier orders don&apos;t include it. If it applied then too, Edit the date.
                       </div>
@@ -616,6 +631,10 @@ export default function ProductDetailPage() {
             onChange={(e) => setNewDescription(e.target.value)}
             style={{ ...inputStyle, width: '170px' }}
           />
+          <select value={newCostStoreId} onChange={(e) => setNewCostStoreId(e.target.value)} style={inputStyle} aria-label="Which stores this cost applies to">
+            <option value="">All stores</option>
+            {stores.map((st) => <option key={st.id} value={st.id}>Only {storeLabel(st)}</option>)}
+          </select>
           <input
             placeholder="£ inc. VAT"
             value={newAmount}
