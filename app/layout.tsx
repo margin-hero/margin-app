@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Mona_Sans } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import { lime, bg } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${monaSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* Brand colours as CSS variables, for styles that can't be inline (e.g. file pickers in globals.css) */}
+      <body
+        className="min-h-full flex flex-col"
+        style={{ "--mh-lime": lime, "--mh-bg": bg } as React.CSSProperties}
+      >
         <AppShell>{children}</AppShell>
       </body>
     </html>

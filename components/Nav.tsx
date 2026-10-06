@@ -13,41 +13,54 @@ import { supabase } from '@/lib/supabase'
 import Logo from '@/components/Logo'
 import { lime, bg, border, text, muted, dim, font } from '@/lib/theme'
 
-const NAV_GROUPS: { label: string; links: { href: string; label: string; icon: LucideIcon }[] }[] = [
+type NavLink = { href: string; label: string; icon: LucideIcon }
+// A group's links can be split into sections with small subheadings.
+// A section without a label (e.g. Settings) just sits below the others.
+type NavSection = { label?: string; links: NavLink[] }
+
+const NAV_GROUPS: { label: string; sections: NavSection[] }[] = [
   {
     label: 'Dashboards',
-    links: [
+    sections: [{ links: [
       { href: '/channel-overview', label: 'Channel Overview', icon: LayoutDashboard },
       { href: '/margins', label: 'Margins', icon: Grid3x3 },
       { href: '/sku-detail', label: 'SKU Detail', icon: ScanSearch },
       { href: '/trends', label: 'Trends', icon: TrendingUp },
       { href: '/opportunities', label: 'Opportunities', icon: Lightbulb },
-    ],
+    ] }],
   },
   {
     label: 'Import',
-    links: [
+    sections: [{ links: [
       { href: '/upload', label: 'CSV / Excel', icon: FileUp },
       { href: '/amazon-import', label: 'Amazon', icon: ShoppingCart },
       { href: '/tiktok-import', label: 'TikTok', icon: Music2 },
       { href: '/mirakl-import', label: 'Mirakl', icon: Building2 },
       { href: '/onbuy-import', label: 'OnBuy', icon: ShoppingBag },
       { href: '/shopify-import', label: 'Shopify', icon: ShoppingBasket },
-    ],
+    ] }],
   },
   {
     label: 'Manage',
-    links: [
-      { href: '/stores', label: 'Stores', icon: Store },
-      { href: '/products', label: 'Products', icon: Package },
-      { href: '/mappings', label: 'Mappings', icon: Link2 },
-      { href: '/catalog-import', label: 'Catalog Import', icon: ListPlus },
-      { href: '/costs', label: 'Costs', icon: PoundSterling },
-      { href: '/cost-import', label: 'Cost Import', icon: FileSpreadsheet },
-      { href: '/couriers', label: 'Couriers', icon: Truck },
-      { href: '/shipping-profiles', label: 'Shipping Profiles', icon: Boxes },
-      { href: '/overheads', label: 'Overheads', icon: Building },
-      { href: '/settings', label: 'Settings', icon: Settings },
+    sections: [
+      { label: 'Products', links: [
+        { href: '/stores', label: 'Stores', icon: Store },
+        { href: '/products', label: 'Products', icon: Package },
+        { href: '/mappings', label: 'SKU Mapping', icon: Link2 },
+        { href: '/catalog-import', label: 'Catalog Import', icon: ListPlus },
+      ] },
+      { label: 'Costs', links: [
+        { href: '/costs', label: 'Costs', icon: PoundSterling },
+        { href: '/overheads', label: 'Overheads', icon: Building },
+        { href: '/cost-import', label: 'Costs Import', icon: FileSpreadsheet },
+      ] },
+      { label: 'Shipping', links: [
+        { href: '/couriers', label: 'Couriers', icon: Truck },
+        { href: '/shipping-profiles', label: 'Shipping Profiles', icon: Boxes },
+      ] },
+      { links: [
+        { href: '/settings', label: 'Settings', icon: Settings },
+      ] },
     ],
   },
 ]
@@ -136,36 +149,47 @@ export default function Nav() {
                 {group.label}
               </p>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {group.links.map((link) => {
-                const active = pathname === link.href || pathname.startsWith(`${link.href}/`)
-                const Icon = link.icon
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    title={collapsed ? link.label : undefined}
-                    className={active ? undefined : 'hover:bg-[#1B1C19] hover:!text-[#EBEEE0]'}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: collapsed ? 'center' : 'flex-start',
-                      gap: '12px',
-                      padding: '9px 12px',
-                      borderRadius: '999px',
-                      fontSize: '14px',
-                      fontWeight: active ? 800 : 600,
-                      textDecoration: 'none',
-                      whiteSpace: 'nowrap',
-                      background: active ? lime : 'transparent',
-                      color: active ? bg : muted,
-                    }}
-                  >
-                    <Icon size={18} strokeWidth={2.2} style={{ flexShrink: 0 }} />
-                    {!collapsed && link.label}
-                  </Link>
-                )
-              })}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {group.sections.map((section, i) => (
+                <div key={section.label ?? i}>
+                  {section.label && !collapsed && (
+                    <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: muted, margin: '0 0 4px', padding: '0 12px' }}>
+                      {section.label}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {section.links.map((link) => {
+                      const active = pathname === link.href || pathname.startsWith(`${link.href}/`)
+                      const Icon = link.icon
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          title={collapsed ? link.label : undefined}
+                          className={active ? undefined : 'hover:bg-[#1B1C19] hover:!text-[#EBEEE0]'}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: collapsed ? 'center' : 'flex-start',
+                            gap: '12px',
+                            padding: '9px 12px',
+                            borderRadius: '999px',
+                            fontSize: '14px',
+                            fontWeight: active ? 800 : 600,
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                            background: active ? lime : 'transparent',
+                            color: active ? bg : muted,
+                          }}
+                        >
+                          <Icon size={18} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+                          {!collapsed && link.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}

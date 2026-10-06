@@ -18,7 +18,7 @@ All the import pages are under **Import** in the menu at the top of the screen.
 
 **Set up your products before importing sales (recommended).** Use **Manage → Catalog Import** to load all your products and their SKU in each store in one go (see the section below). Then every sales import matches cleanly.
 
-**SKUs that aren't mapped yet are held back.** If a sales report has a SKU that isn't mapped in that store, those orders are skipped and the SKUs are listed after the import. Map them (Catalog Import or **Manage → Mappings**), then upload the same file again. Orders that already went in won't be duplicated. Two exceptions:
+**SKUs that aren't mapped yet are held back.** If a sales report has a SKU that isn't mapped in that store, those orders are skipped and the SKUs are listed after the import. Map them (Catalog Import or **Manage → SKU Mapping**), then upload the same file again. Orders that already went in won't be duplicated. Two exceptions:
 - If the store's SKU exactly matches one of your products' standard SKUs, it's linked to that product automatically.
 - If you tick **Create new products for SKUs that aren't mapped yet** on the import page, each unknown SKU becomes a new product named after the SKU, for you to tidy up later.
 
@@ -26,7 +26,7 @@ All the import pages are under **Import** in the menu at the top of the screen.
 
 **Make sure your costs start early enough.** Each cost has a date it applies from. A cost only counts for orders on or after that date. If you're importing older sales, set the cost's start date to before your oldest order, or those orders will show no cost.
 
-**Bundles and multipacks:** if one sale on a marketplace is really several units (for example a 3-pack), set this up in **Manage → Mappings** by changing "units per sale". Margin Hero then counts the right product cost and shipping for each sale.
+**Bundles and multipacks:** if one sale on a marketplace is really several units (for example a 3-pack), set this up in **Manage → SKU Mapping** by changing "units per sale". Margin Hero then counts the right product cost and shipping for each sale.
 
 ---
 
@@ -51,13 +51,13 @@ To add a product without any store yet, fill in `standard_sku` and `name` and le
 1. Choose your file. Margin Hero checks it against what you already have and shows what it will add, plus any problem rows.
 2. Click **Confirm import**. Problem rows are skipped; everything else is added.
 
-Catalog Import **only adds**. It never changes or deletes existing products or mappings. If a store SKU is already mapped to a different product, or has a different units per sale, that row is listed as a problem and left alone, so you can decide what's right in **Manage → Mappings**. Re-uploading the same file is safe: rows already set up are simply counted as "already set up".
+Catalog Import **only adds**. It never changes or deletes existing products or mappings. If a store SKU is already mapped to a different product, or has a different units per sale, that row is listed as a problem and left alone, so you can decide what's right in **Manage → SKU Mapping**. Re-uploading the same file is safe: rows already set up are simply counted as "already set up".
 
 ---
 
 ## Adding costs in bulk: Cost Import
 
-**Page:** Manage → **Cost Import**
+**Page:** Manage → **Costs Import**
 **File type:** CSV or Excel (.xlsx). Click **Download template** on the page for an example.
 
 One row per cost. The products must already exist (add them with Catalog Import first).
@@ -173,8 +173,8 @@ Your **settlement report** from Amazon Seller Central, downloaded in the "flat f
 ### TikTok SKU IDs
 TikTok's sales reports don't show your own SKU codes. They show TikTok's long number for each product instead (for example `1729384756102938`), called the **SKU ID**. So every TikTok product in Margin Hero needs its SKU ID as well as its Seller SKU. It's part of the product's mapping, and there are three ways to add it:
 
-- **One product at a time:** on **Manage → Mappings**, when you add or edit a listing in a TikTok store, fill in the **TikTok SKU ID** (it's required for TikTok stores). Find it in TikTok Seller Center on the product's page.
-- **A whole shop at once:** on **Manage → Mappings**, open **TikTok catalog upload**, choose the TikTok store, and upload your product list exported from TikTok Seller Center. The file needs columns called **SKU ID** and **Seller SKU** (TikTok's bulk-edit product template has these). Re-uploading is safe; it updates the existing IDs.
+- **One product at a time:** on **Manage → SKU Mapping**, when you add or edit a listing in a TikTok store, fill in the **TikTok SKU ID** (it's required for TikTok stores). Find it in TikTok Seller Center on the product's page.
+- **A whole shop at once:** on **Manage → SKU Mapping**, open **TikTok catalog upload**, choose the TikTok store, and upload your product list exported from TikTok Seller Center. The file needs columns called **SKU ID** and **Seller SKU** (TikTok's bulk-edit product template has these). Re-uploading is safe; it updates the existing IDs.
 - **With your full catalog:** in **Manage → Catalog Import**, fill in the optional `tiktok_sku_id` column for TikTok rows, with your Seller SKU as the `store_sku`.
 
 The Mappings page shows each TikTok listing's SKU ID, and flags any that are missing.
