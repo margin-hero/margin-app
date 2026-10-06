@@ -121,13 +121,21 @@ Steps:
 
 Ads are often the single biggest cost after the product itself, and a SKU can look healthy on Net margin while losing money once its ad spend is counted. Scope is strictly *what ads do to margin*: no campaign management, bidding or keyword tools (the homepage promises "No PPC bidding").
 
-- **Data:** an `ad_spend` table: tenant, store, date, campaign name, optional SKU (`master_product_id`), spend in pence, VAT rate, attributed sales in pence. Dated per day so any dashboard range works.
+- **Two kinds of ad cost (updated 2026-10-06).** Both must end up in one "ads" figure per SKU × store, kept apart from selling fees:
+  1. **Per-sale ad fees inside the order / settlement reports**, tied to one order line: OnBuy **Boost**, TikTok **Smart Promotion / Campaign resource / Campaign service / GMV Max ad fee**, eBay **Promoted Listings Standard**. Since 2026-10-06 every importer saves these in `order_line_fees` with `fee_type = 'advertising'`, so they're already separated: the ads layer just reads them (no new import). Orders imported before that have their fees as "Not broken down" and need deleting and re-importing to split the ads out.
+  2. **Separate ad reports** (spend per campaign / SKU / day, not tied to an order): Amazon Sponsored Products / Brands, eBay Promoted Listings **Advanced** (cost per click), **OnBuy PPC ads** (some sellers use PPC instead of, or as well as, Boost), TikTok ads billed outside the statement, Google / Meta for Shopify. These go in the `ad_spend` table below.
+- **Never count the same spend twice.** One store can have both kinds (e.g. OnBuy Boost in the order report *and* OnBuy PPC in an ads report): that's fine, they're different spend. The risk is the *same* spend appearing in both places (e.g. if an ads report also lists Promoted Listings Standard or GMV Max fees that are already in the order data). Rule: for each channel and ad type, one source of truth. Each ads importer knows which ad types its channel already puts in the order data and skips them (with a note in the import message), and each `ad_spend` row records its `source` (which report) so overlaps can be checked.
+- **Affiliate commission (decide when building):** TikTok affiliate commission is saved as `fee_type = 'affiliate'`, separate from both fees and ads. It's paid to creators for sales they drive, so it's arguably marketing: show it as its own line in the ads layer ("Ads & affiliates"), or leave it in selling fees. Either way it stays its own type, so it can be reported on its own.
+- **How the views carry it:** the margin views get an ads column (the order line's `advertising` fees, net of VAT for VAT-registered stores on the order date), and fees exclude it, so Net = before ads and "after ads" = Net − per-sale ad fees − allocated `ad_spend`. Re-create `order_margins` from the latest migration (`20261006180000_dated_vat_registration.sql`), then `margin_lines`.
+- **Data:** an `ad_spend` table: tenant, store, date, campaign name, optional SKU (`master_product_id`), spend in pence, VAT rate, attributed sales in pence, source (which report). Dated per day so any dashboard range works.
 - **Sources, one importer each (reusing `lib/readSpreadsheet.ts`):**
   - Amazon Sponsored Products / Brands: the "Advertised product" report (spend and sales per SKU per day)
   - TikTok Shop ads (GMV Max, Promote). Creator affiliate commission is already counted in TikTok fees, so it mustn't be counted again here.
   - Retail media where the Mirakl retailers offer it, plus Google / Meta ads for Shopify and other own-site stores
   - Manual entry for anything else (e.g. a one-off influencer fee)
-  - **Per-sale ad fees already in order reports:** OnBuy **Boost** (columns "Boost Fee %", "Boost Fee Per Item £" = net, "Boost Fee TAX Per Item £" = VAT, "Total Boost Fee"). Tied to one order line, so it's SKU-level spend with attributed sales = that sale. Currently imported as part of OnBuy fees; move it to ads when this layer is built. eBay Promoted Listings (Standard) works the same way.
+  - **OnBuy PPC ads** report (separate from Boost, which is already in the order data)
+  - eBay Promoted Listings **Advanced** (cost per click) report
+  - **Per-sale ad fees already in order reports** (no importer needed, see "Two kinds of ad cost" above): OnBuy **Boost** ("Boost Fee %", "Boost Fee Per Item £" = net, "Boost Fee TAX Per Item £" = VAT, "Total Boost Fee"), TikTok promotion fees, eBay Promoted Listings Standard. Each is SKU-level spend with attributed sales = that sale.
 - **Allocation:**
   - Spend tied to a SKU goes to that SKU in that store.
   - Campaign- or store-level spend with no SKU is shared across that store's sales for the period, by revenue (the same per-day sharing already used for overheads in `lib/overheads.ts`).
@@ -143,11 +151,11 @@ Ads are often the single biggest cost after the product itself, and a SKU can lo
   - An alert when a SKU's TACOS pushes its margin below the user's red threshold.
 - **Margin order:** Gross (landed cost) → Net (fees, shipping, other costs) → **after ads** → after overheads. Ads never touch Gross.
 - **Per-channel checklist (decided 2026-10-03: leave ad costs where they are until this is built, then move them all in one go).** For each importer, check what ad cost is already inside "fees" today, move it to ads, and make sure it's never counted twice:
-  - **OnBuy:** Boost is inside fees today ("Total Fees Inc. TAX £" includes it). Move out: "Boost Fee Per Item £" (net, or "Total Boost Fee" for the line) + "Boost Fee TAX Per Item £" (VAT). "Boost Fee %" (set per SKU, e.g. 20%) is worth showing next to the SKU. Existing OnBuy orders will need re-importing to split it out.
-  - **TikTok:** fees today include affiliate commission (incl. "Affiliate Shop Ads commission") and promotion-type fees (e.g. Smart Promotion fee). Decide which are advertising vs selling fees. GMV Max / Promote ads are billed separately: import those from the ads report.
+  - **OnBuy:** Boost is still inside the fee total, but since 2026-10-06 it's split out as `advertising` in `order_line_fees` ("Boost"). "Boost Fee %" (set per SKU, e.g. 20%) is worth showing next to the SKU. OnBuy PPC ads come from their own report. OnBuy orders imported before 2026-10-06 need re-importing to split Boost out.
+  - **TikTok:** split since 2026-10-06: Smart Promotion fee (3.5% on the tested order, VAT charged), Campaign resource / service fee and GMV Max ad fee → `advertising`; affiliate columns → `affiliate` (see the affiliate decision above); commission, shipping service fee and managed service plan stay selling fees. Ads billed outside the statement come from the ads report (check they aren't already in the statement's GMV Max column).
   - **Amazon:** settlement fees (ItemFees) don't include Sponsored Products / Brands spend: import it from the Advertised product report.
   - **Mirakl retailers (B&Q, The Range, Debenhams, Tesco):** commission only today, no ad cost in the transaction report. Add retail media spend if/when used.
-  - **eBay:** Promoted Listings (Standard) is a per-sale fee like OnBuy Boost: split it out when the eBay importer is built.
+  - **eBay:** Promoted Listings Standard is a per-sale fee like OnBuy Boost. In the transaction report it's an "Other fee" row (not handled yet: need an example row; save it as `advertising` linked to its order line). Promoted Listings Advanced (cost per click) comes from the advertising report.
   - **CSV / Excel upload (Argos, Shopify, others):** no ad cost column today. Shopify / own-site ads come from Google / Meta reports or manual entry.
 - **Pricing:** included on every plan, like everything else.
 
