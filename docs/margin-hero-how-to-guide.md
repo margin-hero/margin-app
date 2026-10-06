@@ -190,7 +190,15 @@ Your **settlement report** from Amazon Seller Central, downloaded in the "flat f
 ## TikTok Shop
 
 ### TikTok SKU IDs
-TikTok's sales reports don't show your own SKU codes. They show TikTok's long number for each product instead (for example `1729384756102938`), called the **SKU ID**. So every TikTok product in Margin Hero needs its SKU ID as well as its Seller SKU. It's part of the product's mapping, and there are three ways to add it:
+TikTok's sales reports don't show your own SKU codes. They show TikTok's long number for each product instead (for example `1729384756102938`), called the **SKU ID**. So every TikTok product in Margin Hero needs its SKU ID as well as its Seller SKU. It's part of the product's mapping, and there are three ways to add it (below).
+
+**Product ID or SKU ID?** TikTok has two numbers, and they're easy to mix up:
+- **Product ID** is the *listing* (the parent). Every variant of a listing, such as each size or colour, shares it.
+- **SKU ID** is the *individual variant*. This is the one to use: it's the only number in TikTok's finance (settlement) report, so it's the only way to match each sale to the right product.
+
+**Where to find your SKU IDs:** the finance report only has the SKU ID, not your Seller SKU, so it can't be used to set up the mapping. Instead, export your **product list from TikTok Seller Center** (the product report or bulk-edit download that lists **Product ID, SKU ID and Seller SKU** side by side). That gives you every SKU ID next to your own Seller SKU, ready for the TikTok catalog upload below.
+
+Three ways to add the SKU IDs:
 
 - **One product at a time:** on the product's page or **Manage → Store SKUs**, when you add or edit a listing in a TikTok store, fill in the **TikTok SKU ID** (it's required for TikTok stores). Find it in TikTok Seller Center on the product's page.
 - **A whole shop at once:** on **Manage → Store SKUs**, open **TikTok catalog upload**, choose the TikTok store, and upload your product list exported from TikTok Seller Center. The file needs columns called **SKU ID** and **Seller SKU** (TikTok's bulk-edit product template has these). Re-uploading is safe; it updates the existing IDs.
