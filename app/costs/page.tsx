@@ -22,10 +22,13 @@ type ProductCosts = {
   ordersNoCost: number // order lines where product cost came out as £0
   earliestNoCost: string | null
   ordersNoShipping: number
-  // The first landed cost row of each type that starts after the earliest uncosted order:
-  // moving these back to that date fixes those orders (the Backdate button)
-  backdateRows: { id: string; from: string }[]
+  firstOrder: string | null // the product's earliest order, any store
+  // Every cost (any type: landed, WEEE, packaging...) whose first entry starts after some of the
+  // product's orders, so those orders don't include it. Backdating that first entry fixes them.
+  lateCosts: LateCost[]
 }
+
+type LateCost = { rowId: string; label: string; from: string; ordersBefore: number }
 
 const pounds = (pence: number) => `£${(pence / 100).toFixed(2)}`
 
@@ -40,7 +43,7 @@ export default function CostsPage() {
   useEffect(() => {
     async function load() {
       const today = new Date().toISOString().slice(0, 10)
-      const [costTypes, products, cogs, shipping, noCost, noShipping, profiles, assignments] = await Promise.all([
+      const [costTypes, products, cogs, shipping, noCost, noShipping, profiles, assignments, orderDates] = await Promise.all([
         loadCostTypes(),
         fetchAll((from, to) => supabase.from('master_products').select('id, standard_sku, name').order('id').range(from, to)),
         fetchAll((from, to) =>
@@ -58,8 +61,10 @@ export default function CostsPage() {
         fetchAll((from, to) =>
           supabase.from('product_shipping_profiles').select('id, master_product_id, shipping_profile_id').is('store_id', null).order('id').range(from, to)
         ),
+        // Every order line's date and product, to spot costs that start after some orders
+        fetchAll((from, to) => supabase.from('order_line_items').select('id, order_date, platform_listings(master_product_id)').order('id').range(from, to)),
       ])
-      const firstError = [products, cogs, shipping, noCost, noShipping, profiles, assignments].find((r) => r.error)?.error
+      const firstError = [products, cogs, shipping, noCost, noShipping, profiles, assignments, orderDates].find((r) => r.error)?.error
       if (firstError) {
         setError(firstError.message)
         setLoading(false)
@@ -72,17 +77,18 @@ export default function CostsPage() {
       // effect today — the same rule the margin calculation uses
       const current = new Map<string, Map<string, { type: string; amount: number; from: string }>>()
       const earliestLanded = new Map<string, string>()
-      const firstLandedRow = new Map<string, Map<string, { id: string; from: string }>>() // product -> (type|description) -> first row
+      // product -> (type|description) -> the first entry of that cost
+      const firstRow = new Map<string, Map<string, { id: string; type: string; description: string | null; from: string }>>()
       for (const c of cogs.data) {
         if (typeByCode.get(c.component_type)?.in_gross) {
           const prev = earliestLanded.get(c.master_product_id)
           if (!prev || c.effective_from < prev) earliestLanded.set(c.master_product_id, c.effective_from)
-          const groups = firstLandedRow.get(c.master_product_id) || new Map()
-          const key = `${c.component_type}|${c.description || ''}`
-          const first = groups.get(key)
-          if (!first || c.effective_from < first.from) groups.set(key, { id: c.id, from: c.effective_from })
-          firstLandedRow.set(c.master_product_id, groups)
         }
+        const groups = firstRow.get(c.master_product_id) || new Map()
+        const groupKey = `${c.component_type}|${c.description || ''}`
+        const first = groups.get(groupKey)
+        if (!first || c.effective_from < first.from) groups.set(groupKey, { id: c.id, type: c.component_type, description: c.description, from: c.effective_from })
+        firstRow.set(c.master_product_id, groups)
         if (c.effective_from > today) continue
         const byKey = current.get(c.master_product_id) || new Map()
         const key = `${c.component_type}|${c.description || ''}`
@@ -101,6 +107,15 @@ export default function CostsPage() {
       const noShippingCounts = count(noShipping.data)
       const profileNameById = new Map((profiles.data || []).map((p) => [p.id, p.name]))
       const profileOf = new Map(assignments.data.map((a) => [a.master_product_id, profileNameById.get(a.shipping_profile_id) || null]))
+      // Each product's order dates
+      const datesOf = new Map<string, string[]>()
+      for (const o of orderDates.data as any[]) {
+        const productId = o.platform_listings?.master_product_id
+        if (!productId) continue
+        const list = datesOf.get(productId) || []
+        list.push(o.order_date)
+        datesOf.set(productId, list)
+      }
       const earliestNoCost = new Map<string, string>()
       noCost.data.forEach((r) => {
         const prev = earliestNoCost.get(r.master_product_id)
@@ -121,6 +136,15 @@ export default function CostsPage() {
             else otherUnit += v.amount
           })
           const firstLanded = earliestLanded.get(p.id) || null
+          const dates = datesOf.get(p.id) || []
+          const firstOrder = dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : null
+          const lateCosts: LateCost[] = []
+          firstRow.get(p.id)?.forEach((row) => {
+            const ordersBefore = dates.filter((d) => d < row.from).length
+            if (ordersBefore === 0) return
+            const typeLabel = typeByCode.get(row.type)?.label || row.type
+            lateCosts.push({ rowId: row.id, label: row.description ? `${typeLabel} (${row.description})` : typeLabel, from: row.from, ordersBefore })
+          })
           return {
             id: p.id,
             sku: p.standard_sku,
@@ -135,9 +159,8 @@ export default function CostsPage() {
             ordersNoCost: noCostCounts.get(p.id) || 0,
             earliestNoCost: earliestNoCost.get(p.id) || null,
             ordersNoShipping: noShippingCounts.get(p.id) || 0,
-            backdateRows: Array.from(firstLandedRow.get(p.id)?.values() || []).filter(
-              (row) => earliestNoCost.has(p.id) && row.from > earliestNoCost.get(p.id)!
-            ),
+            firstOrder,
+            lateCosts,
           }
         })
       )
@@ -146,39 +169,35 @@ export default function CostsPage() {
     load()
   }, [reloadKey])
 
-  // Moves the product's landed cost back to its earliest uncosted order. This is a correction
+  // Moves one cost's first entry back to the product's first order. This is a correction
   // (like Edit on the product page), so it changes past figures; nothing else is touched.
-  async function backdate(r: ProductCosts) {
-    if (!r.earliestNoCost || r.backdateRows.length === 0) return
+  async function backdate(r: ProductCosts, cost: LateCost) {
+    if (!r.firstOrder) return
     if (!window.confirm(
-      `Backdate ${r.sku}'s landed cost to ${ukDate(r.earliestNoCost)}?\n\n` +
-      `The cost will then apply to its ${r.ordersNoCost} earlier order line(s) too. ` +
-      `Only do this if the cost was the same back then. If it was different, add the older cost on the product page instead.`
+      `Backdate ${r.sku}'s ${cost.label} to ${ukDate(r.firstOrder)}?\n\n` +
+      `It will then apply to its ${cost.ordersBefore} earlier order line(s) too. ` +
+      `Only do this if the cost was the same back then. If it was different (or didn't exist yet), leave it, or add the older amount on the product page instead.`
     )) return
-    setBusyId(r.id)
-    for (const row of r.backdateRows) {
-      const { error: updateError } = await supabase.from('cogs_components').update({ effective_from: r.earliestNoCost }).eq('id', row.id)
-      if (updateError) {
-        setError(`Couldn't backdate ${r.sku}: ${updateError.message}`)
-        break
-      }
-    }
+    setBusyId(cost.rowId)
+    const { error: updateError } = await supabase.from('cogs_components').update({ effective_from: r.firstOrder }).eq('id', cost.rowId)
+    if (updateError) setError(`Couldn't backdate ${r.sku}: ${updateError.message}`)
     setBusyId(null)
     setReloadKey((k) => k + 1)
   }
 
-  const needsAttention = (r: ProductCosts) => r.landedPence === null || r.doubleCount || r.ordersNoCost > 0 || r.ordersNoShipping > 0
+  const needsAttention = (r: ProductCosts) =>
+    r.landedPence === null || r.doubleCount || r.ordersNoCost > 0 || r.ordersNoShipping > 0 || r.lateCosts.length > 0
   const problemCount = rows.filter(needsAttention).length
   const shown = rows
     .filter((r) => !onlyProblems || needsAttention(r))
     // Biggest problems first: most orders missing a cost, then SKU
-    .sort((a, b) => b.ordersNoCost - a.ordersNoCost || b.ordersNoShipping - a.ordersNoShipping || a.sku.localeCompare(b.sku))
+    .sort((a, b) => b.ordersNoCost - a.ordersNoCost || b.lateCosts.length - a.lateCosts.length || b.ordersNoShipping - a.ordersNoShipping || a.sku.localeCompare(b.sku))
 
   function costAdvice(r: ProductCosts) {
     if (r.ordersNoCost === 0) return null
     // A cost exists but starts after some orders → it needs backdating, not adding
     if (r.landedPence !== null || r.futureCostFrom) {
-      return `${r.ordersNoCost} order line(s) before the cost starts: backdate it to ${ukDate(r.earliestNoCost)} or earlier`
+      return `${r.ordersNoCost} order line(s) have no landed cost because it starts after them (see below)`
     }
     return `${r.ordersNoCost} order line(s) have no product cost (showing inflated margin)`
   }
@@ -190,7 +209,8 @@ export default function CostsPage() {
       <p style={pageIntro}>
         Every product&apos;s current costs in one place. A product with no cost price looks far more profitable than it is,
         so anything flagged here is making your margins look better than they really are. A cost only applies to orders on or
-        after its &quot;effective from&quot; date, so a cost added after a sale needs backdating to cover it.
+        after its &quot;effective from&quot; date, so a cost added after a sale needs backdating to cover it. Any cost (landed cost, WEEE,
+        packaging...) that starts after some of a product&apos;s orders is listed in amber, with a Backdate link if it applied back then too.
         Add costs one product at a time with <strong>Edit costs</strong>, or many at once with{' '}
         <Link href="/cost-import" style={{ color: lime, fontWeight: 700 }}>Cost Import</Link>.
       </p>
@@ -243,15 +263,14 @@ export default function CostsPage() {
                       </td>
                       <td style={{ ...tdStyle, fontSize: '13px' }}>
                         {advice && <div style={{ color: red }}>{advice}</div>}
-                        {r.backdateRows.length > 0 && r.earliestNoCost && (
-                          <button
-                            onClick={() => backdate(r)}
-                            disabled={busyId === r.id}
-                            style={{ ...linkButton, padding: 0, margin: '4px 0 2px', opacity: busyId === r.id ? 0.6 : 1 }}
-                          >
-                            {busyId === r.id ? 'Backdating...' : `Backdate cost to ${ukDate(r.earliestNoCost)} →`}
-                          </button>
-                        )}
+                        {r.lateCosts.map((cost) => (
+                          <div key={cost.rowId} style={{ color: amber, margin: '2px 0 4px' }}>
+                            {cost.label} starts {ukDate(cost.from)}: {cost.ordersBefore} earlier order line(s) don&apos;t include it.{' '}
+                            <button onClick={() => backdate(r, cost)} disabled={busyId === cost.rowId} style={{ ...linkButton, padding: 0, opacity: busyId === cost.rowId ? 0.6 : 1 }}>
+                              {busyId === cost.rowId ? 'Backdating...' : `Backdate to ${ukDate(r.firstOrder)} →`}
+                            </button>
+                          </div>
+                        ))}
                         {r.doubleCount && <div style={{ color: red }}>All-in landed cost AND product cost / freight / duty in effect: possible double count</div>}
                         {r.ordersNoShipping > 0 && (
                           <div style={{ color: amber }}>{r.ordersNoShipping} order line(s) with no shipping cost: assign a shipping profile that covers that quantity (or set &quot;No shipping cost&quot; for that store)</div>

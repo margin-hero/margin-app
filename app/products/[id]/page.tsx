@@ -572,7 +572,16 @@ export default function ProductDetailPage() {
                   <td style={tdStyle}>{row.description || ''}</td>
                   <td style={tdStyle}>£{(row.amount_pence / 100).toFixed(2)}</td>
                   <td style={tdStyle}>{(row.vat_rate * 100).toFixed(0)}%</td>
-                  <td style={tdStyle}>{ukDate(row.effective_from)}</td>
+                  <td style={tdStyle}>
+                    {ukDate(row.effective_from)}
+                    {/* The first entry of a cost starting after this product's first order: earlier orders miss it */}
+                    {firstOrderDate && row.effective_from > firstOrderDate &&
+                      !cogs.some((c) => c.component_type === row.component_type && (c.description || '') === (row.description || '') && c.effective_from < row.effective_from) && (
+                      <div style={{ fontSize: '11px', color: amber, marginTop: '4px', maxWidth: '220px' }}>
+                        Starts after this product&apos;s first order ({ukDate(firstOrderDate)}), so earlier orders don&apos;t include it. If it applied then too, Edit the date.
+                      </div>
+                    )}
+                  </td>
                   <td style={tdStyle}>
                     <button onClick={() => startEditCogs(row)} style={linkButton}>
                       Edit

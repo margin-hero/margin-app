@@ -39,7 +39,7 @@ Each set-up page ends with a **Next step** link to the following one.
 
 **Add costs for every product.** Go to **Manage → Products**, open the product and add its costs in step 3 (Costs). **Manage → Cost Check** shows every product whose costs are missing or start too late. Until you do, a product looks like it has 100% margin, because Margin Hero doesn't know what it costs you.
 
-**Make sure your costs start early enough.** Each cost has a date it applies from. A cost only counts for orders on or after that date. If you're importing older sales, set the cost's start date to before your oldest order, or those orders will show no cost.
+**Make sure your costs start early enough.** Each cost has a date it applies from. A cost only counts for orders on or after that date. If you're importing older sales, set the cost's start date to before your oldest order, or those orders will show no cost. This applies to **every** cost, not just the product cost: a WEEE or packaging cost dated after a sale is easy to miss, because the sale still shows a product cost. **Manage → Cost Check** lists any cost that starts after some of a product's orders (with a one-click Backdate if it applied back then too), and the product's page shows the same warning under the cost's date.
 
 **Bundles and multipacks:** if one sale on a marketplace is really several units (for example a 3-pack), set this up in the product's **Store SKUs** (on its page, or **Manage → Store SKUs**) by changing "units per sale". Margin Hero then counts the right product cost and shipping for each sale.
 
