@@ -135,6 +135,21 @@ Returns quietly eat margin, and some SKUs are far worse than others. Scope: what
 - **Where it shows:** a refund % column / sort on Margins, a Refunds dashboard (worst SKUs first), the order-line breakdown, and an alert when a SKU's refund % passes a threshold.
 - **Margin order:** refunds reduce revenue and Net profit for the period they happen in. Gross only changes when the product cost is lost (item written off).
 
+**New product margin checker (added 2026-10-06)**
+
+Before buying stock or listing a new product, the seller enters the numbers and sees straight away whether it makes money in each of their stores. Scope: a quick "does this product work?" answer, not stock or sourcing tools.
+
+- **Inputs:** product name (optional), landed cost per unit (or product cost + inbound freight + import duty), VAT rate on the sale, the planned selling price (one price for all stores, or per store), units per sale (for bundles/multipacks), and optionally a shipping profile or a shipping cost per order.
+- **Per store it works out:** revenue net of VAT (or VAT as a cost if the store isn't VAT registered), estimated channel fees, shipping, and then Gross profit, Net profit (£ per sale) and margin % (Net profit ÷ net revenue), coloured with the tenant's red / amber / green ranges (`marginTier()`).
+- **Where the fee estimate comes from (no fee rules engine needed):** each store's real average fee % from orders already imported (total fees ÷ total revenue, summed first, over e.g. the last 90 days). Stores with no sales yet use a fee % the seller types in. Shows which source was used, and lets the seller override any figure.
+- **Extra answers per store:**
+  - **Break-even price** (lowest price that doesn't lose money) and the **price needed to hit the green margin**
+  - Optional overhead share (from `allocateOverheads`, as a % of revenue) for "after overheads"
+  - Once **Advertising** is in: an expected ad cost % and the break-even ACOS
+- **Saving it:** checks can be saved as "candidate products" (no orders, not in the catalog) and later turned into a real product with one click, copying the costs across (backdated `effective_from` set to the date it's created).
+- **Where it shows:** its own page under Dashboards (or Manage → Products), with a store-by-store table (one row per store, labelled with its platform).
+- **Relationship to Phase 3:** this is the simple version of the **Pre-listing what-if simulator**. That later version swaps the average fee % for exact `fee_rules` (per category, fixed fees, fee caps) and adds sensitivity sliders.
+
 **Product categories (parent / child, added 2026-10-03)**
 
 - Each product can have a **parent category** and a **child category** (e.g. Garden → Power Tools). Optional; a product with no category shows as "Uncategorised".
@@ -197,7 +212,7 @@ Deliberately scoped to margin only — resist pressure to add inventory manageme
   - CM3 = CM2 − fulfilment/storage/returns (the real bottom line)
   - Shows *where* margin leaks, not just that it's thin
 - **Break-even ACOS per SKU**: moved into Phase 1 **Advertising**
-- **Pre-listing what-if simulator** — model margin at a hypothetical price/fee/ad-spend combination before committing to a listing, using the `fee_rules` engine already built for pre-sale forecasting in Phase 2
+- **Pre-listing what-if simulator** (the full version of Phase 1's **New product margin checker**) — model margin at a hypothetical price/fee/ad-spend combination before committing to a listing, using the `fee_rules` engine already built for pre-sale forecasting in Phase 2
 - **Margin sensitivity view** — show margin impact of a % change in COGS, ad spend, or shipping cost — useful for supplier/courier negotiations
 - **Category/channel benchmarking** — compare a tenant's margin against anonymised aggregate benchmarks once enough tenant data exists
 - **Accounting export** — clean margin-by-period export for Xero/QuickBooks reconciliation (not full sync like A2X — just a trustworthy figure an accountant can check against)
