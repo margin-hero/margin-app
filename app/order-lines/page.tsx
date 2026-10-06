@@ -14,7 +14,7 @@ export default async function OrderLinesPage() {
   const supabase = await createServerSupabase()
 
   const [{ data, error }, { data: products, error: productsError }, stores, ranges] = await Promise.all([
-    fetchAll((from, to) => supabase.from('order_margins').select('*').order('order_date', { ascending: false }).order('order_line_item_id').range(from, to)),
+    fetchAll((from, to) => supabase.from('margin_lines').select('*').order('order_date', { ascending: false }).order('order_line_item_id').range(from, to)),
     fetchAll((from, to) => supabase.from('master_products').select('id, standard_sku').order('id').range(from, to)),
     loadStores(supabase),
     loadMarginRanges(supabase),
@@ -31,6 +31,7 @@ export default async function OrderLinesPage() {
     const store = storeOf.get(row.store_id)
     return {
       id: row.order_line_item_id,
+      isRefund: row.line_type === 'refund',
       date: row.order_date,
       channel: store?.platforms?.name ?? '',
       store: store?.name ?? row.channel,
@@ -38,7 +39,7 @@ export default async function OrderLinesPage() {
       product: row.product_name,
       qty: row.qty,
       salePence: Number(row.sale_price_pence),
-      perUnitPence: Number(row.price_per_unit_pence),
+      perUnitPence: row.price_per_unit_pence === null ? null : Number(row.price_per_unit_pence),
       revenuePence: Number(row.revenue_pence),
       productCostPence: Number(row.product_cost_pence),
       feesPence: Number(row.fees_pence),
@@ -55,6 +56,7 @@ export default async function OrderLinesPage() {
       <h1 style={pageTitle}>Order lines</h1>
       <p style={pageIntro}>
         Every order line with its full cost breakdown, newest first. Useful for checking exactly how a margin was worked out.
+        Refunds show as negative lines on their refund date (product cost negative = stock back on the shelf; shipping = return postage).
         Tick lines and use Delete selected to remove test orders.
       </p>
 

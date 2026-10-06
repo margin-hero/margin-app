@@ -8,6 +8,7 @@ import { muted, red, thStyle, tdStyle, primaryButton, linkButton, statusColor, m
 
 export type OrderLine = {
   id: string
+  isRefund: boolean // refund rows are negative and live in order_refunds
   date: string
   channel: string // platform, e.g. OnBuy
   store: string
@@ -15,7 +16,7 @@ export type OrderLine = {
   product: string
   qty: number
   salePence: number
-  perUnitPence: number
+  perUnitPence: number | null
   revenuePence: number
   productCostPence: number
   feesPence: number
@@ -50,15 +51,19 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
     // In batches, so a big selection doesn't make one request too long. Count what was really
     // deleted: if the database's row security blocks it, nothing is deleted and no error is given.
     let deleted = 0
-    for (let i = 0; i < ids.length; i += 200) {
-      const { data, error } = await supabase.from('order_line_items').delete().in('id', ids.slice(i, i + 200)).select('id')
-      if (error) {
-        setStatus(`Error deleting: ${error.message}`)
-        setBusy(false)
-        router.refresh()
-        return
+    const refundIds = new Set(lines.filter((l) => l.isRefund).map((l) => l.id))
+    for (const table of ['order_line_items', 'order_refunds'] as const) {
+      const tableIds = ids.filter((id) => refundIds.has(id) === (table === 'order_refunds'))
+      for (let i = 0; i < tableIds.length; i += 200) {
+        const { data, error } = await supabase.from(table).delete().in('id', tableIds.slice(i, i + 200)).select('id')
+        if (error) {
+          setStatus(`Error deleting: ${error.message}`)
+          setBusy(false)
+          router.refresh()
+          return
+        }
+        deleted += data?.length ?? 0
       }
-      deleted += data?.length ?? 0
     }
     setSelected(new Set())
     setStatus(
@@ -119,14 +124,17 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
                 <td style={tdStyle}>
                   <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggle(l.id)} aria-label={`Select order line ${l.id}`} />
                 </td>
-                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: muted }}>{ukDate(l.date)}</td>
+                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: muted }}>
+                  {ukDate(l.date)}
+                  {l.isRefund && <span style={{ color: red, fontWeight: 700, marginLeft: '8px' }}>Refund</span>}
+                </td>
                 <td style={tdStyle}>{l.channel}</td>
                 <td style={tdStyle}>{l.store}</td>
                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{l.sku}</td>
                 <td style={tdStyle}>{l.product}</td>
                 <td style={num}>{l.qty}</td>
                 <td style={num}>{pounds(l.salePence)}</td>
-                <td style={num}>{pounds(l.perUnitPence)}</td>
+                <td style={num}>{l.perUnitPence === null ? '—' : pounds(l.perUnitPence)}</td>
                 <td style={num}>{pounds(l.revenuePence)}</td>
                 <td style={num}>{pounds(l.productCostPence)}</td>
                 <td style={num}>{pounds(l.feesPence)}</td>

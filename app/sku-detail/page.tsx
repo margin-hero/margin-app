@@ -20,13 +20,17 @@ type MarginRow = {
   product_cost_pence: number
   total_cost_pence: number
   margin_pence: number
+  line_type: string // 'sale' | 'refund' (refund rows are negative)
+  refunded_units: number
 }
 
 type ChannelStats = {
   storeId: string
   channel: string // store label, e.g. "Ark Rubber Ltd (B&Q)"
   totalSalesPence: number
-  totalQty: number
+  totalQty: number // units sold
+  refundedUnits: number
+  refundRatePercent: number | null // refunded units ÷ units sold
   grossProfitPence: number
   netProfitPence: number
   grossMarginPercent: number | null
@@ -62,8 +66,8 @@ export default function SkuDetailPage() {
 
     const { data: rows } = await fetchAll((from, to) =>
       supabase
-        .from('order_margins')
-        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence')
+        .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
+        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence, line_type, refunded_units')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
         .order('order_line_item_id')
@@ -89,10 +93,12 @@ export default function SkuDetailPage() {
 
     for (const [key, groupRows] of byProductChannel) {
       const first = groupRows[0]
-      const totalRevenue = groupRows.reduce((s, r) => s + r.revenue_pence, 0)
-      const totalProductCost = groupRows.reduce((s, r) => s + r.product_cost_pence, 0)
-      const totalNetProfit = groupRows.reduce((s, r) => s + r.margin_pence, 0)
-      const totalQty = groupRows.reduce((s, r) => s + r.effective_qty, 0)
+      const totalRevenue = groupRows.reduce((s, r) => s + Number(r.revenue_pence), 0)
+      const totalProductCost = groupRows.reduce((s, r) => s + Number(r.product_cost_pence), 0)
+      const totalNetProfit = groupRows.reduce((s, r) => s + Number(r.margin_pence), 0)
+      const totalQty = groupRows.filter((r) => r.line_type === 'sale').reduce((s, r) => s + r.effective_qty, 0)
+      const refundedUnits = groupRows.reduce((s, r) => s + r.refunded_units, 0)
+      const keptUnits = totalQty - refundedUnits // profit per unit is per unit the customer kept
       const grossProfit = totalRevenue - totalProductCost
 
       const channelStats: ChannelStats = {
@@ -100,11 +106,13 @@ export default function SkuDetailPage() {
         channel: storeById.has(first.store_id) ? storeLabel(storeById.get(first.store_id)) : first.channel,
         totalSalesPence: totalRevenue,
         totalQty,
+        refundedUnits,
+        refundRatePercent: totalQty > 0 ? Math.round((refundedUnits / totalQty) * 1000) / 10 : null,
         grossProfitPence: grossProfit,
         netProfitPence: totalNetProfit,
         grossMarginPercent: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : null,
         netMarginPercent: totalRevenue > 0 ? Math.round((totalNetProfit / totalRevenue) * 1000) / 10 : null,
-        profitPerUnitPence: totalQty > 0 ? Math.round(totalNetProfit / totalQty) : null,
+        profitPerUnitPence: keptUnits > 0 ? Math.round(totalNetProfit / keptUnits) : null,
       }
 
       if (!byProduct.has(first.master_product_id)) {
@@ -138,7 +146,7 @@ export default function SkuDetailPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Dashboards</p>
       <h1 style={pageTitle}>SKU Detail</h1>
-      <p style={pageIntro}>Gross vs net profit for every product, store by store.</p>
+      <p style={pageIntro}>Gross vs net profit for every product, store by store. Refunds are taken off in the period they happened; Refunds shows units refunded and the refund rate (refunded units ÷ units sold).</p>
 
       <DateRangeBar
         from={rangeFrom}
@@ -159,7 +167,7 @@ export default function SkuDetailPage() {
               <span style={{ color: muted }}>{group.productName}</span>
             </p>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '760px' }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '840px' }}>
                 <thead>
                   <tr>
                     <th style={thStyle}>Store</th>
@@ -169,6 +177,7 @@ export default function SkuDetailPage() {
                     <th style={numHead}>Net profit</th>
                     <th style={numHead}>Profit / unit</th>
                     <th style={numHead}>Units</th>
+                    <th style={numHead}>Refunds</th>
                     <th style={numHead}>Sales</th>
                   </tr>
                 </thead>
@@ -182,6 +191,9 @@ export default function SkuDetailPage() {
                       <td style={{ ...num, color: c.netProfitPence < 0 ? red : green }}>{pounds(c.netProfitPence)}</td>
                       <td style={{ ...num, color: c.profitPerUnitPence === null ? dim : text }}>{c.profitPerUnitPence !== null ? pounds(c.profitPerUnitPence) : '—'}</td>
                       <td style={num}>{c.totalQty}</td>
+                      <td style={{ ...num, color: c.refundedUnits > 0 ? text : dim }}>
+                        {c.refundedUnits > 0 ? `${c.refundedUnits} · ${percent(c.refundRatePercent)}` : '—'}
+                      </td>
                       <td style={num}>{pounds(c.totalSalesPence)}</td>
                     </tr>
                   ))}

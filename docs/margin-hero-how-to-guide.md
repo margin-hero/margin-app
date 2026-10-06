@@ -14,7 +14,9 @@ All the import pages are under **Import** in the menu at the top of the screen.
 
 **Always check the preview before you confirm.** After you pick a file, Margin Hero shows you the first 20 orders it found. Nothing is saved until you click **Confirm Import**. When you confirm, *all* the orders in the file are imported, not just the 20 in the preview.
 
-**Refunds aren't imported yet.** At the moment Margin Hero only imports sales. Refunds, returns and reimbursements (such as Amazon SAFE-T claims) are skipped. That means your margin figures show what you made on sales, before any refunds.
+**Refunds: Amazon only so far.** Amazon refunds are imported from the same settlement report as your sales (see the Amazon section). For every other channel, refunds are still skipped for now, so those margins show what you made on sales, before any refunds. Reimbursements (such as Amazon SAFE-T claims) aren't imported yet either.
+
+**How refunds count.** A refund is taken off in the period it happened (its refund date), not the period of the original sale. It takes off the refunded price, the change in fees, and any return postage you paid. The item is assumed to go back into stock, so its product cost comes back too. The dashboards show a **refund rate** (units refunded ÷ units sold) for each store on Channel Overview and for each product on SKU Detail. A high refund rate is the flag that a product has a problem.
 
 **Set up your products before importing sales (recommended).** Use **Manage → Catalog Import** to load all your products and their SKU in each store in one go (see the section below). Then every sales import matches cleanly.
 
@@ -153,18 +155,22 @@ Your **settlement report** from Amazon Seller Central, downloaded in the "flat f
 1. Go to **Import → Amazon**.
 2. Click the file button and choose your settlement report CSV.
 3. Wait a moment. Big reports can take a few seconds to read.
-4. Check the preview. You'll see each product sold, the date, quantity, sale price and Amazon's fees.
+4. Check the preview. You'll see each product sold, the date, quantity, sale price and Amazon's fees. The message above it also says how many refunds were found.
 5. Click **Confirm Import**.
-6. Read the message at the end. It tells you how many orders were imported and how many were skipped because you'd already imported them.
+6. Read the message at the end. It tells you how many orders and refunds were imported and how many were skipped because you'd already imported them. Settlement reports overlap, so uploading the same report twice is safe: nothing is counted twice.
 
 ### What Margin Hero takes from the report
 - **Sale price:** what the customer paid for the item, including VAT.
 - **Fees:** all of Amazon's fees for that item (referral fee, FBA fees and so on).
 - **Shipping cost:** if you bought a shipping label through Amazon, Margin Hero uses what you actually paid. If not, it uses the shipping costs you've set up for that product.
+- **Refunds:** the refunded price and VAT, the fees Amazon gives back (e.g. Commission) less the refund fee it keeps (RefundCommission), and any return label you bought through Amazon ("Shipping label purchase for return").
 
 ### Good to know
 - Amazon splits one order into lots of rows (price, tax, each fee). Margin Hero adds these back together into one line for each item sold.
 - Margin Hero assumes Amazon's fees include 20% VAT.
+- A refund doesn't need its original sale to be imported first. It's matched to the product by SKU straight away, and links to the original sale automatically whenever that sale is imported (Amazon's "order-item-code" connects them).
+- Amazon doesn't say how many units were refunded, so Margin Hero works it out from the refunded amount compared with the original sale's price. A refund of less than half the item's price (for example a goodwill partial refund) counts as no units returned. If the original sale isn't imported yet, it counts 1 unit until it is.
+- A return label is matched to its refund by order number, so it needs to be in the same file as the refund. If it isn't, the import message warns you.
 
 ---
 
@@ -192,7 +198,7 @@ The Mappings page shows each TikTok listing's SKU ID, and flags any that are mis
 
 ### What Margin Hero takes from the report
 - **Sale price:** "Net sales" for the item. That's the price after any discounts you funded yourself and after any refund shown on the same row. Discounts TikTok pays for don't reduce your sale price.
-- **Fully refunded orders are left out.** If an order was refunded in full, it isn't imported. If the refund appears on a later row, the original sale is still counted for now (see "Refunds aren't imported yet" above).
+- **Fully refunded orders are left out.** If an order was refunded in full, it isn't imported. If the refund appears on a later row, the original sale is still counted for now (TikTok refunds aren't imported yet).
 - **VAT on the sale:** TikTok only shows VAT here when it collects the VAT itself (mostly for overseas sellers). For UK sellers it's usually £0, so Margin Hero works the VAT out from the product's VAT rate instead (the preview shows "From product rate"). Check each product's VAT rate on its product page. Orders imported before 2 Oct 2026 were saved with £0 VAT: delete and re-import them to correct this.
 - **Fees:** all of TikTok's fees. TikTok's own fees (commission, shipping service fee, Smart Promotion fee and so on) are treated as including 20% VAT. Affiliate commission paid to creators is treated as having no VAT.
 - **Shipping cost:** the shipping amount from the report if there is one, otherwise the shipping costs you've set up for that product.

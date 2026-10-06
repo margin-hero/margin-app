@@ -18,6 +18,9 @@ type MarginRow = {
   revenue_pence: number
   product_cost_pence: number
   margin_pence: number
+  line_type: string // 'sale' | 'refund' (refund rows are negative)
+  refunded_units: number
+  gross_sales_pence: number
 }
 
 type ChannelCard = {
@@ -26,8 +29,10 @@ type ChannelCard = {
   platform: string // e.g. OnBuy: the card's main title
   grossSalesPence: number // what customers paid, inc. VAT and delivery
   totalSalesPence: number
-  totalQty: number
+  totalQty: number // units sold
   orderCount: number
+  refundedUnits: number
+  refundRatePercent: number | null // refunded units ÷ units sold
   aovPence: number
   grossProfitPence: number
   netProfitPence: number
@@ -59,26 +64,16 @@ export default function ChannelOverviewPage() {
 
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
-    const [{ data: rows }, { data: grossRows }, overheadSetup, stores] = await Promise.all([fetchAll((from, to) =>
+    // Sales plus refunds (negative rows, on their refund date), so the figures are net of refunds
+    const [{ data: rows }, overheadSetup, stores] = await Promise.all([fetchAll((from, to) =>
       supabase
-        .from('order_margins')
-        .select('order_line_item_id, channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence')
+        .from('margin_lines')
+        .select('order_line_item_id, channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
         .order('order_line_item_id')
         .range(from, to)
-    ),
-    // Gross sales (inc. VAT and delivery) aren't in order_margins, so read them from the order lines
-    fetchAll((from, to) =>
-      supabase
-        .from('order_line_items')
-        .select('id, sale_price_gross_pence, shipping_revenue_gross_pence')
-        .gte('order_date', dateFrom)
-        .lte('order_date', dateTo)
-        .order('id')
-        .range(from, to)
     ), loadOverheadSetup(), loadStores()])
-    const grossById = new Map((grossRows || []).map((g) => [g.id, Number(g.sale_price_gross_pence) + Number(g.shipping_revenue_gross_pence || 0)]))
 
     // Share the overheads falling in this date range across these sales
     const marginRows = (rows || []) as MarginRow[]
@@ -96,11 +91,15 @@ export default function ChannelOverviewPage() {
     const result: ChannelCard[] = []
     for (const [storeId, groupRows] of byStore) {
       const store = stores.find((st) => st.id === storeId)
-      const totalRevenue = groupRows.reduce((s, r) => s + r.revenue_pence, 0)
-      const totalProductCost = groupRows.reduce((s, r) => s + r.product_cost_pence, 0)
-      const totalNetProfit = groupRows.reduce((s, r) => s + r.margin_pence, 0)
-      const totalQty = groupRows.reduce((s, r) => s + r.effective_qty, 0)
-      const orderCount = groupRows.length
+      const sales = groupRows.filter((r) => r.line_type === 'sale')
+      const totalRevenue = groupRows.reduce((s, r) => s + Number(r.revenue_pence), 0)
+      const totalProductCost = groupRows.reduce((s, r) => s + Number(r.product_cost_pence), 0)
+      const totalNetProfit = groupRows.reduce((s, r) => s + Number(r.margin_pence), 0)
+      // Orders, units and average order are about sales; refunds are shown separately
+      const totalQty = sales.reduce((s, r) => s + r.effective_qty, 0)
+      const orderCount = sales.length
+      const salesRevenue = sales.reduce((s, r) => s + Number(r.revenue_pence), 0)
+      const refundedUnits = groupRows.reduce((s, r) => s + r.refunded_units, 0)
       const grossProfit = totalRevenue - totalProductCost
       const overhead = Math.round(overheadByStore.get(storeId) || 0)
       const netAfterOverheads = totalNetProfit - overhead
@@ -109,11 +108,13 @@ export default function ChannelOverviewPage() {
         storeId,
         storeName: store?.name ?? groupRows[0].channel,
         platform: store?.platforms?.name ?? '',
-        grossSalesPence: groupRows.reduce((s, r) => s + (grossById.get(r.order_line_item_id) || 0), 0),
+        grossSalesPence: groupRows.reduce((s, r) => s + Number(r.gross_sales_pence), 0),
         totalSalesPence: totalRevenue,
         totalQty,
         orderCount,
-        aovPence: orderCount > 0 ? Math.round(totalRevenue / orderCount) : 0,
+        refundedUnits,
+        refundRatePercent: totalQty > 0 ? Math.round((refundedUnits / totalQty) * 1000) / 10 : null,
+        aovPence: orderCount > 0 ? Math.round(salesRevenue / orderCount) : 0,
         grossProfitPence: grossProfit,
         netProfitPence: totalNetProfit,
         grossMarginPercent: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : null,
@@ -157,7 +158,7 @@ export default function ChannelOverviewPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Dashboards</p>
       <h1 style={pageTitle}>Channel Overview</h1>
-      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s share of overheads. Gross sales is what customers paid (including VAT and delivery); net sales takes off the VAT for VAT-registered stores, and margins are worked out from net sales.</p>
+      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s share of overheads. Gross sales is what customers paid (including VAT and delivery); net sales takes off the VAT for VAT-registered stores, and margins are worked out from net sales. Refunds are taken off in the period they happened.</p>
 
       <DateRangeBar
         from={rangeFrom}
@@ -224,6 +225,7 @@ export default function ChannelOverviewPage() {
               {row('Net margin', percent(c.netMarginPercent), marginColor(c.netMarginPercent))}
               {row('Gross profit', pounds(c.grossProfitPence), text, true)}
               {row('Net profit', pounds(c.netProfitPence), c.netProfitPence < 0 ? red : green)}
+              {row('Refunds', c.refundedUnits > 0 ? `${c.refundedUnits} units · ${percent(c.refundRatePercent)}` : 'None', text, true)}
               {c.overheadPence > 0 && (
                 <>
                   {row('Share of overheads', pounds(-c.overheadPence))}

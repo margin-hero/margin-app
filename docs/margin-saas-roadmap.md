@@ -34,7 +34,7 @@
      - **Decide first:** does the rolling 30 days use the *order date* or the *upload date*? By order date, a new customer back-filling a year of history isn't locked out in week one. Probably also allow a one-off history import on sign-up.
 - ~~**Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.**~~ Done 2026-09-30.
 - ~~**TikTok sale VAT for VAT-registered stores.**~~ Done 2026-10-02 (importEngine works it out from the product's VAT rate; OnBuy uses the same). Original note: TikTok settlement reports show £0 VAT for UK-established sellers (TikTok only fills it when it collects the VAT itself), so the importer records the whole sale as net revenue. For a VAT-registered store that overstates revenue and margin by the VAT. Fix: when the report's VAT is £0 and the store is VAT registered, work out the VAT from each product's VAT rate (`master_products.vat_rate`) at import time.
-- **Refunds and returns.** Every importer currently skips refund rows (Amazon refunds and SAFE-T reimbursements, TikTok refund-only rows, Mirakl refund types), so revenue and margins are overstated for any product that gets returns. Needs: importing refunds as their own lines linked to the original sale (by order / order-line ID), the refunded revenue and refunded fees, whether the item came back resaleable (cost recovered) or not (cost lost), and showing refund rate per SKU per store. Full plan: **Refunds and returns** in Phase 1.
+- **Refunds and returns.** Amazon done 2026-10-06 (see Phase 1). Other importers still skip refund rows (Amazon refunds and SAFE-T reimbursements, TikTok refund-only rows, Mirakl refund types), so revenue and margins are overstated for any product that gets returns. Needs: importing refunds as their own lines linked to the original sale (by order / order-line ID), the refunded revenue and refunded fees, whether the item came back resaleable (cost recovered) or not (cost lost), and showing refund rate per SKU per store. Full plan: **Refunds and returns** in Phase 1.
 
 ---
 
@@ -119,6 +119,8 @@ Ads are often the single biggest cost after the product itself, and a SKU can lo
 - **Pricing:** included on every plan, like everything else.
 
 **Refunds and returns (its own piece, added 2026-10-03)**
+
+Progress (2026-10-06): **Amazon refunds done.** `order_refunds` table (linked to the sale by `original_external_id`, so no need for the sale to be imported first), refund fees in `order_line_fees`, return labels, and the `margin_lines` view (sales + negative refund rows) behind Channel Overview, Margins, SKU Detail, Trends, Opportunities and /order-lines. Refund rate (refunded units ÷ units sold) on Channel Overview (per store) and SKU Detail. Items are assumed resaleable for now (decided 2026-10-06: tracking each return's condition relies on sellers updating it, so it's its own later piece; the refund rate is the main flag). Still to do: TikTok, Mirakl, OnBuy, Shopify refunds (need an example refund file from each), SAFE-T reimbursements, refund % sort on Margins, a Refunds dashboard, refund-rate alerts, resaleable / written-off per return.
 
 Returns quietly eat margin, and some SKUs are far worse than others. Scope: what refunds do to margin, plus a **refund % per SKU** so the problem products stand out.
 

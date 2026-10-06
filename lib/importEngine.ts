@@ -20,6 +20,25 @@ export type NormalizedOrder = {
   shippingRevenueVatPence?: number | null // null = worked out from the product's VAT rate
 }
 
+// A refund against an earlier sale. Amounts are what was given back (positive), except
+// feesGrossPence / feesVatPence: the change in fees as a cost, so negative when the channel
+// returns more fees than it keeps (e.g. Amazon gives back the commission, keeps a refund fee).
+export type NormalizedRefund = {
+  sku: string
+  externalId: string // the refund's own ID (unique per store SKU)
+  originalExternalId: string | null // the sale's externalId, to link the two
+  refundDate: string // 'YYYY-MM-DD'
+  qty: number | null // null = the channel doesn't say: worked out from the refunded price
+  refundGrossPence: number
+  refundVatPence: number | null // null = worked out from the product's VAT rate
+  shippingRefundGrossPence?: number
+  shippingRefundVatPence?: number | null
+  feesGrossPence: number
+  feesVatPence: number
+  feeBreakdown?: FeeLine[]
+  returnShippingCostPence?: number | null // return label paid by the seller, inc. VAT
+}
+
 export type ImportResult = {
   imported: number
   skippedDuplicates: number
@@ -28,12 +47,16 @@ export type ImportResult = {
   autoLinked: string[] // SKUs linked automatically because they exactly match a product's standard SKU
   createdProducts: string[] // SKUs that got a brand-new product (only when createUnknownSkus is on)
   errors: string[]
+  refundsImported: number
+  refundsSkippedDuplicates: number
+  refundsSkippedNoSku: number // held back because their SKU isn't mapped
 }
 
 export type ImportOptions = {
   // false (default): SKUs that aren't mapped in this store are held back and listed,
   // so the product list stays clean. true: create a new product for each one.
   createUnknownSkus?: boolean
+  refunds?: NormalizedRefund[] // imported alongside the orders (same SKU matching)
 }
 
 // Shared by every platform importer: given the store the file belongs to and a list of
@@ -49,7 +72,9 @@ export async function importOrdersForStore(
 ): Promise<ImportResult> {
   const result: ImportResult = {
     imported: 0, skippedDuplicates: 0, skippedNoSku: [], unmappedSkus: [], autoLinked: [], createdProducts: [], errors: [],
+    refundsImported: 0, refundsSkippedDuplicates: 0, refundsSkippedNoSku: 0,
   }
+  const refunds = options.refunds || []
 
   onProgress?.('Loading existing listings...')
   const { data: listings, error: listingsError } = await fetchAll((from, to) =>
@@ -68,7 +93,7 @@ export async function importOrdersForStore(
 
   const skuToListingId = new Map(listings.map((l) => [l.platform_sku, l.id]))
 
-  const uniqueSkus = Array.from(new Set(orders.map((o) => o.sku)))
+  const uniqueSkus = Array.from(new Set([...orders.map((o) => o.sku), ...refunds.map((r) => r.sku)]))
   const newSkus = uniqueSkus.filter((sku) => !skuToListingId.has(sku))
 
   if (newSkus.length > 0) {
@@ -137,9 +162,12 @@ export async function importOrdersForStore(
   // Some channels (e.g. OnBuy) don't report the VAT inside the sale price for UK sellers.
   // For those orders, work it out from each product's VAT rate (VAT = gross × rate ÷ (1 + rate)).
   const vatRateByListing = new Map<unknown, number>()
-  if (orders.some((o) => o.saleVatPence === null || o.shippingRevenueVatPence === null)) {
+  if (
+    orders.some((o) => o.saleVatPence === null || o.shippingRevenueVatPence === null) ||
+    refunds.some((r) => r.refundVatPence === null || r.shippingRefundVatPence === null)
+  ) {
     onProgress?.('Looking up product VAT rates...')
-    const listingIds = Array.from(new Set(orders.map((o) => skuToListingId.get(o.sku)).filter((id) => id !== undefined)))
+    const listingIds = Array.from(new Set([...orders, ...refunds].map((o) => skuToListingId.get(o.sku)).filter((id) => id !== undefined)))
     for (let i = 0; i < listingIds.length; i += 200) {
       const { data: rates, error: ratesError } = await supabase
         .from('platform_listings')
@@ -185,69 +213,119 @@ export async function importOrdersForStore(
   }
 
   onProgress?.('Checking for already-imported orders...')
-  const chunkSize = 500
-  const existingKeys = new Set<string>()
-  // Smaller batches here so each lookup stays well under Supabase's 1,000-row limit
-  const lookupSize = 200
-  for (let i = 0; i < candidateRows.length; i += lookupSize) {
-    const chunk = candidateRows.slice(i, i + lookupSize)
-    const { data: existing, error: existingError } = await supabase
-      .from('order_line_items')
-      .select('platform_listing_id, external_id')
-      .in('external_id', chunk.map((r) => r.external_id))
-
-    if (existingError) {
-      result.errors.push(`Error checking duplicates: ${existingError.message}`)
-      return result
-    }
-
-    existing?.forEach((e) => existingKeys.add(`${e.platform_listing_id}|${e.external_id}`))
-  }
-
-  const newRows = candidateRows.filter((r) => !existingKeys.has(`${r.platform_listing_id}|${r.external_id}`))
+  const newRows = await withoutExisting('order_line_items', candidateRows, result)
+  if (!newRows) return result
   result.skippedDuplicates = candidateRows.length - newRows.length
 
   onProgress?.(`Importing ${newRows.length} new order lines...`)
-  for (let i = 0; i < newRows.length; i += chunkSize) {
-    const chunk = newRows.slice(i, i + chunkSize)
+  const ordersOk = await insertWithFees('order_line_items', 'order_line_item_id', newRows, feesByKey, result, (n) => (result.imported += n))
+  if (!ordersOk || refunds.length === 0) return result
+
+  // Refunds: same SKU matching and dedupe, into their own table
+  const refundRows: any[] = []
+  const refundFeesByKey = new Map<string, FeeLine[]>()
+  for (const refund of refunds) {
+    const listingId = skuToListingId.get(refund.sku)
+    if (!listingId) {
+      result.refundsSkippedNoSku++
+      continue
+    }
+    const shippingGross = refund.shippingRefundGrossPence ?? 0
+    refundRows.push({
+      platform_listing_id: listingId,
+      external_id: refund.externalId,
+      original_external_id: refund.originalExternalId,
+      refund_date: refund.refundDate,
+      qty: refund.qty,
+      refund_gross_pence: refund.refundGrossPence,
+      refund_vat_pence: refund.refundVatPence ?? vatFromGross(refund.refundGrossPence, listingId),
+      shipping_refund_gross_pence: shippingGross,
+      shipping_refund_vat_pence: refund.shippingRefundVatPence === null ? vatFromGross(shippingGross, listingId) : (refund.shippingRefundVatPence ?? 0),
+      fees_gross_pence: refund.feesGrossPence,
+      fees_vat_pence: refund.feesVatPence,
+      return_shipping_cost_pence: refund.returnShippingCostPence ?? null,
+    })
+    refundFeesByKey.set(`${listingId}|${refund.externalId}`, completeFeeBreakdown(refund))
+  }
+
+  onProgress?.('Checking for already-imported refunds...')
+  const newRefunds = await withoutExisting('order_refunds', refundRows, result)
+  if (!newRefunds) return result
+  result.refundsSkippedDuplicates = refundRows.length - newRefunds.length
+
+  onProgress?.(`Importing ${newRefunds.length} new refunds...`)
+  await insertWithFees('order_refunds', 'order_refund_id', newRefunds, refundFeesByKey, result, (n) => (result.refundsImported += n))
+  return result
+}
+
+// Drops rows already in the table (same store SKU + external ID), so re-uploads are safe.
+// Returns null (with the error in result) if the check fails.
+async function withoutExisting(table: 'order_line_items' | 'order_refunds', rows: any[], result: ImportResult) {
+  const existingKeys = new Set<string>()
+  // Small batches so each lookup stays well under Supabase's 1,000-row limit
+  for (let i = 0; i < rows.length; i += 200) {
+    const { data: existing, error } = await supabase
+      .from(table)
+      .select('platform_listing_id, external_id')
+      .in('external_id', rows.slice(i, i + 200).map((r) => r.external_id))
+    if (error) {
+      result.errors.push(`Error checking duplicates: ${error.message}`)
+      return null
+    }
+    existing?.forEach((e) => existingKeys.add(`${e.platform_listing_id}|${e.external_id}`))
+  }
+  return rows.filter((r) => !existingKeys.has(`${r.platform_listing_id}|${r.external_id}`))
+}
+
+// Inserts the rows in batches, then each row's fee breakdown (one row per fee type).
+// Returns false (with the error in result) if anything fails.
+async function insertWithFees(
+  table: 'order_line_items' | 'order_refunds',
+  feeParentColumn: 'order_line_item_id' | 'order_refund_id',
+  rows: any[],
+  feesByKey: Map<string, FeeLine[]>,
+  result: ImportResult,
+  onInserted: (count: number) => void
+): Promise<boolean> {
+  const what = table === 'order_refunds' ? 'refunds' : 'order lines'
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500)
     const { data: inserted, error: insertError } = await supabase
-      .from('order_line_items')
+      .from(table)
       .insert(chunk)
       .select('id, platform_listing_id, external_id')
     if (insertError || !inserted) {
-      result.errors.push(`Import error on batch starting at row ${i}: ${insertError?.message || 'unknown error'}`)
-      return result
+      result.errors.push(`Import error on ${what} batch starting at row ${i}: ${insertError?.message || 'unknown error'}`)
+      return false
     }
-    result.imported += chunk.length
+    onInserted(chunk.length)
 
-    // Each order line's fees, one row per fee type
-    const feeRows = inserted.flatMap((line) =>
-      (feesByKey.get(`${line.platform_listing_id}|${line.external_id}`) || []).map((fee) => ({
-        order_line_item_id: line.id,
+    const feeRows = inserted.flatMap((row) =>
+      (feesByKey.get(`${row.platform_listing_id}|${row.external_id}`) || []).map((fee) => ({
+        [feeParentColumn]: row.id,
         fee_type: fee.type,
         source_label: fee.label,
         gross_pence: fee.grossPence,
         vat_pence: fee.vatPence,
       }))
     )
-    for (let j = 0; j < feeRows.length; j += chunkSize) {
-      const { error: feeError } = await supabase.from('order_line_fees').insert(feeRows.slice(j, j + chunkSize))
+    for (let j = 0; j < feeRows.length; j += 500) {
+      const { error: feeError } = await supabase.from('order_line_fees').insert(feeRows.slice(j, j + 500))
       if (feeError) {
         result.errors.push(
-          `${result.imported} order lines were imported, but saving their fee breakdown failed: ${feeError.message}. ` +
+          `Some ${what} were imported, but saving their fee breakdown failed: ${feeError.message}. ` +
           `Their margins are still correct (fee totals are saved); only the split by fee type is missing.`
         )
-        return result
+        return false
       }
     }
   }
-
-  return result
+  return true
 }
 
-// The order's fee breakdown, topped up so it adds up exactly to its fee totals:
+// The fee breakdown, topped up so it adds up exactly to the fee totals:
 // anything the importer didn't split out is 'Not broken down'.
-function completeFeeBreakdown(order: NormalizedOrder): FeeLine[] {
+function completeFeeBreakdown(order: { feesGrossPence: number; feesVatPence: number; feeBreakdown?: FeeLine[] }): FeeLine[] {
   const lines = (order.feeBreakdown || []).filter((l) => l.grossPence || l.vatPence).map((l) => ({ ...l }))
   const totals = feeTotals(lines)
   addFee(lines, 'unspecified', 'Fees (not broken down)', order.feesGrossPence - totals.grossPence, order.feesVatPence - totals.vatPence)
@@ -268,6 +346,12 @@ export function describeImportResult(result: ImportResult, store: Store): string
   }
   if (result.createdProducts.length) {
     parts.push(`Created ${result.createdProducts.length} new product(s) — add their costs in Products.`)
+  }
+  if (result.refundsImported || result.refundsSkippedDuplicates) {
+    parts.push(`Imported ${result.refundsImported} new refund(s); skipped ${result.refundsSkippedDuplicates} already-imported.`)
+  }
+  if (result.refundsSkippedNoSku) {
+    parts.push(`HELD BACK ${result.refundsSkippedNoSku} refund(s) whose SKU isn't mapped in this store (map it, then upload again).`)
   }
   if (result.unmappedSkus.length) {
     const shown = result.unmappedSkus.slice(0, 20).join(', ')

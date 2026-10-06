@@ -1,9 +1,9 @@
 'use client'
 
-import { ukDate } from '@/lib/format'
+import { pounds, ukDate } from '@/lib/format'
 import { useState } from 'react'
 import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
-import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, describeImportResult, NormalizedOrder, NormalizedRefund } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import { FeeLine, FeeType, addFee, feeTotals, shareVat } from '@/lib/fees'
 import StorePicker from '@/components/StorePicker'
@@ -14,6 +14,7 @@ type AmazonRow = {
   'transaction-type': string
   'order-id': string
   'order-item-code': string
+  'adjustment-id': string
   'amount-type': string
   'amount-description': string
   amount: string
@@ -41,6 +42,7 @@ export default function AmazonImportPage() {
   const [status, setStatus] = useState<string>('')
   const [preview, setPreview] = useState<NormalizedOrder[]>([])
   const [allOrders, setAllOrders] = useState<NormalizedOrder[]>([])
+  const [allRefunds, setAllRefunds] = useState<NormalizedRefund[]>([])
   const [store, setStore] = useState<Store | null>(null)
   const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
 
@@ -122,22 +124,108 @@ export default function AmazonImportPage() {
       })
     }
 
+    // Refunds: several rows per refunded item, grouped by the refund (adjustment-id) and the
+    // item (order-item-code, the same code as the original sale's line, which links the two).
+    // Amounts are negative for money given back, positive for fees Amazon returns.
+    const refundGroups = new Map<string, AmazonRow[]>()
+    for (const row of data) {
+      if (row['transaction-type'] !== 'Refund' || !row['order-item-code']) continue
+      const key = `${row['adjustment-id']}_${row['order-item-code']}`
+      if (!refundGroups.has(key)) refundGroups.set(key, [])
+      refundGroups.get(key)!.push(row)
+    }
+
+    const refunds: NormalizedRefund[] = []
+    const refundOrderIds = new Map<NormalizedRefund, string>()
+    for (const [refundId, rows] of refundGroups) {
+      const first = rows[0]
+      let principal = 0
+      let tax = 0
+      const feeBreakdown: FeeLine[] = []
+      for (const row of rows) {
+        const amt = parseFloat(row.amount) || 0
+        if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Principal') {
+          principal -= amt
+        } else if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Tax') {
+          tax -= amt
+        } else if (row['amount-type'] === 'ItemFees') {
+          // As a cost: fees given back (positive in the file) reduce it, e.g. Commission;
+          // fees charged (negative) add to it, e.g. RefundCommission (Amazon's refund admin fee)
+          const description = row['amount-description'] || 'Amazon fee'
+          addFee(feeBreakdown, amazonFeeType(description), description, Math.round(-amt * 100))
+        }
+      }
+      const feesGrossPence = feeTotals(feeBreakdown).grossPence
+      const feesVatPence = Math.round(feesGrossPence - feesGrossPence / 1.2) // 20%, as for sales
+      shareVat(feeBreakdown, feesVatPence)
+
+      const refund: NormalizedRefund = {
+        sku: first.sku,
+        externalId: refundId,
+        originalExternalId: first['order-item-code'],
+        refundDate: parseAmazonDate(first['posted-date']),
+        qty: parseInt(first['quantity-purchased']) || null, // blank on Amazon refunds
+        refundGrossPence: Math.round((principal + tax) * 100),
+        refundVatPence: Math.round(tax * 100),
+        feesGrossPence,
+        feesVatPence,
+        feeBreakdown,
+        returnShippingCostPence: null,
+      }
+      refunds.push(refund)
+      refundOrderIds.set(refund, first['order-id'])
+    }
+
+    // Return labels bought through Amazon only have the order-id, so they're added to that
+    // order's refunds in this file (shared by refunded price if there are several).
+    const returnLabels = new Map<string, number>() // pence by order-id
+    for (const row of data) {
+      if (row['transaction-type'] === 'other-transaction' && row['amount-description'] === 'Shipping label purchase for return') {
+        const pence = Math.round(Math.abs(parseFloat(row.amount) || 0) * 100)
+        returnLabels.set(row['order-id'], (returnLabels.get(row['order-id']) || 0) + pence)
+      }
+    }
+    let unmatchedLabels = 0
+    for (const [orderId, labelPence] of returnLabels) {
+      const lines = refunds.filter((r) => refundOrderIds.get(r) === orderId)
+      if (lines.length === 0) {
+        unmatchedLabels++
+        continue
+      }
+      const totalRefund = lines.reduce((sum, r) => sum + r.refundGrossPence, 0)
+      let left = labelPence
+      lines.forEach((r, i) => {
+        const last = i === lines.length - 1
+        const share = last ? left : totalRefund > 0 ? Math.round((labelPence * r.refundGrossPence) / totalRefund) : 0
+        r.returnShippingCostPence = (r.returnShippingCostPence ?? 0) + share
+        left -= share
+      })
+    }
+
     // A date that couldn't be read would put the sale on the wrong day, so stop here
-    const badDates = normalized.filter((o) => !o.orderDate).length
+    const badDates = normalized.filter((o) => !o.orderDate).length + refunds.filter((r) => !r.refundDate).length
     if (badDates > 0) {
       setAllOrders([])
+      setAllRefunds([])
       setPreview([])
-      setStatus(`Error: ${badDates} order line(s) have a posted-date that couldn't be read. Expected a UK date like 31.08.2026 or 31/08/2026.`)
+      setStatus(`Error: ${badDates} line(s) have a posted-date that couldn't be read. Expected a UK date like 31.08.2026 or 31/08/2026.`)
       return
     }
 
     setAllOrders(normalized)
+    setAllRefunds(refunds)
     setPreview(normalized.slice(0, 20))
-    setStatus(`Found ${normalized.length} order lines (from ${orderRows.length} rows in the file). Showing first 20 below — review, then confirm import.`)
+    setStatus(
+      `Found ${normalized.length} order lines and ${refunds.length} refunds (from ${data.length} rows in the file).` +
+      (unmatchedLabels
+        ? ` Warning: ${unmatchedLabels} return label(s) are for orders with no refund in this file, so they aren't counted (they're usually in the same file as the refund).`
+        : '') +
+      ' Review the preview below, then confirm import.'
+    )
   }
 
   async function handleImport() {
-    if (allOrders.length === 0) {
+    if (allOrders.length === 0 && allRefunds.length === 0) {
       setStatus('Nothing to import yet: please choose a file first.')
       return
     }
@@ -146,7 +234,7 @@ export default function AmazonImportPage() {
       return
     }
 
-    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus })
+    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus, refunds: allRefunds })
     setStatus(describeImportResult(result, store))
   }
 
@@ -154,7 +242,7 @@ export default function AmazonImportPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Import</p>
       <h1 style={pageTitle}>Amazon Import</h1>
-      <p style={pageIntro}>First pass: standard sales only (Refunds and SAFE-T reimbursements are skipped for now).</p>
+      <p style={pageIntro}>Upload the settlement report. Sales and refunds (with Amazon&apos;s refund fee and any return label) are imported together. SAFE-T reimbursements are skipped for now.</p>
       <div style={cardStyle}>
       <StorePicker platformFilter={(p) => p.name.startsWith('Amazon')} value={store} onChange={setStore} />
       <CreateProductsToggle checked={createUnknownSkus} onChange={setCreateUnknownSkus} />
@@ -162,35 +250,69 @@ export default function AmazonImportPage() {
       {status && <p style={{ color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', lineHeight: 1.5 }}>{status}</p>}
       </div>
 
-      {preview.length > 0 && (
+      {(preview.length > 0 || allRefunds.length > 0) && (
         <div style={cardStyle}>
           <p style={cardTitle}>Preview</p>
-          <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>SKU</th>
-                <th style={thStyle}>Order Date</th>
-                <th style={thStyle}>Qty</th>
-                <th style={thStyle}>Sale Price</th>
-                <th style={thStyle}>Fees</th>
-              </tr>
-            </thead>
-            <tbody>
-              {preview.map((row) => (
-                <tr key={row.externalId}>
-                  <td style={tdStyle}>{row.sku}</td>
-                  <td style={tdStyle}>{ukDate(row.orderDate)}</td>
-                  <td style={tdStyle}>{row.qty}</td>
-                  <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
-                  <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
+          {preview.length > 0 && (
+            <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>SKU</th>
+                  <th style={thStyle}>Order Date</th>
+                  <th style={thStyle}>Qty</th>
+                  <th style={thStyle}>Sale Price</th>
+                  <th style={thStyle}>Fees</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody>
+                {preview.map((row) => (
+                  <tr key={row.externalId}>
+                    <td style={tdStyle}>{row.sku}</td>
+                    <td style={tdStyle}>{ukDate(row.orderDate)}</td>
+                    <td style={tdStyle}>{row.qty}</td>
+                    <td style={tdStyle}>£{(row.salePriceGrossPence / 100).toFixed(2)}</td>
+                    <td style={tdStyle}>£{(row.feesGrossPence / 100).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+          )}
+          {allRefunds.length > 0 && (
+            <>
+              <p style={{ ...cardTitle, margin: preview.length > 0 ? '22px 0 12px' : '0 0 12px' }}>Refunds (first 20)</p>
+              <div style={{ overflowX: 'auto' }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>SKU</th>
+                    <th style={thStyle}>Refund Date</th>
+                    <th style={thStyle}>Refunded</th>
+                    <th style={thStyle}>Fee change</th>
+                    <th style={thStyle}>Return postage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allRefunds.slice(0, 20).map((r) => (
+                    <tr key={r.externalId}>
+                      <td style={tdStyle}>{r.sku}</td>
+                      <td style={tdStyle}>{ukDate(r.refundDate)}</td>
+                      <td style={tdStyle}>{pounds(r.refundGrossPence)}</td>
+                      <td style={tdStyle}>{pounds(r.feesGrossPence)}</td>
+                      <td style={tdStyle}>{r.returnShippingCostPence ? pounds(r.returnShippingCostPence) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+              <p style={{ color: muted, fontSize: '13px', margin: '10px 0 0' }}>
+                Fee change is what the refund does to your fees: negative = Amazon gave fees back (after keeping its refund fee).
+              </p>
+            </>
+          )}
           <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm import (every order line in the file, not just the ones shown)
+            Confirm import (every order line and refund in the file, not just the ones shown)
           </button>
         </div>
       )}

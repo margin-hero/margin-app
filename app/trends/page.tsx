@@ -16,6 +16,7 @@ type MarginRow = {
   order_date: string
   revenue_pence: number
   margin_pence: number
+  line_type: string
 }
 
 const axisTick = { fill: muted, fontSize: 12 }
@@ -33,8 +34,8 @@ export default function TrendsPage() {
     async function load() {
       const { data: rows, error } = await fetchAll((from, to) =>
         supabase
-          .from('order_margins')
-          .select('product_name, order_date, revenue_pence, margin_pence')
+          .from('margin_lines')
+          .select('product_name, order_date, revenue_pence, margin_pence, line_type') // sales and refunds
           .order('order_line_item_id')
           .range(from, to)
       )
@@ -61,7 +62,7 @@ export default function TrendsPage() {
     const entry = byMonth.get(month) || { revenuePence: 0, profitPence: 0, count: 0 }
     entry.revenuePence += Number(row.revenue_pence) || 0
     entry.profitPence += Number(row.margin_pence) || 0
-    entry.count += 1
+    if (row.line_type === 'sale') entry.count += 1 // refunds aren't order lines
     byMonth.set(month, entry)
   }
 

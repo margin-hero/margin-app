@@ -20,12 +20,14 @@ export type SkuStoreMargins = {
 
 // Margin % from the summed totals (never an average of per-order percentages)
 export function cellPercent(cell: MarginCell | null): number | null {
-  if (!cell || cell.revenuePence === 0) return null
+  // Revenue can be 0 or below when a period has more refunds than sales: no % then
+  if (!cell || cell.revenuePence <= 0) return null
   return Math.round((cell.marginPence / cell.revenuePence) * 1000) / 10
 }
 
 export function cellPerUnitPence(cell: MarginCell | null): number | null {
-  if (!cell || cell.units === 0) return null
+  // Units are net of refunds, so can be 0 or below
+  if (!cell || cell.units <= 0) return null
   return Math.round(cell.marginPence / cell.units)
 }
 
@@ -37,8 +39,8 @@ export async function loadSkuStoreMargins(
   const [{ data, error }, { data: listings, error: listingsError }] = await Promise.all([
     fetchAll((from, to) => {
       let q = db
-        .from('order_margins')
-        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence')
+        .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
+        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence, line_type')
       if (range) q = q.gte('order_date', range.from).lte('order_date', range.to)
       return q.order('order_line_item_id').range(from, to)
     }),

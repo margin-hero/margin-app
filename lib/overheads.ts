@@ -130,7 +130,7 @@ export async function loadOverheadSetup(db: SupabaseClient = supabase) {
 
 // ---- Allocation ----
 
-export type SaleLine = { store_id: string; revenue_pence: number; effective_qty: number }
+export type SaleLine = { store_id: string; revenue_pence: number; effective_qty: number; line_type?: string }
 
 // Shares every overhead falling in [from, to] across the sale lines.
 // Whole-business overheads go across all lines; store overheads across that store's lines.
@@ -142,7 +142,9 @@ export function allocateOverheads(
   from: string,
   to: string
 ): { shares: number[]; totalPence: number; unallocatedPence: number } {
+  // Refund rows (from margin_lines) carry no overheads: they're shared across sales only
   const weight = (l: SaleLine) =>
+    l.line_type === 'refund' ? 0 :
     setup.basis === 'units' ? l.effective_qty : setup.basis === 'orders' ? 1 : Math.max(0, Number(l.revenue_pence) || 0)
 
   // Pools: '' = whole business, otherwise a store id
