@@ -34,6 +34,7 @@
      - **Decide first:** does the rolling 30 days use the *order date* or the *upload date*? By order date, a new customer back-filling a year of history isn't locked out in week one. Probably also allow a one-off history import on sign-up.
 - ~~**Move the generic CSV upload (`/upload`) onto `importEngine` and give it a store picker.**~~ Done 2026-09-30.
 - ~~**TikTok sale VAT for VAT-registered stores.**~~ Done 2026-10-02 (importEngine works it out from the product's VAT rate; OnBuy uses the same). Original note: TikTok settlement reports show £0 VAT for UK-established sellers (TikTok only fills it when it collects the VAT itself), so the importer records the whole sale as net revenue. For a VAT-registered store that overstates revenue and margin by the VAT. Fix: when the report's VAT is £0 and the store is VAT registered, work out the VAT from each product's VAT rate (`master_products.vat_rate`) at import time.
+- **Refunds dashboard (added 2026-10-06, before launch).** A page of its own for refunds: cost of refunds, worst SKUs, refund rate by store, trend. Full spec: **Refunds dashboard** in Phase 1. Build once refunds from one or two more channels are in, so it can compare stores.
 - **Refunds and returns.** Amazon done 2026-10-06 (see Phase 1). Other importers still skip refund rows (Amazon refunds and SAFE-T reimbursements, TikTok refund-only rows, Mirakl refund types), so revenue and margins are overstated for any product that gets returns. Needs: importing refunds as their own lines linked to the original sale (by order / order-line ID), the refunded revenue and refunded fees, whether the item came back resaleable (cost recovered) or not (cost lost), and showing refund rate per SKU per store. Full plan: **Refunds and returns** in Phase 1.
 
 ---
@@ -141,7 +142,16 @@ Returns quietly eat margin, and some SKUs are far worse than others. Scope: what
 - **Metrics** (sums first, then ratios):
   - **Refund % by SKU** = refunded units ÷ units sold (also by value: refunded revenue ÷ revenue), per store and across all stores
   - Net profit after refunds; cost of returns per SKU
-- **Where it shows:** a refund % column / sort on Margins, a Refunds dashboard (worst SKUs first), the order-line breakdown, and an alert when a SKU's refund % passes a threshold.
+- **Where it shows:** a refund % column / sort on Margins, a Refunds dashboard (worst SKUs first, see below), the order-line breakdown, and an alert when a SKU's refund % passes a threshold.
+- **Refunds dashboard (before launch, added 2026-10-06).** Its own page under Dashboards, answering "which products are costing me money through returns, and how much?" Reads `margin_lines` (refund rows + their linked sales); sums first, then ratios. Date range bar like the other dashboards.
+  1. **Headline tiles for the period:** £ refunded, units refunded, overall refund rate, and **cost of refunds** = profit lost on the refunded sales + return postage + fees the channel kept (the LL-1 example: about £9 per return). This is the number that matters most.
+  2. **Worst SKUs table:** product × store, with units sold, units refunded, refund rate, cost of refunds £. Sortable, worst first. Coloured by a refund-rate threshold (a tenant setting like the margin colour ranges, e.g. green under 3%, red over 8%), never the margin colours' meaning.
+  3. **Refund rate by store:** the same product often returns far more on one channel than another.
+  4. **Monthly trend:** £ refunded and refund rate by month (chart series colours, not margin tiers), to spot a product getting worse, e.g. a bad batch.
+  5. **Timing:** typical days from sale to refund per SKU, and when a month's figures can be treated as final (see **Refund lag reporting** above).
+  6. **Data quality notes:** refunds whose sale isn't imported (units estimated), goodwill partial refunds (money back, 0 units), unmatched return labels, and channels whose refunds aren't imported yet (so a 0% isn't mistaken for "no returns").
+  - **Later, with new data:** return **reasons** ("defective", "not as described", "changed mind") from Amazon's Returns report (not in the settlement report) and the other channels' equivalents. Turns "12% refund rate" into "12%, mostly damaged in transit", which tells the seller whether to fix packaging, the listing or the supplier.
+  - **First version** could be items 1, 2 and 6 (all from data already stored); 3 to 5 follow as more channels' refunds arrive.
 - **Margin order:** refunds reduce revenue and Net profit for the period they happen in. Gross only changes when the product cost is lost (item written off).
 - **Refund lag reporting (added 2026-10-06).** Refunds count when they happen, and each refund is linked to its sale, so the gap between them can be reported:
   - **Days from sale to refund**, by SKU and by channel: average and spread (e.g. "most LL-1 returns come back 8 to 14 days after the sale").
