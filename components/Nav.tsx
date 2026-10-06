@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
   FileUp, ShoppingCart, ShoppingBag, ShoppingBasket, Music2, Building2,
-  Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
+  Tag, Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
   type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -32,12 +32,13 @@ const NAV_GROUPS: { label: string; sections: NavSection[] }[] = [
   {
     label: 'Import',
     sections: [{ links: [
-      { href: '/upload', label: 'CSV / Excel', icon: FileUp },
       { href: '/amazon-import', label: 'Amazon', icon: ShoppingCart },
-      { href: '/tiktok-import', label: 'TikTok', icon: Music2 },
+      { href: '/ebay-import', label: 'eBay', icon: Tag },
       { href: '/mirakl-import', label: 'Mirakl', icon: Building2 },
       { href: '/onbuy-import', label: 'OnBuy', icon: ShoppingBag },
       { href: '/shopify-import', label: 'Shopify', icon: ShoppingBasket },
+      { href: '/tiktok-import', label: 'TikTok', icon: Music2 },
+      { href: '/upload', label: 'CSV / Excel', icon: FileUp },
     ] }],
   },
   {

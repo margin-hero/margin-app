@@ -260,6 +260,33 @@ The **transaction report** from OnBuy Seller Control Panel (one row per order li
 
 ---
 
+## eBay
+
+**Page:** Import → **eBay**
+**File type:** CSV or Excel (.xlsx), exactly as eBay gives it (the notes at the top of the file are fine)
+
+### What you need
+The **transaction report** from eBay Seller Hub (**Payments → Reports**), for the dates you want.
+
+**Every listing needs a Custom label.** eBay's Custom label is your SKU, and it's how Margin Hero knows which product was sold. eBay's Item ID can't be used instead, because every variation of a listing (e.g. each colour or size) shares the same Item ID. Add Custom labels in Seller Hub (Listings → edit, or bulk edit), giving **each variation its own**. Sales without one are held back and listed by Item ID after you choose the file.
+
+### Steps
+1. Go to **Import → eBay**.
+2. **Choose your eBay store first.** No eBay store yet? Add one in **Manage → Stores**.
+3. Choose your transaction report.
+4. Check the preview. It shows each order, the date, quantity, item price, postage charged, eBay's fees and eBay's own Net amount. If any row doesn't add up to the Net amount, you'll see a warning.
+5. Click **Confirm Import**.
+
+### What Margin Hero takes from the report
+- **Order date:** "Transaction creation date".
+- **Sale price:** "Item subtotal" (what the customer paid for the item, including VAT). The VAT is worked out from the product's VAT rate.
+- **Postage charged to the customer:** "Postage and packaging", recorded separately as income.
+- **Fees:** every fee column (final value fee fixed and variable, regulatory operating fee, and any performance or international fees). eBay's fees include 20% VAT.
+- **Your shipping cost:** taken from the shipping costs you've set up for that product (eBay postage labels aren't imported yet).
+- **Not imported yet:** refunds, postage labels, Promoted Listings fees and other non-sale rows. They're listed in the message after you choose the file.
+
+---
+
 ## Shopify
 
 **Page:** Import → **Shopify**
@@ -288,7 +315,7 @@ The **transaction report** from OnBuy Seller Control Panel (one row per order li
 
 ## Generic CSV / Excel upload (any other channel)
 
-Use this for a store that doesn't have its own import page yet, such as **eBay**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
+Use this for a store that doesn't have its own import page yet, such as **Temu**. You can upload a **CSV** or an **Excel (.xlsx)** file. Use whichever your platform gives you, or build the file yourself in Excel or Google Sheets.
 
 **Page:** Import → **CSV / Excel**
 **File type:** CSV or Excel (.xlsx). Only the first sheet of an Excel file is read.

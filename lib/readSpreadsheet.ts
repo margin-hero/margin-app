@@ -6,7 +6,14 @@ import * as XLSX from 'xlsx'
 // - CSV goes through Papa so every cell is the exact text in the file
 //   (e.g. SKU "00123" keeps its leading zeros).
 // - Excel date cells in `dateColumns` are turned into YYYY-MM-DD.
-export function readSpreadsheet(file: File, dateColumns: string[] = []): Promise<Record<string, string>[]> {
+// - `headerStartsWith`: for files with notes above the table (e.g. eBay), the heading row
+//   is the first row whose first cell is this text; everything above it is ignored.
+export function readSpreadsheet(
+  file: File,
+  dateColumns: string[] = [],
+  options: { headerStartsWith?: string } = {}
+): Promise<Record<string, string>[]> {
+  if (options.headerStartsWith) return readWithHeaderRow(file, options.headerStartsWith, dateColumns)
   if (/\.xlsx?$/i.test(file.name)) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -31,6 +38,51 @@ export function readSpreadsheet(file: File, dateColumns: string[] = []): Promise
       skipEmptyLines: true,
       transformHeader: (h) => h.trim(),
       complete: (results) => resolve(results.data),
+      error: reject,
+    })
+  })
+}
+
+// Reads the file as a grid, finds the heading row and turns the rows below it into objects
+function readWithHeaderRow(file: File, headerStartsWith: string, dateColumns: string[]): Promise<Record<string, string>[]> {
+  const toRows = (grid: unknown[][]) => {
+    const headerIndex = grid.findIndex((r) => String(r[0] ?? '').trim() === headerStartsWith)
+    if (headerIndex < 0) throw new Error(`no heading row starting "${headerStartsWith}"`)
+    const headers = grid[headerIndex].map((h) => String(h ?? '').trim())
+    return grid
+      .slice(headerIndex + 1)
+      .filter((r) => r.some((cell) => String(cell ?? '').trim() !== ''))
+      .map((r) => Object.fromEntries(headers.map((h, i) => [h, cellToText(h, r[i], dateColumns)])))
+  }
+
+  if (/\.xlsx?$/i.test(file.name)) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const workbook = XLSX.read(event.target?.result, { type: 'array' })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          resolve(toRows(XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })))
+        } catch (err) {
+          reject(err)
+        }
+      }
+      reader.onerror = () => reject(reader.error)
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  return new Promise((resolve, reject) => {
+    Papa.parse<string[]>(file, {
+      header: false,
+      skipEmptyLines: true,
+      complete: (results) => {
+        try {
+          resolve(toRows(results.data))
+        } catch (err) {
+          reject(err)
+        }
+      },
       error: reject,
     })
   })
