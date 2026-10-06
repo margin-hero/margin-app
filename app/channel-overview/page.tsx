@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
-import { marginTier, red, green, amber, muted, dim, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle } from '@/lib/theme'
+import { marginTier, red, green, amber, muted, dim, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle } from '@/lib/theme'
 import { pounds, percent } from '@/lib/format'
 import DateRangeBar from '@/components/DateRangeBar'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
@@ -45,6 +45,19 @@ type ChannelCard = {
 
 type Totals = { revenuePence: number; netPence: number; overheadPence: number; unallocatedPence: number }
 
+// How the store cards can be ordered. Percentages with no sales (null) always go last.
+const SORTS = {
+  gross: { label: 'Gross sales (high to low)', compare: (a: ChannelCard, b: ChannelCard) => b.grossSalesPence - a.grossSalesPence },
+  net: { label: 'Net sales (high to low)', compare: (a: ChannelCard, b: ChannelCard) => b.totalSalesPence - a.totalSalesPence },
+  profit: { label: 'Net profit (high to low)', compare: (a: ChannelCard, b: ChannelCard) => b.netProfitPence - a.netProfitPence },
+  margin: { label: 'Net margin % (high to low)', compare: (a: ChannelCard, b: ChannelCard) => (b.netMarginPercent ?? -Infinity) - (a.netMarginPercent ?? -Infinity) },
+  marginLow: { label: 'Net margin % (low to high)', compare: (a: ChannelCard, b: ChannelCard) => (a.netMarginPercent ?? Infinity) - (b.netMarginPercent ?? Infinity) },
+  refunds: { label: 'Refund rate (high to low)', compare: (a: ChannelCard, b: ChannelCard) => (b.refundRatePercent ?? -Infinity) - (a.refundRatePercent ?? -Infinity) },
+  name: { label: 'Store A–Z', compare: (a: ChannelCard, b: ChannelCard) => (a.platform || a.storeName).localeCompare(b.platform || b.storeName) || a.storeName.localeCompare(b.storeName) },
+} as const
+type SortKey = keyof typeof SORTS
+const SORT_STORAGE_KEY = 'mh-channel-overview-sort'
+
 function defaultFrom() {
   const d = new Date()
   d.setDate(d.getDate() - 29) // last 30 days including today
@@ -59,6 +72,7 @@ export default function ChannelOverviewPage() {
   const [rangeFrom, setRangeFrom] = useState(defaultFrom())
   const [rangeTo, setRangeTo] = useState(defaultTo())
   const [cards, setCards] = useState<ChannelCard[]>([])
+  const [sortBy, setSortBy] = useState<SortKey>('net')
   const [loading, setLoading] = useState(true)
   const [totals, setTotals] = useState<Totals | null>(null)
 
@@ -125,7 +139,6 @@ export default function ChannelOverviewPage() {
       })
     }
 
-    result.sort((a, b) => b.totalSalesPence - a.totalSalesPence)
     setCards(result)
     setTotals({
       revenuePence: marginRows.reduce((s, r) => s + Number(r.revenue_pence), 0),
@@ -140,6 +153,21 @@ export default function ChannelOverviewPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Remember the chosen order in this browser
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SORT_STORAGE_KEY)
+      if (saved && saved in SORTS) setSortBy(saved as SortKey)
+    } catch {}
+  }, [])
+  function changeSort(key: SortKey) {
+    setSortBy(key)
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, key)
+    } catch {}
+  }
+  const sortedCards = [...cards].sort((a, b) => SORTS[sortBy].compare(a, b) || a.storeName.localeCompare(b.storeName))
 
   function marginColor(pct: number | null) {
     return marginTier(pct, ranges).fg
@@ -166,6 +194,15 @@ export default function ChannelOverviewPage() {
         onChange={(f, t) => { setRangeFrom(f); setRangeTo(t) }}
         onApply={(f, t) => load(f, t)}
       />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px' }}>
+        <label htmlFor="channel-sort" style={{ fontSize: '13px', color: muted }}>Sort by</label>
+        <select id="channel-sort" value={sortBy} onChange={(e) => changeSort(e.target.value as SortKey)} style={inputStyle}>
+          {(Object.keys(SORTS) as SortKey[]).map((key) => (
+            <option key={key} value={key}>{SORTS[key].label}</option>
+          ))}
+        </select>
+      </div>
 
       {!loading && totals && totals.overheadPence > 0 && (
         <div style={{ ...cardStyle, display: 'flex', gap: '32px', flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -202,7 +239,7 @@ export default function ChannelOverviewPage() {
         <div style={cardStyle}><p style={{ color: muted, margin: 0 }}>No orders in this date range.</p></div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px', marginTop: '20px' }}>
-          {cards.map((c) => (
+          {sortedCards.map((c) => (
             <div key={c.storeId} style={{ ...cardStyle, marginTop: 0 }}>
               {/* Every heading line is kept to one line (long names are cut short with "…") so the
                   rows below line up across cards */}
