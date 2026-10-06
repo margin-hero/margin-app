@@ -25,12 +25,12 @@ export default function PricingPlans({ ctaHref = '/#waitlist' }: { ctaHref?: str
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px', maxWidth: '1180px', margin: '0 auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(196px, 1fr))', gap: '14px', maxWidth: '1180px', margin: '0 auto' }}>
         {PLANS.map((plan) => {
           const custom = plan.monthlyPounds === null
           const yearly = annualPounds(plan)
           return (
-            <div key={plan.name} style={{ background: panel, border: `1px solid ${border}`, borderRadius: '18px', padding: '26px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <div key={plan.name} style={{ background: panel, border: `1px solid ${border}`, borderRadius: '18px', padding: '22px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
               <p style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: lime, margin: '0 0 14px' }}>{plan.name}</p>
               {custom ? (
                 <p style={{ ...display, fontSize: '40px', margin: '0 0 6px', lineHeight: 1 }}>Let&apos;s talk</p>

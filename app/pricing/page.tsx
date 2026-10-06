@@ -65,7 +65,7 @@ export default function PricingPage() {
           <p style={eyebrow}>Included on every plan</p>
           <h2 style={h2}>Everything. <span style={{ color: lime }}>From day one.</span></h2>
           <p style={{ fontSize: '17px', color: muted, maxWidth: '600px', margin: '0 auto', lineHeight: 1.5 }}>
-            No gatekeeping. A seller on Starter gets exactly the same Margin Hero as a seller on Scale.
+            No gatekeeping. A seller on Solo gets exactly the same Margin Hero as a seller on Scale.
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '40px' }}>

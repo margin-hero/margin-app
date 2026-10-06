@@ -24,7 +24,9 @@
   2. Sign-up / onboarding: new customers are currently created by hand (Supabase user + `tenants` row + `tenant_members` link). Needs a sign-up flow that does all three, plus password reset.
   3. Tidy-up: Couriers, Shipping Profiles, Overheads and Catalog Import still send a `tenant_id` they looked up themselves; switch them to the database default like Stores and Mappings.
   4. **Plan limits and upgrades (added 2026-10-05).** Nothing tracks plans or usage yet. When a customer reaches their plan's order limit, imports stop but everything already imported stays visible, and the app offers an upgrade. Needs:
-     - **Plans:** a `plans` table (name, order limit, price) and `plan_id` on `tenants`. Keep it in step with `lib/pricing.ts` (Starter 2,000 / Growth 6,000 / Scale 20,000 / Enterprise unlimited).
+     - **Plans:** a `plans` table (name, order limit, price) and `plan_id` on `tenants`. Keep it in step with `lib/pricing.ts` (Solo £9 / 250, Starter £24 / 2,000, Growth £44 / 6,000, Scale £79 / 20,000, Enterprise custom; decided 2026-10-06, Solo added for small TikTok / Temu / Etsy sellers).
+     - **Grace month (Solo especially):** going over the limit once (e.g. one viral TikTok week) gets one month's grace with a nudge before imports stop.
+     - **Founding-member pricing (idea):** waitlist sign-ups keep their launch price for life (or a set period), as a reason to join early.
      - **Usage count:** already defined on the pricing page as *orders, not line items, over a rolling 30 days*, so count distinct orders (`external_id` per store), not `order_line_items` rows. Only count rows actually inserted, so re-uploads that are deduped don't use up the allowance.
      - **Check in `lib/importEngine.ts`:** every importer goes through it. Before inserting, compare the upload with the remaining allowance. Either reject it with a clear message, or import up to the limit and list the rest as "not imported, upgrade to add".
      - **Database guard:** a trigger (or policy) that blocks inserts past the limit, because checks in the browser can be bypassed.

@@ -10,9 +10,10 @@ export type Plan = {
 }
 
 export const PLANS: Plan[] = [
-  { name: 'Starter', monthlyPounds: 19, ordersUpTo: 2000, blurb: 'For sellers getting serious about margin.' },
-  { name: 'Growth', monthlyPounds: 39, ordersUpTo: 6000, blurb: 'For growing multichannel shops.' },
-  { name: 'Scale', monthlyPounds: 69, ordersUpTo: 20000, blurb: 'For established, high-volume sellers.' },
+  { name: 'Solo', monthlyPounds: 9, ordersUpTo: 250, blurb: 'For smaller and newer shops, e.g. a TikTok or Etsy side business.' },
+  { name: 'Starter', monthlyPounds: 24, ordersUpTo: 2000, blurb: 'For sellers getting serious about margin.' },
+  { name: 'Growth', monthlyPounds: 44, ordersUpTo: 6000, blurb: 'For growing multichannel shops.' },
+  { name: 'Scale', monthlyPounds: 79, ordersUpTo: 20000, blurb: 'For established, high-volume sellers.' },
   { name: 'Enterprise', monthlyPounds: null, ordersUpTo: null, blurb: 'Over 20,000 orders a month? Let\'s talk.' },
 ]
 
