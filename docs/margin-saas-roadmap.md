@@ -65,6 +65,12 @@ This is where the product actually becomes usable daily, so the dashboard work m
 - Per-product VAT/tax rates (zero-rated handling)
 - ✅ **Fees broken down by type** (done 2026-10-06): `order_line_fees` keeps each order line's fees by type (commission, fulfilment, payment, shipping, advertising, affiliate, other, not broken down) plus the channel's own fee name. Amazon, Mirakl, OnBuy (sales fee vs Boost) and Shopify split fully; TikTok only splits affiliate / seller-funded promotion so far. Orders imported before this are "Not broken down". Still to do: map TikTok's own fee columns (commission, transaction fee, etc.) from a real file; a fee report (fees as % of sales by type, per store, over time); use the `advertising` / `affiliate` rows when building **Advertising**.
 - **Payment fee settings (PayPal etc.)** (added 2026-10-05): some fees never appear in a channel's files, e.g. PayPal on Shopify orders (Shopify only reports its own Shopify Payments fees). Let users enter each payment provider's rate per store (% + fixed fee per transaction, plus the fee's VAT, since rates differ by PayPal account type and volume), date-tracked with `effective_from` like other costs. The importer (or the view) applies it to orders whose payment method matches and that have no reported fee; currently they count as £0.
+- **Large / historic imports (added 2026-10-06)**: a new customer may want to load several years of history (e.g. 3 years of Amazon = ~80 fortnightly settlement reports). No hard row limit is needed: imports already save in batches of 500 and re-uploads are deduped, so a half-finished import can just be uploaded again. What's missing:
+  - **Several files at once** (pick a folder's worth of settlement reports), imported one after another with a progress bar ("file 12 of 80, 41,000 lines").
+  - **Very big files**: everything runs in the browser, so a huge file (hundreds of thousands of rows) could be slow or run out of memory. Read and import it in slices; if that isn't enough, move imports to a background job on the server that carries on if the tab is closed.
+  - **Import history** (the `import_batches` table in Phase 0): which files went in, when, how many lines, so a user can see which periods are covered and spot gaps.
+  - **Plan limits**: a historic import counts towards the order limit (see **Plan limits and upgrades** above). Decide whether history before the sign-up date counts, or gets a one-off allowance, so a big back-catalogue doesn't push a new customer straight onto a higher plan.
+  - Pairs with **Dashboard performance at scale** below: years of history means hundreds of thousands of lines on the dashboards.
 - **Dashboard performance at scale**: dashboards currently download every order line (in 1,000-row pages via `lib/fetchAll.ts`) and add them up in the browser. Fine for tens of thousands of lines; before sellers have hundreds of thousands, move the totals into the database (aggregated views or Postgres functions grouped by product × store × date) so pages download summaries, not raw rows.
 - **Date-tracked VAT registration per store**: `vat_registered` is currently a simple yes/no on `stores`, so ticking it recalculates *all* of that store's past orders as if it had always been registered. Store it with an `effective_from` date (same pattern as `cogs_components` / `shipping_rules`) so orders before the registration date keep the non-registered treatment. Useful when a new brand launches unregistered and registers later.
 
@@ -137,6 +143,12 @@ Returns quietly eat margin, and some SKUs are far worse than others. Scope: what
   - Net profit after refunds; cost of returns per SKU
 - **Where it shows:** a refund % column / sort on Margins, a Refunds dashboard (worst SKUs first), the order-line breakdown, and an alert when a SKU's refund % passes a threshold.
 - **Margin order:** refunds reduce revenue and Net profit for the period they happen in. Gross only changes when the product cost is lost (item written off).
+- **Refund lag reporting (added 2026-10-06).** Refunds count when they happen, and each refund is linked to its sale, so the gap between them can be reported:
+  - **Days from sale to refund**, by SKU and by channel: average and spread (e.g. "most LL-1 returns come back 8 to 14 days after the sale").
+  - **How long until a month's figures settle**: what share of refunds arrive within 7 / 14 / 30 / 60 days, so a seller knows when last month's margin is final.
+  - **Expected refunds for recent sales**: use each SKU × channel's past refund rate and lag to show the likely refunds still to come on recent sales, as a "provisional" margin for the last few weeks alongside the actual one.
+  - Spotting changes: a SKU whose returns start arriving sooner or more often than usual (e.g. a faulty batch) as an alert.
+  - Only refunds whose sale is imported have a lag; the rest are left out of these figures (and counted, so the user knows).
 
 **New product margin checker (added 2026-10-06)**
 
