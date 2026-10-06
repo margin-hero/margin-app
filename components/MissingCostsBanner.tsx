@@ -24,7 +24,7 @@ export default function MissingCostsBanner() {
 
   return (
     <div style={{ margin: 'clamp(20px, 3vw, 40px) clamp(20px, 3vw, 40px) 0', padding: '12px 18px', borderRadius: '14px', background: 'rgba(255,76,76,0.12)', border: `1px solid ${red}`, color: text, fontFamily: font, fontSize: '14px' }}>
-      <strong style={{ color: red }}>Margins overstated:</strong> {summary.lines} order line(s) across {summary.products} product(s) have no product cost.{' '}
+      <strong style={{ color: red }}>Margins overstated:</strong> {summary.lines} order line(s) across {summary.products} product(s) have no product cost on their sale date (no cost added yet, or the cost starts after the sale and needs backdating).{' '}
       <Link href="/costs" style={{ color: red, fontWeight: 700 }}>Fix in Costs →</Link>
     </div>
   )

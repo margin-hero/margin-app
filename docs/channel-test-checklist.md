@@ -63,7 +63,7 @@ Update this file as each case is tested (date + what was checked).
 | Shipping charges + shipping tax | 🟡 |
 | Multi-item order | 🟡 |
 | Refund ("Order amount refund", "Commission refund"...) | ⬜ currently skipped. Need an example |
-| Tesco | 🟡 no file tested yet |
+| Tesco single-line sale | ✅ 2026-10-06 (MPS-3: no tax rows, so Order amount is gross and VAT comes from the product; commission 15% of the gross price) |
 
 ### OnBuy
 | Case | Status |

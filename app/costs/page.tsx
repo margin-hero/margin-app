@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { loadCostTypes, hasDoubleCountRisk } from '@/lib/costTypes'
-import { lime, amber, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
+import { lime, amber, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle, linkButton } from '@/lib/theme'
 
 type ProductCosts = {
   id: string
@@ -22,6 +22,9 @@ type ProductCosts = {
   ordersNoCost: number // order lines where product cost came out as £0
   earliestNoCost: string | null
   ordersNoShipping: number
+  // The first landed cost row of each type that starts after the earliest uncosted order:
+  // moving these back to that date fixes those orders (the Backdate button)
+  backdateRows: { id: string; from: string }[]
 }
 
 const pounds = (pence: number) => `£${(pence / 100).toFixed(2)}`
@@ -31,6 +34,8 @@ export default function CostsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [onlyProblems, setOnlyProblems] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0) // bump to load again after a change
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -39,7 +44,7 @@ export default function CostsPage() {
         loadCostTypes(),
         fetchAll((from, to) => supabase.from('master_products').select('id, standard_sku, name').order('id').range(from, to)),
         fetchAll((from, to) =>
-          supabase.from('cogs_components').select('master_product_id, component_type, description, amount_pence, effective_from').order('id').range(from, to)
+          supabase.from('cogs_components').select('id, master_product_id, component_type, description, amount_pence, effective_from').order('id').range(from, to)
         ),
         fetchAll((from, to) => supabase.from('shipping_rules').select('master_product_id').order('id').range(from, to)),
         fetchAll((from, to) =>
@@ -67,10 +72,16 @@ export default function CostsPage() {
       // effect today — the same rule the margin calculation uses
       const current = new Map<string, Map<string, { type: string; amount: number; from: string }>>()
       const earliestLanded = new Map<string, string>()
+      const firstLandedRow = new Map<string, Map<string, { id: string; from: string }>>() // product -> (type|description) -> first row
       for (const c of cogs.data) {
         if (typeByCode.get(c.component_type)?.in_gross) {
           const prev = earliestLanded.get(c.master_product_id)
           if (!prev || c.effective_from < prev) earliestLanded.set(c.master_product_id, c.effective_from)
+          const groups = firstLandedRow.get(c.master_product_id) || new Map()
+          const key = `${c.component_type}|${c.description || ''}`
+          const first = groups.get(key)
+          if (!first || c.effective_from < first.from) groups.set(key, { id: c.id, from: c.effective_from })
+          firstLandedRow.set(c.master_product_id, groups)
         }
         if (c.effective_from > today) continue
         const byKey = current.get(c.master_product_id) || new Map()
@@ -124,13 +135,37 @@ export default function CostsPage() {
             ordersNoCost: noCostCounts.get(p.id) || 0,
             earliestNoCost: earliestNoCost.get(p.id) || null,
             ordersNoShipping: noShippingCounts.get(p.id) || 0,
+            backdateRows: Array.from(firstLandedRow.get(p.id)?.values() || []).filter(
+              (row) => earliestNoCost.has(p.id) && row.from > earliestNoCost.get(p.id)!
+            ),
           }
         })
       )
       setLoading(false)
     }
     load()
-  }, [])
+  }, [reloadKey])
+
+  // Moves the product's landed cost back to its earliest uncosted order. This is a correction
+  // (like Edit on the product page), so it changes past figures; nothing else is touched.
+  async function backdate(r: ProductCosts) {
+    if (!r.earliestNoCost || r.backdateRows.length === 0) return
+    if (!window.confirm(
+      `Backdate ${r.sku}'s landed cost to ${ukDate(r.earliestNoCost)}?\n\n` +
+      `The cost will then apply to its ${r.ordersNoCost} earlier order line(s) too. ` +
+      `Only do this if the cost was the same back then. If it was different, add the older cost on the product page instead.`
+    )) return
+    setBusyId(r.id)
+    for (const row of r.backdateRows) {
+      const { error: updateError } = await supabase.from('cogs_components').update({ effective_from: r.earliestNoCost }).eq('id', row.id)
+      if (updateError) {
+        setError(`Couldn't backdate ${r.sku}: ${updateError.message}`)
+        break
+      }
+    }
+    setBusyId(null)
+    setReloadKey((k) => k + 1)
+  }
 
   const needsAttention = (r: ProductCosts) => r.landedPence === null || r.doubleCount || r.ordersNoCost > 0 || r.ordersNoShipping > 0
   const problemCount = rows.filter(needsAttention).length
@@ -154,7 +189,8 @@ export default function CostsPage() {
       <h1 style={pageTitle}>Costs</h1>
       <p style={pageIntro}>
         Every product&apos;s current costs in one place. A product with no cost price looks far more profitable than it is,
-        so anything flagged here is making your margins look better than they really are.
+        so anything flagged here is making your margins look better than they really are. A cost only applies to orders on or
+        after its &quot;effective from&quot; date, so a cost added after a sale needs backdating to cover it.
         Add costs one product at a time with <strong>Edit costs</strong>, or many at once with{' '}
         <Link href="/cost-import" style={{ color: lime, fontWeight: 700 }}>Cost Import</Link>.
       </p>
@@ -197,7 +233,7 @@ export default function CostsPage() {
                       <td style={{ ...tdStyle, fontWeight: 700 }}>{r.sku}</td>
                       <td style={tdStyle}>{r.name}</td>
                       <td style={{ ...tdStyle, color: r.landedPence === null ? red : text }}>
-                        {r.landedPence !== null ? pounds(r.landedPence) : r.futureCostFrom ? `Starts ${r.futureCostFrom}` : 'Missing'}
+                        {r.landedPence !== null ? pounds(r.landedPence) : r.futureCostFrom ? `Starts ${ukDate(r.futureCostFrom)}` : 'Missing'}
                       </td>
                       <td style={{ ...tdStyle, color: r.otherUnitPence ? text : dim }}>{r.otherUnitPence ? pounds(r.otherUnitPence) : '—'}</td>
                       <td style={{ ...tdStyle, color: r.perOrderPence ? text : dim }}>{r.perOrderPence ? pounds(r.perOrderPence) : '—'}</td>
@@ -207,6 +243,15 @@ export default function CostsPage() {
                       </td>
                       <td style={{ ...tdStyle, fontSize: '13px' }}>
                         {advice && <div style={{ color: red }}>{advice}</div>}
+                        {r.backdateRows.length > 0 && r.earliestNoCost && (
+                          <button
+                            onClick={() => backdate(r)}
+                            disabled={busyId === r.id}
+                            style={{ ...linkButton, padding: 0, margin: '4px 0 2px', opacity: busyId === r.id ? 0.6 : 1 }}
+                          >
+                            {busyId === r.id ? 'Backdating...' : `Backdate cost to ${ukDate(r.earliestNoCost)} →`}
+                          </button>
+                        )}
                         {r.doubleCount && <div style={{ color: red }}>All-in landed cost AND product cost / freight / duty in effect: possible double count</div>}
                         {r.ordersNoShipping > 0 && (
                           <div style={{ color: amber }}>{r.ordersNoShipping} order line(s) with no shipping cost: assign a shipping profile that covers that quantity (or set &quot;No shipping cost&quot; for that store)</div>

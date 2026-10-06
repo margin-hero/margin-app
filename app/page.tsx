@@ -8,17 +8,30 @@ import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, d
 // "live" = import already works in the app. Update as new importers ship.
 const CHANNELS: { name: string; live: boolean }[] = [
   { name: 'Amazon', live: true },
-  { name: 'TikTok Shop', live: true },
+  { name: 'eBay', live: true },
   { name: 'B&Q', live: true },
   { name: 'The Range', live: true },
   { name: 'Debenhams', live: true },
   { name: 'Tesco', live: true },
   { name: 'Argos', live: true },
-  { name: 'eBay', live: false },
   { name: 'OnBuy', live: true },
+  { name: 'Shopify', live: true },
+  { name: 'TikTok Shop', live: false },
   { name: 'Temu', live: false },
-  { name: 'Shopify', live: false },
   { name: 'More channels', live: false },
+]
+
+// What goes into the margin figure (hero chips). soon = on the roadmap, not live yet.
+const COUNTED: { label: string; soon?: boolean }[] = [
+  { label: 'Sales' },
+  { label: 'Channel fees' },
+  { label: 'Refunds' },
+  { label: 'Couriers' },
+  { label: 'Landed cost' },
+  { label: 'Packaging' },
+  { label: 'Overheads' },
+  { label: 'VAT' },
+  { label: 'Ad spend', soon: true },
 ]
 
 // ---- Sample data for the dashboard mockup (illustrative only) ----
@@ -154,13 +167,20 @@ export default function HoldingPage() {
 
       {/* Hero */}
       <div style={{ padding: 'clamp(48px, 9vw, 110px) 16px 56px', textAlign: 'center' }}>
-        <p style={eyebrow}>SKU-level margin for UK sellers</p>
+        <p style={eyebrow}>For UK marketplace &amp; ecommerce sellers</p>
         <h1 style={{ ...display, fontSize: 'clamp(40px, 9vw, 116px)', lineHeight: 0.92, margin: '0 auto 28px', maxWidth: '1150px' }}>
-          Every SKU.<br />Every store.<br /><span style={{ color: lime }}>Real margin.</span>
+          Know your margin.<br /><span style={{ color: lime }}>SKU by SKU.</span>
         </h1>
-        <p style={{ fontSize: 'clamp(17px, 2vw, 21px)', color: muted, maxWidth: '620px', margin: '0 auto 36px', lineHeight: 1.5 }}>
-          See the true profit on every product, marketplace by marketplace, side by side. Find out which stores make you money and which quietly lose it.
+        <p style={{ fontSize: 'clamp(17px, 2vw, 21px)', color: muted, maxWidth: '640px', margin: '0 auto 24px', lineHeight: 1.5 }}>
+          The real profit on every product, in every store, side by side. Find out which SKUs and stores make you money and which quietly lose it.
         </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', maxWidth: '680px', margin: '0 auto 36px' }}>
+          {COUNTED.map((c) => (
+            <span key={c.label} style={{ fontSize: '13px', fontWeight: 700, padding: '6px 12px', borderRadius: radius, border: `1px solid ${border}`, background: panel, color: c.soon ? dim : text }}>
+              {c.label}{c.soon && <span style={{ fontWeight: 600 }}> · soon</span>}
+            </span>
+          ))}
+        </div>
         <div id="waitlist">{signupForm()}</div>
       </div>
 
@@ -336,11 +356,11 @@ export default function HoldingPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
           {[
             { title: 'SKU by SKU, store by store', body: 'Compare the same product across every marketplace at a glance. Spot where it earns and where it bleeds.' },
-            { title: 'Gross and Net, kept apart', body: 'Gross shows what is left after landed cost. Net shows what is left after everything: fees, shipping, VAT, the lot.' },
+            { title: 'Every cost counted', body: 'Channel fees, refunds and return postage, couriers, landed cost, packaging and overheads. Gross and Net kept apart, so you see both. Ad spend coming soon.' },
+            { title: 'Multi-store, multi-platform', body: 'Two eBay stores? Three TikTok shops for different brands? No problem. Every store is tracked on its own, with its own VAT setting.' },
+            { title: 'Flexible where it matters', body: 'Costs that change over time, bundles and multipacks, courier price lists, overheads shared your way, and your own margin colour bands.' },
             { title: 'UK VAT, done right', body: 'VAT-registered or not, zero-rated products, per-product rates. Handled properly, not assumed away.' },
-            { title: 'Costs that change over time', body: 'Supplier price went up in March? Add the new cost from that date and older orders keep their original margin.' },
-            { title: 'Alerts before it hurts', body: 'Get told the moment a SKU’s margin drops below your threshold, not weeks later when you’re checking last quarter’s numbers.' },
-            { title: 'Nothing you don’t need', body: 'No PPC bidding, no review requests, no CRM creep. One job, done properly, so you can trust the number.' },
+            { title: 'Just margin', body: 'No PPC bidding, no review requests, no CRM creep. One job, done properly, so you can trust the number.' },
           ].map((f, i) => (
             <div key={f.title} style={{ ...cardStyle, padding: '28px' }}>
               <p style={{ ...display, fontSize: '40px', color: lime, margin: '0 0 18px', lineHeight: 1 }}>{String(i + 1).padStart(2, '0')}</p>
@@ -358,7 +378,7 @@ export default function HoldingPage() {
           Every feature. <span style={{ color: lime }}>Every plan.</span>
         </h2>
         <p style={{ fontSize: '17px', color: muted, maxWidth: '600px', margin: '0 auto 36px', lineHeight: 1.5 }}>
-          Pay only for your order volume. Every channel, unlimited stores and SKUs, and no per-channel or per-SKU fees.
+          Every feature is on every plan. You only pay based on your monthly orders: every channel, unlimited stores and SKUs, no per-channel or per-SKU fees.
         </p>
         <PricingPlans />
         <p style={{ marginTop: '24px' }}>
@@ -369,10 +389,10 @@ export default function HoldingPage() {
       {/* Bottom CTA */}
       <div style={{ padding: '96px 16px', textAlign: 'center', background: lime, color: bg }}>
         <h2 style={{ ...display, fontSize: 'clamp(34px, 6.5vw, 84px)', lineHeight: 0.92, margin: '0 auto 20px', maxWidth: '1000px' }}>
-          Stop guessing your margin.
+          Margin is what pays the bills.
         </h2>
         <p style={{ fontSize: '18px', margin: '0 auto 32px', maxWidth: '520px', lineHeight: 1.5 }}>
-          We&apos;re building it now. Leave your email and we&apos;ll tell you the moment it&apos;s ready.
+          Stop guessing yours. We&apos;re building Margin Hero now: leave your email and we&apos;ll tell you the moment it&apos;s ready.
         </p>
         <a href="#waitlist" style={{ display: 'inline-block', background: bg, color: lime, borderRadius: radius, padding: '16px 30px', fontSize: '15px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Join the waitlist ↑
