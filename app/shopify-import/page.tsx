@@ -129,6 +129,7 @@ function parseOrders(orderRows: Row[], txRows: Row[] | null) {
         saleVatPence: null, // worked out from the product's VAT rate (copes with mixed-rate orders)
         feesGrossPence: feeShares[i],
         feesVatPence: feeVatShares[i],
+        feeBreakdown: [{ type: 'payment', label: 'Shopify Payments', grossPence: feeShares[i], vatPence: feeVatShares[i] }],
         actualShippingCostPence: null, // Shopify doesn't report your courier cost: shipping rules / profiles are used
         shippingRevenueGrossPence: shippingShares[i],
         shippingRevenueVatPence: null,

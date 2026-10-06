@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { readSpreadsheet } from '@/lib/readSpreadsheet'
 import { Store } from '@/lib/stores'
+import { FeeLine, addFee } from '@/lib/fees'
 import { pounds, ukDate } from '@/lib/format'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
@@ -65,9 +66,22 @@ export default function OnBuyImportPage() {
       }
       const deliveryPence = toPence(row['Delivery £'])
       const feesPence = Math.abs(toPence(row['Total Fees Inc. TAX £']))
+      const feesVatPence = Math.abs(toPence(row['Fees TAX']))
       const netProceedsPence = toPence(row['Net Proceeds'])
       // Check our reading of the row against OnBuy's own payout figure
       if (Math.abs(itemsPence + deliveryPence - feesPence - netProceedsPence) > 1) mismatched++
+
+      // Boost (OnBuy advertising) is inside the fees: "Total Boost Fee" is the line's net Boost
+      // cost, plus "Boost Fee TAX Per Item £" for each unit. The rest is OnBuy's sales fee.
+      // If the Boost figures don't fit inside the fees, nothing is split (all counted as sales fee).
+      const qty = parseInt(row['Quantity']) || 1
+      const boostVatPence = Math.abs(toPence(row['Boost Fee TAX Per Item £'])) * qty
+      const boostGrossPence = Math.abs(toPence(row['Total Boost Fee'])) + boostVatPence
+      const splitBoost = boostGrossPence > 0 && boostGrossPence <= feesPence && boostVatPence <= feesVatPence
+      const feeBreakdown: FeeLine[] = []
+      if (splitBoost) addFee(feeBreakdown, 'advertising', 'Boost', boostGrossPence, boostVatPence)
+      addFee(feeBreakdown, 'commission', 'Sales fee',
+        feesPence - (splitBoost ? boostGrossPence : 0), feesVatPence - (splitBoost ? boostVatPence : 0))
 
       // "Deemed Supplier TAX" is only filled when OnBuy collects the VAT itself (mostly
       // overseas sellers). Otherwise the VAT is worked out from the product's VAT rate.
@@ -78,11 +92,12 @@ export default function OnBuyImportPage() {
         sku,
         externalId: orderNumber,
         orderDate,
-        qty: parseInt(row['Quantity']) || 1,
+        qty,
         salePriceGrossPence: itemsPence,
         saleVatPence: deemedItemTax ? Math.abs(toPence(deemedItemTax)) : null,
         feesGrossPence: feesPence,
-        feesVatPence: Math.abs(toPence(row['Fees TAX'])),
+        feesVatPence,
+        feeBreakdown,
         actualShippingCostPence: null, // OnBuy doesn't report your courier cost: shipping rules / profiles are used
         shippingRevenueGrossPence: deliveryPence,
         shippingRevenueVatPence: deemedDeliveryTax ? Math.abs(toPence(deemedDeliveryTax)) : null,

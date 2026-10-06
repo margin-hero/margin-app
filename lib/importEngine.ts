@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { Store } from './stores'
 import { fetchAll } from './fetchAll'
+import { FeeLine, addFee, feeTotals } from './fees'
 
 export type NormalizedOrder = {
   sku: string
@@ -11,6 +12,9 @@ export type NormalizedOrder = {
   saleVatPence: number | null // null = the channel doesn't report it: worked out from the product's VAT rate
   feesGrossPence: number
   feesVatPence: number
+  // The fees split by type (optional). Whatever doesn't add up to the totals above is
+  // saved as 'Not broken down', so the breakdown always matches the totals.
+  feeBreakdown?: FeeLine[]
   actualShippingCostPence?: number | null
   shippingRevenueGrossPence?: number
   shippingRevenueVatPence?: number | null // null = worked out from the product's VAT rate
@@ -156,6 +160,7 @@ export async function importOrdersForStore(
 
   onProgress?.('Preparing rows...')
   const candidateRows: any[] = []
+  const feesByKey = new Map<string, FeeLine[]>() // by `${listing id}|${external id}`
   for (const order of orders) {
     const listingId = skuToListingId.get(order.sku)
     if (!listingId) {
@@ -176,6 +181,7 @@ export async function importOrdersForStore(
       shipping_revenue_gross_pence: shippingGross,
       shipping_revenue_vat_pence: order.shippingRevenueVatPence === null ? vatFromGross(shippingGross, listingId) : (order.shippingRevenueVatPence ?? 0),
     })
+    feesByKey.set(`${listingId}|${order.externalId}`, completeFeeBreakdown(order))
   }
 
   onProgress?.('Checking for already-imported orders...')
@@ -204,15 +210,48 @@ export async function importOrdersForStore(
   onProgress?.(`Importing ${newRows.length} new order lines...`)
   for (let i = 0; i < newRows.length; i += chunkSize) {
     const chunk = newRows.slice(i, i + chunkSize)
-    const { error: insertError } = await supabase.from('order_line_items').insert(chunk)
-    if (insertError) {
-      result.errors.push(`Import error on batch starting at row ${i}: ${insertError.message}`)
+    const { data: inserted, error: insertError } = await supabase
+      .from('order_line_items')
+      .insert(chunk)
+      .select('id, platform_listing_id, external_id')
+    if (insertError || !inserted) {
+      result.errors.push(`Import error on batch starting at row ${i}: ${insertError?.message || 'unknown error'}`)
       return result
     }
     result.imported += chunk.length
+
+    // Each order line's fees, one row per fee type
+    const feeRows = inserted.flatMap((line) =>
+      (feesByKey.get(`${line.platform_listing_id}|${line.external_id}`) || []).map((fee) => ({
+        order_line_item_id: line.id,
+        fee_type: fee.type,
+        source_label: fee.label,
+        gross_pence: fee.grossPence,
+        vat_pence: fee.vatPence,
+      }))
+    )
+    for (let j = 0; j < feeRows.length; j += chunkSize) {
+      const { error: feeError } = await supabase.from('order_line_fees').insert(feeRows.slice(j, j + chunkSize))
+      if (feeError) {
+        result.errors.push(
+          `${result.imported} order lines were imported, but saving their fee breakdown failed: ${feeError.message}. ` +
+          `Their margins are still correct (fee totals are saved); only the split by fee type is missing.`
+        )
+        return result
+      }
+    }
   }
 
   return result
+}
+
+// The order's fee breakdown, topped up so it adds up exactly to its fee totals:
+// anything the importer didn't split out is 'Not broken down'.
+function completeFeeBreakdown(order: NormalizedOrder): FeeLine[] {
+  const lines = (order.feeBreakdown || []).filter((l) => l.grossPence || l.vatPence).map((l) => ({ ...l }))
+  const totals = feeTotals(lines)
+  addFee(lines, 'unspecified', 'Fees (not broken down)', order.feesGrossPence - totals.grossPence, order.feesVatPence - totals.vatPence)
+  return lines
 }
 
 // One consistent summary message for every import page.

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
+import { FeeLine, FeeType, addFee, feeTotals, shareVat } from '@/lib/fees'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
 import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
@@ -25,6 +26,15 @@ type AmazonRow = {
 // a date cell (read as 2026-08-31) or 31/08/2026. All UK day-first.
 function parseAmazonDate(dateStr: string): string {
   return toIsoDate(dateStr) ?? ''
+}
+
+// Sorts Amazon's fee names (the "amount-description" of ItemFees rows) into fee types.
+// Anything not listed here is kept under its own name as "Other channel fees".
+function amazonFeeType(description: string): FeeType {
+  if (/commission/i.test(description)) return 'commission' // Commission (referral fee), RefundCommission
+  if (/^FBA|fulfil/i.test(description)) return 'fulfilment' // FBAPerUnitFulfillmentFee, FBAWeightBasedFee...
+  if (/^Shipping/i.test(description)) return 'shipping' // ShippingChargeback, ShippingHB
+  return 'other_fee' // e.g. VariableClosingFee, FixedClosingFee, DigitalServicesFee, GiftwrapChargeback
 }
 
 export default function AmazonImportPage() {
@@ -76,7 +86,7 @@ export default function AmazonImportPage() {
       const first = rows[0]
       let principal = 0
       let tax = 0
-      let fees = 0
+      const feeBreakdown: FeeLine[] = []
 
       for (const row of rows) {
         const amt = parseFloat(row.amount)
@@ -85,12 +95,15 @@ export default function AmazonImportPage() {
         } else if (row['amount-type'] === 'ItemPrice' && row['amount-description'] === 'Tax') {
           tax += amt
         } else if (row['amount-type'] === 'ItemFees') {
-          fees += Math.abs(amt)
+          const description = row['amount-description'] || 'Amazon fee'
+          addFee(feeBreakdown, amazonFeeType(description), description, Math.round(Math.abs(amt) * 100))
         }
       }
 
-      const feesGrossPence = Math.round(fees * 100)
+      const feesGrossPence = feeTotals(feeBreakdown).grossPence
+      // Amazon doesn't give the VAT on fees, so it's taken as 20% of the total and shared across the fees
       const feesVatPence = Math.round(feesGrossPence - feesGrossPence / 1.2)
+      shareVat(feeBreakdown, feesVatPence)
       const orderId = first['order-id']
 
       normalized.push({
@@ -102,6 +115,7 @@ export default function AmazonImportPage() {
         saleVatPence: Math.round(tax * 100),
         feesGrossPence,
         feesVatPence,
+        feeBreakdown,
         actualShippingCostPence: shippingByOrderId.has(orderId)
           ? Math.round(shippingByOrderId.get(orderId)! * 100)
           : null,

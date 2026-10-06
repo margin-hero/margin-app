@@ -5,6 +5,7 @@ import { useState } from 'react'
 import * as XLSX from 'xlsx'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
+import { FeeLine, FeeType, addFee, feeTotals } from '@/lib/fees'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
 import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
@@ -49,6 +50,15 @@ export default function MiraklImportPage() {
       // "Seller fee on order" (MARK_FEE, PAY_GATE_FEE). Their "... tax ..." rows are the VAT.
       const isFee = (type: string) => /commission|fee/i.test(type) && !isRefund(type)
       const isFeeTax = (type: string) => isFee(type) && /tax/i.test(type)
+      // A fee and its tax row are saved together under the fee's name, e.g. "Commission" + "Commission tax"
+      const feeLabel = (type: string) => type.replace(/\btax\b/i, '').replace(/\s+/g, ' ').trim() || type
+      const feeType = (type: string): FeeType =>
+        /commission/i.test(type) ? 'commission' : /pay/i.test(type) ? 'payment' : /ship/i.test(type) ? 'shipping' : 'other_fee'
+      // Adds one fee (or fee tax) row to a breakdown, as a cost in pence
+      const addFeeRow = (lines: FeeLine[], row: any, costPence: number) => {
+        const type = typeOf(row)
+        addFee(lines, feeType(type), feeLabel(type), costPence, isFeeTax(type) ? costPence : 0)
+      }
       const saleTypes = ['Order amount', 'Order amount tax', 'Shipping charges', 'Shipping tax']
 
       const refundRows = rows.filter((row) => isRefund(typeOf(row)))
@@ -57,7 +67,7 @@ export default function MiraklImportPage() {
       // Most rows belong to an order line. Some fees are charged on the whole order instead
       // (no Order line ID, just the Order number), e.g. The Range's seller fees.
       const groups = new Map<string, any[]>()
-      const orderFees = new Map<string, { grossPence: number; vatPence: number }>() // by Order number
+      const orderFees = new Map<string, FeeLine[]>() // by Order number
       for (const row of rows) {
         const type = typeOf(row)
         if (!type || isRefund(type)) continue
@@ -71,10 +81,9 @@ export default function MiraklImportPage() {
           groups.get(lineId)!.push(row)
         } else if (isFee(type) && row['Order number']) {
           const orderNumber = String(row['Order number']).trim()
-          const fee = orderFees.get(orderNumber) || { grossPence: 0, vatPence: 0 }
-          fee.grossPence += Math.round(Math.abs(amountOf(row)) * 100)
-          if (isFeeTax(type)) fee.vatPence += Math.round(Math.abs(amountOf(row)) * 100)
-          orderFees.set(orderNumber, fee)
+          const fees = orderFees.get(orderNumber) || []
+          addFeeRow(fees, row, Math.round(Math.abs(amountOf(row)) * 100))
+          orderFees.set(orderNumber, fees)
         }
       }
 
@@ -96,8 +105,11 @@ export default function MiraklImportPage() {
         const shippingCharge = sumByType('Shipping charges')
         const shippingTax = sumByType('Shipping tax')
         const feeRows = groupRows.filter((r) => isFee(typeOf(r)))
-        const fees = feeRows.reduce((sum, r) => sum + amountOf(r), 0)
-        const feesTax = feeRows.filter((r) => isFeeTax(typeOf(r))).reduce((sum, r) => sum + amountOf(r), 0)
+        // Fees are negative in the file, so flip the sign to get a cost
+        const feeSign = feeRows.reduce((sum, r) => sum + amountOf(r), 0) < 0 ? -1 : 1
+        const feeBreakdown: FeeLine[] = []
+        feeRows.forEach((r) => addFeeRow(feeBreakdown, r, Math.round(amountOf(r) * feeSign * 100)))
+        const feeTotal = feeTotals(feeBreakdown)
 
         // A line with fees but no "Order amount" (e.g. a blank row from a damaged CSV) would
         // otherwise import as a £0 sale, so hold it back and say so
@@ -113,8 +125,9 @@ export default function MiraklImportPage() {
           qty: parseInt(first['Quantity']) || 1,
           salePriceGrossPence: Math.round((orderAmount + orderAmountTax) * 100),
           saleVatPence: saleTaxReported ? Math.round(orderAmountTax * 100) : null,
-          feesGrossPence: Math.round(Math.abs(fees) * 100),
-          feesVatPence: Math.round(Math.abs(feesTax) * 100),
+          feesGrossPence: feeTotal.grossPence,
+          feesVatPence: feeTotal.vatPence,
+          feeBreakdown,
           actualShippingCostPence: null, // Mirakl doesn't report real courier cost — uses your shipping_rules instead
           shippingRevenueGrossPence: Math.round((shippingCharge + shippingTax) * 100),
           shippingRevenueVatPence: shippingTaxReported ? Math.round(shippingTax * 100) : null,
@@ -126,25 +139,28 @@ export default function MiraklImportPage() {
       // Share each order-level fee across that order's lines by sale price. The last line
       // takes any leftover penny so the lines always add up to the order's fee exactly.
       let unallocatedFeePence = 0
-      for (const [orderNumber, fee] of orderFees) {
+      for (const [orderNumber, fees] of orderFees) {
         const lines = normalized.filter((o) => orderNumberOf.get(o) === orderNumber)
         if (lines.length === 0) {
-          unallocatedFeePence += fee.grossPence
+          unallocatedFeePence += feeTotals(fees).grossPence
           continue
         }
         const totalSale = lines.reduce((sum, o) => sum + o.salePriceGrossPence, 0)
-        let grossLeft = fee.grossPence
-        let vatLeft = fee.vatPence
-        lines.forEach((o, i) => {
-          const last = i === lines.length - 1
-          const share = totalSale > 0 ? o.salePriceGrossPence / totalSale : 1 / lines.length
-          const gross = last ? grossLeft : Math.round(fee.grossPence * share)
-          const vat = last ? vatLeft : Math.round(fee.vatPence * share)
-          o.feesGrossPence += gross
-          o.feesVatPence += vat
-          grossLeft -= gross
-          vatLeft -= vat
-        })
+        for (const fee of fees) {
+          let grossLeft = fee.grossPence
+          let vatLeft = fee.vatPence
+          lines.forEach((o, i) => {
+            const last = i === lines.length - 1
+            const share = totalSale > 0 ? o.salePriceGrossPence / totalSale : 1 / lines.length
+            const gross = last ? grossLeft : Math.round(fee.grossPence * share)
+            const vat = last ? vatLeft : Math.round(fee.vatPence * share)
+            o.feesGrossPence += gross
+            o.feesVatPence += vat
+            addFee((o.feeBreakdown ??= []), fee.type, fee.label, gross, vat)
+            grossLeft -= gross
+            vatLeft -= vat
+          })
+        }
       }
 
       setAllOrders(normalized)

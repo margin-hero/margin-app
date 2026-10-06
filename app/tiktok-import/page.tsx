@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
 import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
+import { FeeLine, addFee } from '@/lib/fees'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
 import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
@@ -112,6 +113,14 @@ export default function TikTokImportPage() {
         const vatableFeesPence = Math.round(Math.abs(num(row['Fees']) - noVatFees) * 100)
         // 20% VAT inside a VAT-inclusive amount is 1/6 of it
         const feesVatPence = Math.round(vatableFeesPence / 6)
+        // Split out the no-VAT parts (fees are negative in the file, so flip the sign to get a cost).
+        // The rest of "Fees" (TikTok's own fees, with all the VAT) is saved as "Not broken down" for now.
+        const feeSign = num(row['Fees']) < 0 ? -1 : 1
+        const feeBreakdown: FeeLine[] = []
+        for (const col of NO_VAT_FEE_COLUMNS) {
+          const type = col.startsWith('Co-funded promotion') ? 'advertising' : 'affiliate'
+          addFee(feeBreakdown, type, col, Math.round(num(row[col]) * feeSign * 100))
+        }
         // TikTok only fills this when it collects the VAT itself (e.g. overseas
         // sellers). For UK sellers it's 0 and VAT is worked out from the product's rate.
         const vatPence = Math.round(Math.abs(num(row['VAT'])) * 100)
@@ -126,6 +135,7 @@ export default function TikTokImportPage() {
           saleVatPence: vatPence || null, // 0 (UK sellers) = work it out from the product's VAT rate
           feesGrossPence,
           feesVatPence,
+          feeBreakdown,
           actualShippingCostPence: shippingRaw !== 0 ? Math.round(Math.abs(shippingRaw) * 100) : null,
         })
       }
