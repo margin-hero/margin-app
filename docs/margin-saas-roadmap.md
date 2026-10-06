@@ -99,7 +99,7 @@ This is where the product actually becomes usable daily, so the dashboard work m
   - **UI on `/shipping-profiles`:** "Change courier from [date]" copies the current bands into a new version for the user to point at the new services (one change covers every product on the profile). Keeps the Edit (fix a mistake, retroactive) vs Add / Change from date (real change, history kept) rule.
   - **Second step:** date which profile a product uses (`product_shipping_profiles`), e.g. a product moving to a bigger box from March.
   - **Until then:** a warning on `/shipping-profiles` not to change a profile's courier for a real switch.
-- **Date-tracked VAT registration per store**: `vat_registered` is currently a simple yes/no on `stores`, so ticking it recalculates *all* of that store's past orders as if it had always been registered. Store it with an `effective_from` date (same pattern as `cogs_components` / `shipping_rules`) so orders before the registration date keep the non-registered treatment. Useful when a new brand launches unregistered and registers later.
+- ✅ **Date-tracked VAT registration per store** (done 2026-10-06): `store_vat_status` history (status + `effective_from`), used by `order_margins` / `margin_lines` on each order's date (refunds: the original sale's date). Stores page: "Became VAT registered from [date]" (Add) vs Edit (correction). `stores.vat_registered` kept = status today by a trigger. Still to do: overheads use today's status, so a date range spanning a VAT change isn't split.
 
 **Costs build-out (the crux of margin; do in this order)**
 
