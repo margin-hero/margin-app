@@ -237,10 +237,27 @@ Answers for customer questions ("why is my margin lower than Amazon says?", "why
 - **Trend charts**: margin over time per SKU, per platform, per tenant total
 - **Clean layout principles**: one primary number per screen (net profit), secondary metrics demoted visually, no more than 2-3 colours carrying meaning (good/bad/neutral margin)
 
+**Fee change alerts and 12-month impact (added 2026-10-06)**
+
+Channels change fees quietly: Amazon moves a product into a bigger FBA size tier, TikTok raises its commission %, a Mirakl retailer adds a new fee. Each looks small per order but adds up over a year. Flag it as soon as it shows up in imported data, and show what it will cost over the next 12 months, so the seller can act where they can (e.g. smaller packaging to drop back an FBA size tier, a price change, moving stock to another channel) or at least know the margin has moved.
+
+- **Built on the fee breakdown** (`order_line_fees`, since 2026-10-06): every fee is saved by type and by the channel's own name (e.g. `FBAPerUnitFulfillmentFee`, "TikTok Shop commission fee"), per order line, so each fee's rate can be tracked over time per SKU × store. "Not broken down" fees and ad fees (they vary on purpose) are left out.
+- **Measure each fee the way the channel charges it**, so a price change isn't mistaken for a fee change:
+  - **Percentage fees** (commission, referral, Smart Promotion): fee ÷ sale price, e.g. 9.0% → 9.5%.
+  - **Per-unit / flat fees** (FBA fulfilment, shipping service fee, per-order fees): £ per unit (or per order), e.g. FBA £3.07 → £3.45.
+- **Detecting a change:** compare each fee's recent rate (e.g. last 30 days) with its usual rate before that (e.g. the previous 90 days), using sums first, then ratios. Flag when it moves by more than a small threshold (e.g. 0.25 percentage points, or 5p / 3%), and only once there are enough orders to be sure. When most SKUs in a store move at once, show one store-level alert ("TikTok commission went from 9% to 9.5% across 42 SKUs") rather than 42 separate ones. A brand-new fee type appearing in a store is flagged too.
+- **12-month impact:** extra cost per unit (or per order) × the SKU's average monthly units (e.g. the last 3 months) × 12, shown as a monthly bar chart of profit lost and a total ("This FBA change costs about £1,240 over the next year on LL-1"). Store-level alerts add up their SKUs. Uses VAT-adjusted figures (net for VAT-registered stores on today's status).
+- **Making it useful:**
+  - **FBA size tiers:** later, import Amazon's FBA fee preview report (each SKU's size tier, dimensions and weight) to say *why* (e.g. "moved from Standard Parcel to Large Standard Parcel") and how close it is to the boundary, so smaller packaging can be checked.
+  - Show the new break-even price and the price needed to get back to the old margin.
+  - Mark an alert as "seen" / "accepted" so it stops showing; keep a fee history per SKU × store.
+- **Where it shows:** an alerts list (in-app first, email later, same delivery as the other alerts), a "Fee watch" panel on Channel Overview, and the fee history on SKU Detail.
+- **Pairs with:** the **New product margin checker** (current fee rates per store) and the Phase 3 **margin sensitivity view** (what a % change in fees does to margin).
+
 **Alerts** (cheap once the data model exists, high daily-engagement value)
 - Margin % drops below a user-set threshold for a SKU
 - A SKU's margin goes negative
-- A fee rate changes between imports (flag for review)
+- A fee rate changes between imports (flag for review): see **Fee change alerts and 12-month impact** below
 - No sales recorded for an active listing in N days (possible stock/listing issue)
 - Delivered via in-app notification first; email next (transactional email service — Resend, Postmark, or SES), Slack later
 
