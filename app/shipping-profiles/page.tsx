@@ -180,6 +180,11 @@ export default function ShippingProfilesPage() {
         Prices come from your <Link href="/couriers" style={{ color: lime, fontWeight: 700 }}>Couriers</Link> price list, so a courier price change never means editing profiles.
         Make one profile for everything, one per product size, or one per SKU: whatever suits you.
       </p>
+      {/* Bands aren't dated yet (roadmap: date-tracked courier changes), so a courier change rewrites history */}
+      <p style={{ color: amber, fontSize: '13px', fontWeight: 600, margin: '12px 0 0', maxWidth: '720px', lineHeight: 1.5 }}>
+        ⚠ Changing a profile&apos;s courier (e.g. switching from Evri to DPD) applies to all past orders too, not just new ones.
+        Only change it to fix a mistake. Support for switching couriers from a date is coming soon.
+      </p>
       {status && <p style={{ color: lime, fontSize: '14px', fontWeight: 600, marginTop: '16px' }}>{status}</p>}
 
       {!loading && services.length === 0 && (
