@@ -186,7 +186,7 @@ export default function CostsPage() {
   return (
     <div style={pageStyle}>
       <p style={eyebrow}>Manage</p>
-      <h1 style={pageTitle}>Costs</h1>
+      <h1 style={pageTitle}>Cost Check</h1>
       <p style={pageIntro}>
         Every product&apos;s current costs in one place. A product with no cost price looks far more profitable than it is,
         so anything flagged here is making your margins look better than they really are. A cost only applies to orders on or

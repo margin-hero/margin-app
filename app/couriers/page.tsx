@@ -1,6 +1,7 @@
 'use client'
 
 import { ukDate } from '@/lib/format'
+import NextStep from '@/components/NextStep'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { loadCourierServices, CourierService, priceOn, today, testTenantId } from '@/lib/shipping'
@@ -270,6 +271,8 @@ export default function CouriersPage() {
           </table>
         )}
       </div>
+
+      <NextStep href="/shipping-profiles" label="Create shipping profiles" text="Next, describe how your products ship at each quantity, using these courier services." />
     </div>
   )
 }

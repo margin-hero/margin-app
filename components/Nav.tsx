@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
   FileUp, ShoppingCart, ShoppingBag, ShoppingBasket, Music2, Building2,
-  Tag, Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
+  Tag, ListChecks, Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
   type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -44,20 +44,23 @@ const NAV_GROUPS: { label: string; sections: NavSection[] }[] = [
   {
     label: 'Manage',
     sections: [
+      { links: [
+        { href: '/getting-started', label: 'Getting started', icon: ListChecks },
+      ] },
       { label: 'Products', links: [
         { href: '/stores', label: 'Stores', icon: Store },
         { href: '/products', label: 'Products', icon: Package },
-        { href: '/mappings', label: 'SKU Mapping', icon: Link2 },
+        { href: '/mappings', label: 'Store SKUs', icon: Link2 },
         { href: '/catalog-import', label: 'Catalog Import', icon: ListPlus },
-      ] },
-      { label: 'Costs', links: [
-        { href: '/costs', label: 'Costs', icon: PoundSterling },
-        { href: '/overheads', label: 'Overheads', icon: Building },
-        { href: '/cost-import', label: 'Costs Import', icon: FileSpreadsheet },
       ] },
       { label: 'Shipping', links: [
         { href: '/couriers', label: 'Couriers', icon: Truck },
         { href: '/shipping-profiles', label: 'Shipping Profiles', icon: Boxes },
+      ] },
+      { label: 'Costs', links: [
+        { href: '/costs', label: 'Cost Check', icon: PoundSterling },
+        { href: '/cost-import', label: 'Cost Import', icon: FileSpreadsheet },
+        { href: '/overheads', label: 'Overheads', icon: Building },
       ] },
       { links: [
         { href: '/settings', label: 'Settings', icon: Settings },

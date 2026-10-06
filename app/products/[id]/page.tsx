@@ -1,14 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { fetchAll } from '@/lib/fetchAll'
+import StoreListings, { Listing, TikTokId, loadTikTokIds } from '@/components/StoreListings'
+import NextStep from '@/components/NextStep'
 import { loadStores, Store, storeLabel } from '@/lib/stores'
 import { loadCostTypes, CostType, hasDoubleCountRisk } from '@/lib/costTypes'
 import { loadShippingProfiles, ShippingProfile } from '@/lib/shipping'
 import Link from 'next/link'
 import { vatSplitNote, ukDate } from '@/lib/format'
-import { lime, red, amber, muted, text, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
+import { lime, red, amber, green, muted, text, bg, border, pageStyle, eyebrow, pageTitle, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton, statusColor, radius } from '@/lib/theme'
 
 type Product = {
   id: string
@@ -42,6 +45,7 @@ function today(): string {
 
 export default function ProductDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const productId = params.id as string
 
   const [product, setProduct] = useState<Product | null>(null)
@@ -54,6 +58,13 @@ export default function ProductDetailPage() {
   const [stores, setStores] = useState<Store[]>([])
   const [costTypes, setCostTypes] = useState<CostType[]>([])
   const [status, setStatus] = useState('')
+  const [listings, setListings] = useState<Listing[]>([])
+  const [allProducts, setAllProducts] = useState<{ id: string; name: string; standard_sku: string }[]>([])
+  const [tiktokIds, setTiktokIds] = useState<TikTokId[]>([])
+  const [isNew, setIsNew] = useState(false) // just added on the Products page
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [editSku, setEditSku] = useState('')
+  const [editName, setEditName] = useState('')
 
   const [newComponentType, setNewComponentType] = useState('')
   const [newDescription, setNewDescription] = useState('')
@@ -110,6 +121,18 @@ export default function ProductDetailPage() {
 
     setStores(await loadStores())
 
+    const { data: listingData } = await supabase
+      .from('platform_listings')
+      .select('id, store_id, platform_sku, units_per_sale, stores(name, platforms(name))')
+      .eq('master_product_id', productId)
+      .order('platform_sku')
+    setListings((listingData as any) || [])
+    const { data: productList } = await fetchAll((from, to) =>
+      supabase.from('master_products').select('id, name, standard_sku').order('standard_sku').order('id').range(from, to)
+    )
+    setAllProducts(productList || [])
+    setTiktokIds(await loadTikTokIds())
+
     setProfiles(await loadShippingProfiles())
     const { data: assignmentData } = await supabase
       .from('product_shipping_profiles')
@@ -131,6 +154,11 @@ export default function ProductDetailPage() {
     loadAll()
   }, [productId])
 
+  // "?new=1": arrived straight from adding the product, so show what to do next
+  useEffect(() => {
+    setIsNew(new URLSearchParams(window.location.search).get('new') === '1')
+  }, [])
+
   // Default "effective from": the first cost of a type (or the first shipping rule) should cover
   // every past order, so it starts at the product's first order date. A further cost of a type
   // that already has one is usually a genuine price change, so it starts today.
@@ -147,7 +175,46 @@ export default function ProductDetailPage() {
 
   async function updateProductVatRate(rate: number) {
     await supabase.from('master_products').update({ vat_rate: rate }).eq('id', productId)
-    setStatus('Product default VAT rate updated.')
+    setStatus('VAT rate updated. It applies to sales imported from now on.')
+    loadAll()
+  }
+
+  async function saveDetails() {
+    if (!editSku.trim() || !editName.trim()) {
+      setStatus('Please enter both a SKU and a name.')
+      return
+    }
+    const { error } = await supabase.from('master_products').update({ standard_sku: editSku.trim(), name: editName.trim() }).eq('id', productId)
+    if (error) {
+      setStatus(`Error updating product: ${error.message}`)
+      return
+    }
+    setEditingDetails(false)
+    setStatus('Product details updated.')
+    loadAll()
+  }
+
+  // Only a product with no store SKUs can be deleted (so its sales are never orphaned)
+  async function deleteProduct() {
+    if (listings.length > 0) {
+      setStatus('This product still has store SKUs: move or delete those first.')
+      return
+    }
+    if (!window.confirm(`Delete ${product?.name}? Its costs and shipping settings are deleted too.`)) return
+    await supabase.from('cogs_components').delete().eq('master_product_id', productId)
+    await supabase.from('shipping_rules').delete().eq('master_product_id', productId)
+    await supabase.from('product_shipping_profiles').delete().eq('master_product_id', productId)
+    const { error } = await supabase.from('master_products').delete().eq('id', productId)
+    if (error) {
+      setStatus(`Error deleting product: ${error.message}`)
+      loadAll()
+      return
+    }
+    router.push('/products')
+  }
+
+  function listingsChanged(message: string) {
+    setStatus(message)
     loadAll()
   }
 
@@ -337,30 +404,96 @@ export default function ProductDetailPage() {
     )
   }
   const help: React.CSSProperties = { color: muted, fontSize: '13px', lineHeight: 1.5, margin: '0 0 12px' }
+  const landedCodes = new Set(costTypes.filter((t) => t.in_gross).map((t) => t.code))
+  const steps = [
+    { id: 'details', label: 'Details', done: true },
+    { id: 'store-skus', label: 'Store SKUs', done: listings.length > 0 },
+    { id: 'costs', label: 'Costs', done: cogs.some((c) => landedCodes.has(c.component_type)) },
+    { id: 'shipping', label: 'Shipping', done: !!defaultAssignment?.shipping_profile_id || shipping.length > 0 },
+  ]
 
   return (
     <div style={pageStyle}>
       <p style={eyebrow}><Link href="/products" style={{ color: lime, textDecoration: 'none' }}>← Products</Link></p>
       <h1 style={pageTitle}>{product.name}</h1>
       <p style={{ color: muted, fontSize: '15px', margin: 0 }}>{product.standard_sku}</p>
-      {status && <p style={{ color: lime, fontSize: '14px', fontWeight: 600, marginTop: '16px' }}>{status}</p>}
 
-      <section style={cardStyle}>
-        <p style={cardTitle}>Default VAT Rate</p>
-        <p style={help}>Used as a suggested default for forecasting — not applied retroactively to costs already entered below.</p>
-        <select
-          value={product.vat_rate}
-          onChange={(e) => updateProductVatRate(parseFloat(e.target.value))}
-          style={inputStyle}
-        >
-          <option value="0">0% (VAT-free / zero-rated)</option>
-          <option value="0.05">5% (Reduced rate)</option>
-          <option value="0.2">20% (Standard rate)</option>
-        </select>
+      {/* Set-up progress: each step jumps to its section */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+        {steps.map((st, i) => (
+          <a key={st.id} href={`#${st.id}`} style={{ fontSize: '13px', fontWeight: 700, padding: '6px 12px', borderRadius: radius, textDecoration: 'none', border: `1px solid ${st.done ? green : border}`, color: st.done ? green : muted }}>
+            {st.done ? '✓' : i + 1}. {st.label}
+          </a>
+        ))}
+      </div>
+
+      {isNew && (
+        <div style={{ ...cardStyle, borderColor: green }}>
+          <p style={{ margin: 0, fontSize: '14px', color: text, lineHeight: 1.5 }}>
+            <strong style={{ color: green }}>Product added.</strong> Now work down this page: add the SKU each store uses for it (2),
+            its costs (3) and how it ships (4). Steps turn green as they&apos;re done.
+          </p>
+        </div>
+      )}
+
+      {/* Kept in view while scrolling, since most actions are further down the page */}
+      {status && (
+        <p style={{ position: 'sticky', top: 0, zIndex: 5, background: bg, color: statusColor(status), fontSize: '14px', fontWeight: 600, margin: '16px 0 0', padding: '10px 0', borderBottom: `1px solid ${border}` }}>
+          {status}
+        </p>
+      )}
+
+      <section id="details" style={cardStyle}>
+        <p style={cardTitle}>1. Details</p>
+        {editingDetails ? (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <input value={editSku} onChange={(e) => setEditSku(e.target.value)} placeholder="Your SKU" style={{ ...inputStyle, width: '160px' }} />
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Product name" style={{ ...inputStyle, width: '260px' }} />
+            <button onClick={saveDetails} style={linkButton}>Save</button>
+            <button onClick={() => setEditingDetails(false)} style={cancelButton}>Cancel</button>
+          </div>
+        ) : (
+          <p style={{ fontSize: '14px', margin: '0 0 14px' }}>
+            <span style={{ color: muted }}>SKU</span> <strong>{product.standard_sku}</strong>
+            <span style={{ color: muted, marginLeft: '16px' }}>Name</span> <strong>{product.name}</strong>{' '}
+            <button onClick={() => { setEditSku(product.standard_sku); setEditName(product.name); setEditingDetails(true) }} style={linkButton}>Edit</button>
+          </p>
+        )}
+        <label style={{ fontSize: '14px', color: text }}>
+          VAT rate on sales:{' '}
+          <select value={product.vat_rate} onChange={(e) => updateProductVatRate(parseFloat(e.target.value))} style={{ ...inputStyle, marginLeft: '6px' }}>
+            <option value="0">0% (VAT-free / zero-rated)</option>
+            <option value="0.05">5% (Reduced rate)</option>
+            <option value="0.2">20% (Standard rate)</option>
+          </select>
+        </label>
+        <p style={{ ...help, marginTop: '10px', marginBottom: 0 }}>
+          The VAT you charge customers on this product. When a channel&apos;s report doesn&apos;t show the VAT in a sale (e.g. OnBuy, Shopify, eBay),
+          it&apos;s worked out from this rate when the sale is imported, so a change applies to sales imported from then on.
+        </p>
+        {listings.length === 0 && (
+          <button onClick={deleteProduct} style={{ ...deleteButton, padding: 0, marginTop: '12px' }}>Delete this product</button>
+        )}
       </section>
 
-      <section style={cardStyle}>
-        <p style={cardTitle}>Costs</p>
+      <section id="store-skus" style={cardStyle}>
+        <p style={cardTitle}>2. Store SKUs</p>
+        <p style={help}>
+          The SKU each store uses for this product, so imported sales find it. Units per sale is for bundles and multipacks
+          (e.g. a 3-pack listing = 3), so cost and shipping are counted for the right number of units.
+          See every product&apos;s at once on <Link href="/mappings" style={{ color: lime, fontWeight: 700 }}>Store SKUs</Link>.
+        </p>
+        {stores.length === 0 ? (
+          <p style={{ color: amber, fontSize: '14px', margin: 0 }}>
+            No stores yet. <Link href="/stores" style={{ color: amber, fontWeight: 700 }}>Add your stores</Link> first, then come back here.
+          </p>
+        ) : (
+          <StoreListings productId={productId} listings={listings} stores={stores} allProducts={allProducts} tiktokIds={tiktokIds} onChanged={listingsChanged} />
+        )}
+      </section>
+
+      <section id="costs" style={cardStyle}>
+        <p style={cardTitle}>3. Costs</p>
         <p style={help}>
           <strong>Per unit</strong> costs are multiplied by the quantity sold (bundles included). <strong>Per order</strong> costs, like a box or pick &amp; pack,
           are charged once per order line. <strong>Landed cost</strong> types (all-in, or product cost + freight + duty) count in Gross Profit; everything counts in Net.
@@ -509,8 +642,15 @@ export default function ProductDetailPage() {
         )}
       </section>
 
-      <section style={cardStyle}>
-        <p style={cardTitle}>Shipping Profile</p>
+      <section id="shipping" style={cardStyle}>
+        <p style={cardTitle}>4. Shipping</p>
+        {profiles.length === 0 && (
+          <p style={{ color: amber, fontSize: '14px', lineHeight: 1.5, margin: '0 0 12px' }}>
+            No shipping profiles yet. Add your couriers and their prices on <Link href="/couriers" style={{ color: amber, fontWeight: 700 }}>Couriers</Link>,
+            then build a profile on <Link href="/shipping-profiles" style={{ color: amber, fontWeight: 700 }}>Shipping Profiles</Link> (e.g. 1–2 units = 1 × Evri Medium), and choose it here.
+            If a channel buys your labels (e.g. Amazon), its real label cost is used instead.
+          </p>
+        )}
         <p style={help}>
           How this product ships. Profiles and courier prices are managed on the <Link href="/shipping-profiles" style={{ color: lime, fontWeight: 700 }}>Shipping Profiles</Link> and <Link href="/couriers" style={{ color: lime, fontWeight: 700 }}>Couriers</Link> pages.
           The real label cost from a channel (e.g. Amazon) and any exact-price shipping rules below take priority over the profile.
@@ -546,7 +686,7 @@ export default function ProductDetailPage() {
       </section>
 
       <section style={cardStyle}>
-        <p style={cardTitle}>Shipping Rules (exact-price overrides)</p>
+        <p style={cardTitle}>Exact-price shipping rules (optional)</p>
         <p style={help}>Optional. A rule here beats the shipping profile for that exact quantity. Most products won&apos;t need any.</p>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
@@ -672,6 +812,12 @@ export default function ProductDetailPage() {
           {vatSplitNote(newShippingCost, newShippingVat) && <><br /><span style={{ color: text }}>{vatSplitNote(newShippingCost, newShippingVat)}</span></>}
         </p>
       </section>
+
+      {steps.every((st) => st.done) ? (
+        <NextStep href="/products" label="Add another product" text="This product is set up. Add the next one, or import your sales from the Import menu." />
+      ) : (
+        <NextStep href="/getting-started" label="Getting started checklist" text="Not everything's done yet: the steps at the top of this page show what's left." />
+      )}
     </div>
   )
 }

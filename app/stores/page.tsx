@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import NextStep from '@/components/NextStep'
 import { supabase } from '@/lib/supabase'
 import { loadStores, Store } from '@/lib/stores'
 import { lime, muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, inputStyle, primaryButton, linkButton } from '@/lib/theme'
@@ -162,6 +163,8 @@ export default function StoresPage() {
           Note: changing VAT registration recalculates margins for all of that store's orders, past and future.
         </p>
       </div>
+
+      <NextStep href="/couriers" label="Add your couriers" text="Next, the courier services you use and their prices, so shipping costs can be worked out." />
     </div>
   )
 }

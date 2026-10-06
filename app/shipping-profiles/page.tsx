@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import NextStep from '@/components/NextStep'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
@@ -330,6 +331,8 @@ export default function ShippingProfilesPage() {
           </div>
         )
       })}
+
+      <NextStep href="/products" label="Add your products" text="Next, add your products: each one gets its store SKUs, costs and one of these shipping profiles." />
     </div>
   )
 }
