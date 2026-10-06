@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import PublicHeader from '@/components/PublicHeader'
 import PricingPlans from '@/components/PricingPlans'
+import PublicFooter from '@/components/PublicFooter'
 import { INCLUDED, FAIR_TERMS, PLANS, ANNUAL_MONTHS_CHARGED } from '@/lib/pricing'
 import { lime, green, bg, panel, border, text, muted, dim, font, display, radius } from '@/lib/theme'
 
@@ -111,9 +112,7 @@ export default function PricingPage() {
         </a>
       </div>
 
-      <div style={{ padding: '28px 16px', textAlign: 'center', color: dim, fontSize: '13px' }}>
-        © {new Date().getFullYear()} Margin Hero · Marketplace names are trademarks of their respective owners.
-      </div>
+      <PublicFooter />
     </div>
   )
 }

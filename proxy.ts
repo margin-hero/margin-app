@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 // Pages anyone can see without logging in (keep in step with PUBLIC_PAGES in AppShell)
-const OPEN_PATHS = ['/', '/pricing', '/login']
+const OPEN_PATHS = ['/', '/pricing', '/login', '/privacy']
 
 // Runs before every page: refreshes the Supabase login session and sends anyone
 // who isn't logged in to /login. The real protection is RLS in the database; this

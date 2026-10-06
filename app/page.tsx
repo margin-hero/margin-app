@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import PublicHeader from '@/components/PublicHeader'
 import PricingPlans from '@/components/PricingPlans'
+import PublicFooter from '@/components/PublicFooter'
 import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier, radius } from '@/lib/theme'
 
 // "live" = import already works in the app. Update as new importers ship.
@@ -155,6 +156,9 @@ export default function HoldingPage() {
           </button>
         </form>
         {status === 'error' && <p style={{ color: red, fontSize: '14px', marginTop: '12px' }}>{errorMessage}</p>}
+        <p style={{ color: dim, fontSize: '12px', margin: '12px 0 0' }}>
+          We&apos;ll only email you about Margin Hero. Unsubscribe any time. <a href="/privacy" style={{ color: muted }}>Privacy notice</a>
+        </p>
       </>
     )
   }
@@ -399,9 +403,7 @@ export default function HoldingPage() {
         </a>
       </div>
 
-      <div style={{ padding: '28px 16px', textAlign: 'center', color: dim, fontSize: '13px' }}>
-        © {new Date().getFullYear()} Margin Hero · Marketplace names are trademarks of their respective owners.
-      </div>
+      <PublicFooter />
     </div>
   )
 }

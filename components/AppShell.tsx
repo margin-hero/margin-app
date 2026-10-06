@@ -8,7 +8,7 @@ import { bg } from '@/lib/theme'
 const DASHBOARDS = ['/margins', '/channel-overview', '/sku-detail', '/trends', '/opportunities']
 
 // Public pages (marketing + login): no sidebar. Keep in step with OPEN_PATHS in proxy.ts
-const PUBLIC_PAGES = ['/', '/pricing', '/login']
+const PUBLIC_PAGES = ['/', '/pricing', '/login', '/privacy']
 
 // Wraps every app page with the sidebar. Public pages are left as-is.
 export default function AppShell({ children }: { children: React.ReactNode }) {
