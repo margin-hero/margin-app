@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabaseServer'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadSkuStoreMargins, cellPercent, cellPerUnitPence, MarginCell } from '@/lib/skuStoreMargins'
 import { pounds, ukDate } from '@/lib/format'
-import { lime, bg, panel, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend } from '@/lib/theme'
+import { lime, bg, panel, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend, radius } from '@/lib/theme'
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -86,7 +86,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
     })
   }
 
-  const pill = (on: boolean): React.CSSProperties => ({ fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: '999px', textDecoration: 'none', background: on ? lime : 'transparent', color: on ? bg : muted, border: `1px solid ${on ? lime : border}` })
+  const pill = (on: boolean): React.CSSProperties => ({ fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: radius, textDecoration: 'none', background: on ? lime : 'transparent', color: on ? bg : muted, border: `1px solid ${on ? lime : border}` })
   // Every store column is the same fixed width, so the grid stays neat however long the
   // store names are, and a dozen stores still fit. Long names are cut short ("…") with
   // the full name on hover. The product column stays pinned on the left when scrolling.

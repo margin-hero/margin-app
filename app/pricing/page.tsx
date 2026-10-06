@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import PublicHeader from '@/components/PublicHeader'
 import PricingPlans from '@/components/PricingPlans'
 import { INCLUDED, FAIR_TERMS, PLANS, ANNUAL_MONTHS_CHARGED } from '@/lib/pricing'
-import { lime, green, bg, panel, border, text, muted, dim, font, display } from '@/lib/theme'
+import { lime, green, bg, panel, border, text, muted, dim, font, display, radius } from '@/lib/theme'
 
 export const metadata: Metadata = {
   title: 'Pricing · Margin Hero',
@@ -106,7 +106,7 @@ export default function PricingPage() {
         <p style={{ fontSize: '18px', margin: '0 auto 30px', maxWidth: '520px', lineHeight: 1.5 }}>
           We&apos;re building it now. Join the waitlist and we&apos;ll tell you the moment it&apos;s ready.
         </p>
-        <a href="/#waitlist" style={{ display: 'inline-block', background: bg, color: lime, borderRadius: '999px', padding: '16px 30px', fontSize: '15px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <a href="/#waitlist" style={{ display: 'inline-block', background: bg, color: lime, borderRadius: radius, padding: '16px 30px', fontSize: '15px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Join the waitlist
         </a>
       </div>

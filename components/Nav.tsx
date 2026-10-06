@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import Logo from '@/components/Logo'
-import { lime, bg, border, text, muted, dim, font } from '@/lib/theme'
+import { lime, bg, border, text, muted, dim, font, radius } from '@/lib/theme'
 
 type NavLink = { href: string; label: string; icon: LucideIcon }
 // A group's links can be split into sections with small subheadings.
@@ -105,7 +105,7 @@ export default function Nav() {
     justifyContent: collapsed ? 'center' : 'flex-start',
     gap: '12px',
     padding: '9px 12px',
-    borderRadius: '999px',
+    borderRadius: radius,
     border: 'none',
     background: 'transparent',
     color: muted,
@@ -173,7 +173,7 @@ export default function Nav() {
                             justifyContent: collapsed ? 'center' : 'flex-start',
                             gap: '12px',
                             padding: '9px 12px',
-                            borderRadius: '999px',
+                            borderRadius: radius,
                             fontSize: '14px',
                             fontWeight: active ? 800 : 600,
                             textDecoration: 'none',

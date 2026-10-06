@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { PLANS, annualMonthlyPounds, annualPounds, ordersLabel } from '@/lib/pricing'
-import { lime, green, bg, panel, border, text, muted, dim, font, display } from '@/lib/theme'
+import { lime, green, bg, panel, border, text, muted, dim, font, display, radius } from '@/lib/theme'
 
 // Plan cards with a Monthly / Annual switch. Used on /pricing and the homepage.
 export default function PricingPlans({ ctaHref = '/#waitlist' }: { ctaHref?: string }) {
@@ -18,7 +18,7 @@ export default function PricingPlans({ ctaHref = '/#waitlist' }: { ctaHref?: str
           <button
             key={t.label}
             onClick={t.onClick}
-            style={{ fontFamily: font, fontSize: '13px', fontWeight: 700, padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', background: t.on ? lime : panel, color: t.on ? bg : muted, border: `1px solid ${t.on ? lime : border}` }}
+            style={{ fontFamily: font, fontSize: '13px', fontWeight: 700, padding: '8px 16px', borderRadius: radius, cursor: 'pointer', background: t.on ? lime : panel, color: t.on ? bg : muted, border: `1px solid ${t.on ? lime : border}` }}
           >
             {t.label}
           </button>
@@ -48,7 +48,7 @@ export default function PricingPlans({ ctaHref = '/#waitlist' }: { ctaHref?: str
               <p style={{ color: green, fontSize: '13px', fontWeight: 700, margin: '0 0 18px' }}>✓ Every feature included</p>
               <a
                 href={ctaHref}
-                style={{ display: 'block', textAlign: 'center', background: custom ? 'transparent' : lime, color: custom ? lime : bg, border: `1px solid ${lime}`, borderRadius: '999px', padding: '12px 18px', fontSize: '13px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                style={{ display: 'block', textAlign: 'center', background: custom ? 'transparent' : lime, color: custom ? lime : bg, border: `1px solid ${lime}`, borderRadius: radius, padding: '12px 18px', fontSize: '13px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}
               >
                 {custom ? 'Get in touch' : 'Join the waitlist'}
               </a>

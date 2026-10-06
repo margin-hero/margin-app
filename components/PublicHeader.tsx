@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Logo from '@/components/Logo'
-import { lime, bg, muted } from '@/lib/theme'
+import { lime, bg, muted, radius } from '@/lib/theme'
 
 // Top bar for the public pages (homepage, pricing)
 export default function PublicHeader() {
@@ -11,7 +11,7 @@ export default function PublicHeader() {
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
         <Link href="/pricing" style={{ color: muted, fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>Pricing</Link>
-        <a href="/#waitlist" style={{ background: lime, color: bg, borderRadius: '999px', padding: '10px 18px', fontSize: '13px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+        <a href="/#waitlist" style={{ background: lime, color: bg, borderRadius: radius, padding: '10px 18px', fontSize: '13px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
           Join the waitlist
         </a>
       </div>

@@ -34,7 +34,7 @@ input[type="file"]::file-selector-button {
   background: var(--mh-lime);
   color: var(--mh-bg);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--mh-radius);
   padding: 9px 20px;
   margin-right: 14px;
   font-family: var(--font-mona), Arial, sans-serif;

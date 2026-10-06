@@ -1,6 +1,6 @@
 'use client'
 
-import { lime, bg, muted, border, inputStyle, primaryButton } from '@/lib/theme'
+import { lime, bg, muted, border, inputStyle, primaryButton, radius } from '@/lib/theme'
 
 const PRESETS = [7, 30, 90]
 
@@ -29,7 +29,7 @@ export default function DateRangeBar({ from, to, onChange, onApply }: {
           <button
             key={n}
             onClick={() => { onChange(daysAgo(n), today()); onApply(daysAgo(n), today()) }}
-            style={{ fontSize: '12px', fontWeight: 700, padding: '7px 14px', borderRadius: '999px', cursor: 'pointer', background: on ? lime : 'transparent', color: on ? bg : muted, border: `1px solid ${on ? lime : border}` }}
+            style={{ fontSize: '12px', fontWeight: 700, padding: '7px 14px', borderRadius: radius, cursor: 'pointer', background: on ? lime : 'transparent', color: on ? bg : muted, border: `1px solid ${on ? lime : border}` }}
           >
             {n}D
           </button>

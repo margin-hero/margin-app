@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import PublicHeader from '@/components/PublicHeader'
 import PricingPlans from '@/components/PricingPlans'
-import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier } from '@/lib/theme'
+import { lime, green, amber, red, bg, panel, panelRaised, border, text, muted, dim, font, display, marginTier, radius } from '@/lib/theme'
 
 // "live" = import already works in the app. Update as new importers ship.
 const CHANNELS: { name: string; live: boolean }[] = [
@@ -111,7 +111,7 @@ export default function HoldingPage() {
             onChange={(e) => setEmail(e.target.value)}
             style={{
               padding: '15px 20px',
-              borderRadius: '999px',
+              borderRadius: radius,
               border: `1px solid ${border}`,
               background: panel,
               color: text,
@@ -128,7 +128,7 @@ export default function HoldingPage() {
               background: lime,
               color: bg,
               border: 'none',
-              borderRadius: '999px',
+              borderRadius: radius,
               padding: '15px 28px',
               fontSize: '15px',
               fontWeight: 800,
@@ -174,7 +174,7 @@ export default function HoldingPage() {
             </div>
             <div style={{ display: 'flex', gap: '6px' }}>
               {['7D', '30D', '90D'].map((p) => (
-                <span key={p} style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '999px', background: p === '30D' ? lime : panel, color: p === '30D' ? bg : muted, border: `1px solid ${p === '30D' ? lime : border}` }}>
+                <span key={p} style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: radius, background: p === '30D' ? lime : panel, color: p === '30D' ? bg : muted, border: `1px solid ${p === '30D' ? lime : border}` }}>
                   {p}
                 </span>
               ))}
@@ -191,7 +191,7 @@ export default function HoldingPage() {
                   fontSize: '12px',
                   fontWeight: 700,
                   padding: '4px 10px',
-                  borderRadius: '999px',
+                  borderRadius: radius,
                   background: i === 1 ? bg : k.good ? 'rgba(57,255,106,0.14)' : 'rgba(255,76,76,0.14)',
                   color: i === 1 ? lime : k.good ? green : red,
                 }}>
@@ -315,7 +315,7 @@ export default function HoldingPage() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
                 padding: '3px 10px',
-                borderRadius: '999px',
+                borderRadius: radius,
                 background: c.live ? 'rgba(57,255,106,0.14)' : 'transparent',
                 color: c.live ? green : dim,
                 border: c.live ? 'none' : `1px solid ${border}`,
@@ -374,7 +374,7 @@ export default function HoldingPage() {
         <p style={{ fontSize: '18px', margin: '0 auto 32px', maxWidth: '520px', lineHeight: 1.5 }}>
           We&apos;re building it now. Leave your email and we&apos;ll tell you the moment it&apos;s ready.
         </p>
-        <a href="#waitlist" style={{ display: 'inline-block', background: bg, color: lime, borderRadius: '999px', padding: '16px 30px', fontSize: '15px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <a href="#waitlist" style={{ display: 'inline-block', background: bg, color: lime, borderRadius: radius, padding: '16px 30px', fontSize: '15px', fontWeight: 800, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Join the waitlist ↑
         </a>
       </div>
