@@ -194,6 +194,31 @@ FBA storage fees and other account-level charges aren't imported yet; the import
 - Amazon doesn't say how many units were refunded, so Margin Hero works it out from the refunded amount compared with the original sale's price. A refund of less than half the item's price (for example a goodwill partial refund) counts as no units returned. If the original sale isn't imported yet, it counts 1 unit until it is.
 - A return label is matched to its refund by order number, so it needs to be in the same file as the refund. If it isn't, the import message warns you.
 
+### Amazon advertising (Sponsored Products)
+Margin Hero can take your Sponsored Products spend off each product's profit, so you see the margin **after ads**.
+
+**Download the report.** In Amazon Ads, go to **Reports** and create a report on **advertised products** (Sponsored Products). Choose one marketplace (e.g. UK), a **daily** time unit, and pick these columns:
+
+| Column | Needed? | What it's used for |
+|---|---|---|
+| Advertised product SKU | Required | Matched to your store SKUs |
+| Total cost | Required | The ad spend (Amazon shows it without VAT) |
+| Date | Required | The day. "Year", "Month" and "Day of Month" work instead; Month + Day on their own work too, taken as the last 12 months |
+| Sales | Recommended | Sales Amazon credits to the ads, for ACOS |
+| Units sold, Purchases | Optional | Units / orders through the ads |
+| Advertised product marketplace, Budget currency | Optional | Checked: one marketplace per file, GBP only |
+
+Any other columns are ignored. Download as CSV or Excel.
+
+**Import it.** On **Import → Amazon Ads**, choose your store (and your FBA store, if you have one: FBA SKUs like `LL-1-FBA` go there), upload the file, check the preview and confirm. Uploading the same days again replaces them, so it's fine for reports to overlap (handy, as Amazon keeps updating ad sales for a couple of weeks). SKUs that aren't set up in your store are held back: add them on **Store SKUs** (or import their orders first) and upload again.
+
+**Where it shows.**
+- **Margins:** choose **After ads**.
+- **Channel Overview:** each store shows its ad spend, ACOS, TACOS and Net after ads.
+- **SKU Detail:** Ad spend, ACOS · TACOS and Net after ads for each product in each store.
+
+ACOS = ad spend ÷ ad sales; TACOS = ad spend ÷ all your sales (what customers paid). Amazon Ads adds 20% VAT to the spend: VAT-registered stores count the spend without VAT, other stores count it with VAT. Sponsored Brands and Sponsored Display spend that isn't tied to one SKU isn't imported yet.
+
 ---
 
 ## TikTok Shop

@@ -8,6 +8,7 @@ import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { marginTier, red, green, muted, dim, text, lime, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
 import { pounds, percent } from '@/lib/format'
 import DateRangeBar from '@/components/DateRangeBar'
+import { loadAdSpend, sumAdSpend, acosPercent, tacosPercent } from '@/lib/adSpend'
 
 type MarginRow = {
   master_product_id: string
@@ -22,6 +23,7 @@ type MarginRow = {
   margin_pence: number
   line_type: string // 'sale' | 'refund' (refund rows are negative)
   refunded_units: number
+  gross_sales_pence: number
 }
 
 type ChannelStats = {
@@ -36,6 +38,11 @@ type ChannelStats = {
   grossMarginPercent: number | null
   netMarginPercent: number | null
   profitPerUnitPence: number | null
+  adCostPence: number
+  acosPercent: number | null
+  tacosPercent: number | null
+  netAfterAdsPence: number
+  netAfterAdsPercent: number | null
 }
 
 type ProductGroup = {
@@ -67,7 +74,7 @@ export default function SkuDetailPage() {
     const { data: rows } = await fetchAll((from, to) =>
       supabase
         .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
-        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence, line_type, refunded_units')
+        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
         .order('order_line_item_id')
@@ -80,6 +87,9 @@ export default function SkuDetailPage() {
 
     const skuMap = new Map((products || []).map((p) => [p.id, p.standard_sku]))
     const storeById = new Map((await loadStores()).map((st) => [st.id, st]))
+    const adLines = await loadAdSpend({ from: dateFrom, to: dateTo })
+    const adsByKey = sumAdSpend(adLines, (l) => `${l.master_product_id}|${l.store_id}`)
+    const adProductNames = new Map(adLines.map((l) => [l.master_product_id, l.product_name]))
 
     const byProductChannel = new Map<string, MarginRow[]>()
     for (const row of (rows || []) as MarginRow[]) {
@@ -88,11 +98,13 @@ export default function SkuDetailPage() {
       if (!byProductChannel.has(key)) byProductChannel.set(key, [])
       byProductChannel.get(key)!.push(row)
     }
+    // A product with ad spend in a store but no sales there in the period still gets a row
+    for (const key of adsByKey.keys()) if (!byProductChannel.has(key)) byProductChannel.set(key, [])
 
     const byProduct = new Map<string, ProductGroup>()
 
     for (const [key, groupRows] of byProductChannel) {
-      const first = groupRows[0]
+      const [productId, storeId] = key.split('|')
       const totalRevenue = groupRows.reduce((s, r) => s + Number(r.revenue_pence), 0)
       const totalProductCost = groupRows.reduce((s, r) => s + Number(r.product_cost_pence), 0)
       const totalNetProfit = groupRows.reduce((s, r) => s + Number(r.margin_pence), 0)
@@ -100,10 +112,13 @@ export default function SkuDetailPage() {
       const refundedUnits = groupRows.reduce((s, r) => s + r.refunded_units, 0)
       const keptUnits = totalQty - refundedUnits // profit per unit is per unit the customer kept
       const grossProfit = totalRevenue - totalProductCost
+      const ads = adsByKey.get(key)
+      const adCost = ads?.costPence ?? 0
+      const netAfterAds = totalNetProfit - adCost
 
       const channelStats: ChannelStats = {
-        storeId: first.store_id,
-        channel: storeById.has(first.store_id) ? storeLabel(storeById.get(first.store_id)) : first.channel,
+        storeId,
+        channel: storeById.has(storeId) ? storeLabel(storeById.get(storeId)) : groupRows[0]?.channel ?? '?',
         totalSalesPence: totalRevenue,
         totalQty,
         refundedUnits,
@@ -113,17 +128,22 @@ export default function SkuDetailPage() {
         grossMarginPercent: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : null,
         netMarginPercent: totalRevenue > 0 ? Math.round((totalNetProfit / totalRevenue) * 1000) / 10 : null,
         profitPerUnitPence: keptUnits > 0 ? Math.round(totalNetProfit / keptUnits) : null,
+        adCostPence: adCost,
+        acosPercent: acosPercent(ads),
+        tacosPercent: tacosPercent(ads, groupRows.reduce((s, r) => s + Number(r.gross_sales_pence), 0)),
+        netAfterAdsPence: netAfterAds,
+        netAfterAdsPercent: totalRevenue > 0 ? Math.round((netAfterAds / totalRevenue) * 1000) / 10 : null,
       }
 
-      if (!byProduct.has(first.master_product_id)) {
-        byProduct.set(first.master_product_id, {
-          masterProductId: first.master_product_id,
-          productName: first.product_name,
-          standardSku: skuMap.get(first.master_product_id) || '',
+      if (!byProduct.has(productId)) {
+        byProduct.set(productId, {
+          masterProductId: productId,
+          productName: groupRows[0]?.product_name ?? adProductNames.get(productId) ?? '?',
+          standardSku: skuMap.get(productId) || '',
           channels: [],
         })
       }
-      byProduct.get(first.master_product_id)!.channels.push(channelStats)
+      byProduct.get(productId)!.channels.push(channelStats)
     }
 
     setGroups(Array.from(byProduct.values()))
@@ -142,11 +162,14 @@ export default function SkuDetailPage() {
     return marginTier(pct, ranges).fg
   }
 
+  // The ad columns only appear once there's ad spend in the period
+  const hasAds = groups.some((g) => g.channels.some((c) => c.adCostPence > 0))
+
   return (
     <div style={pageStyle}>
       <p style={eyebrow}>Dashboards</p>
       <h1 style={pageTitle}>SKU Detail</h1>
-      <p style={pageIntro}>Gross vs net profit for every product, store by store. Refunds are taken off in the period they happened; Refunds shows units refunded and the refund rate (refunded units ÷ units sold).</p>
+      <p style={pageIntro}>Gross vs net profit for every product, store by store. Refunds are taken off in the period they happened; Refunds shows units refunded and the refund rate (refunded units ÷ units sold). Once ad spend is imported, Net after ads takes it off (ACOS = ad spend ÷ ad sales, TACOS = ad spend ÷ all gross sales).</p>
 
       <DateRangeBar
         from={rangeFrom}
@@ -167,7 +190,7 @@ export default function SkuDetailPage() {
               <span style={{ color: muted }}>{group.productName}</span>
             </p>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '840px' }}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: hasAds ? '1180px' : '840px' }}>
                 <thead>
                   <tr>
                     <th style={thStyle}>Store</th>
@@ -175,6 +198,9 @@ export default function SkuDetailPage() {
                     <th style={numHead}>Net margin</th>
                     <th style={numHead}>Gross profit</th>
                     <th style={numHead}>Net profit</th>
+                    {hasAds && <th style={numHead}>Ad spend</th>}
+                    {hasAds && <th style={numHead}>ACOS · TACOS</th>}
+                    {hasAds && <th style={numHead}>Net after ads</th>}
                     <th style={numHead}>Profit / unit</th>
                     <th style={numHead}>Units</th>
                     <th style={numHead}>Refunds</th>
@@ -189,6 +215,13 @@ export default function SkuDetailPage() {
                       <td style={{ ...num, color: marginColor(c.netMarginPercent) }}>{percent(c.netMarginPercent)}</td>
                       <td style={num}>{pounds(c.grossProfitPence)}</td>
                       <td style={{ ...num, color: c.netProfitPence < 0 ? red : green }}>{pounds(c.netProfitPence)}</td>
+                      {hasAds && <td style={{ ...num, color: c.adCostPence > 0 ? text : dim }}>{c.adCostPence > 0 ? pounds(-c.adCostPence) : '—'}</td>}
+                      {hasAds && <td style={{ ...num, color: c.adCostPence > 0 ? text : dim }}>{c.adCostPence > 0 ? `${percent(c.acosPercent)} · ${percent(c.tacosPercent)}` : '—'}</td>}
+                      {hasAds && (
+                        <td style={{ ...num, color: marginColor(c.netAfterAdsPercent) }}>
+                          {pounds(c.netAfterAdsPence)}{c.netAfterAdsPercent !== null ? ` · ${c.netAfterAdsPercent}%` : ''}
+                        </td>
+                      )}
                       <td style={{ ...num, color: c.profitPerUnitPence === null ? dim : text }}>{c.profitPerUnitPence !== null ? pounds(c.profitPerUnitPence) : '—'}</td>
                       <td style={num}>{c.totalQty}</td>
                       <td style={{ ...num, color: c.refundedUnits > 0 ? text : dim }}>

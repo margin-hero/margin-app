@@ -44,6 +44,9 @@ Update this file as each case is tested (date + what was checked).
 | FBA storage / account-level fees | ⬜ need example rows |
 | Store-specific cost (e.g. FBA prep) | 🟡 |
 | SAFE-T reimbursement | ⬜ |
+| **Sponsored Products ad spend** (/amazon-ads-import) | 🟡 built 2026-10-07 from LL-1 / LL-1-FBA / RR87-1m example reports. Check: import, held-back SKUs, re-upload replaces, After ads figures |
+| **Do Amazon Ads charge 20% UK VAT on spend?** | ⬜ ASSUMED. Check an Amazon Ads invoice |
+| Sponsored Brands / Display (not tied to one SKU) | ⬜ not built |
 
 ### TikTok Shop
 | Case | Status |

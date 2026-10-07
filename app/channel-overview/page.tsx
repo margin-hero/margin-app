@@ -9,6 +9,7 @@ import { pounds, percent } from '@/lib/format'
 import DateRangeBar from '@/components/DateRangeBar'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 import { loadStores } from '@/lib/stores'
+import { loadAdSpend, sumAdSpend, acosPercent, tacosPercent } from '@/lib/adSpend'
 
 type MarginRow = {
   order_line_item_id: string
@@ -38,12 +39,17 @@ type ChannelCard = {
   netProfitPence: number
   grossMarginPercent: number | null
   netMarginPercent: number | null
+  adCostPence: number // ad spend (cost to the business: inc. VAT if not VAT registered)
+  acosPercent: number | null // ad spend ÷ ad sales
+  tacosPercent: number | null // ad spend ÷ all sales
+  netAfterAdsPence: number
+  netAfterAdsPercent: number | null
   overheadPence: number
-  netAfterOverheadsPence: number
+  netAfterOverheadsPence: number // after ads too
   netAfterOverheadsPercent: number | null
 }
 
-type Totals = { revenuePence: number; netPence: number; overheadPence: number; unallocatedPence: number }
+type Totals = { revenuePence: number; netPence: number; adPence: number; overheadPence: number; unallocatedPence: number }
 
 // How the store cards can be ordered. Percentages with no sales (null) always go last.
 const SORTS = {
@@ -88,6 +94,7 @@ export default function ChannelOverviewPage() {
         .order('order_line_item_id')
         .range(from, to)
     ), loadOverheadSetup(), loadStores()])
+    const adsByStore = sumAdSpend(await loadAdSpend({ from: dateFrom, to: dateTo }), (l) => l.store_id)
 
     // Share the overheads falling in this date range across these sales
     const marginRows = (rows || []) as MarginRow[]
@@ -101,6 +108,8 @@ export default function ChannelOverviewPage() {
       if (!byStore.has(row.store_id)) byStore.set(row.store_id, [])
       byStore.get(row.store_id)!.push(row)
     }
+    // A store with ad spend but no sales in the period still gets a card (it made a loss)
+    for (const storeId of adsByStore.keys()) if (!byStore.has(storeId)) byStore.set(storeId, [])
 
     const result: ChannelCard[] = []
     for (const [storeId, groupRows] of byStore) {
@@ -115,14 +124,18 @@ export default function ChannelOverviewPage() {
       const salesRevenue = sales.reduce((s, r) => s + Number(r.revenue_pence), 0)
       const refundedUnits = groupRows.reduce((s, r) => s + r.refunded_units, 0)
       const grossProfit = totalRevenue - totalProductCost
+      const ads = adsByStore.get(storeId)
+      const adCost = ads?.costPence ?? 0
+      const netAfterAds = totalNetProfit - adCost
+      const grossSales = groupRows.reduce((s, r) => s + Number(r.gross_sales_pence), 0)
       const overhead = Math.round(overheadByStore.get(storeId) || 0)
-      const netAfterOverheads = totalNetProfit - overhead
+      const netAfterOverheads = netAfterAds - overhead
 
       result.push({
         storeId,
-        storeName: store?.name ?? groupRows[0].channel,
+        storeName: store?.name ?? groupRows[0]?.channel ?? '?',
         platform: store?.platforms?.name ?? '',
-        grossSalesPence: groupRows.reduce((s, r) => s + Number(r.gross_sales_pence), 0),
+        grossSalesPence: grossSales,
         totalSalesPence: totalRevenue,
         totalQty,
         orderCount,
@@ -133,6 +146,11 @@ export default function ChannelOverviewPage() {
         netProfitPence: totalNetProfit,
         grossMarginPercent: totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : null,
         netMarginPercent: totalRevenue > 0 ? Math.round((totalNetProfit / totalRevenue) * 1000) / 10 : null,
+        adCostPence: adCost,
+        acosPercent: acosPercent(ads),
+        tacosPercent: tacosPercent(ads, grossSales),
+        netAfterAdsPence: netAfterAds,
+        netAfterAdsPercent: totalRevenue > 0 ? Math.round((netAfterAds / totalRevenue) * 1000) / 10 : null,
         overheadPence: overhead,
         netAfterOverheadsPence: netAfterOverheads,
         netAfterOverheadsPercent: totalRevenue > 0 ? Math.round((netAfterOverheads / totalRevenue) * 1000) / 10 : null,
@@ -143,6 +161,7 @@ export default function ChannelOverviewPage() {
     setTotals({
       revenuePence: marginRows.reduce((s, r) => s + Number(r.revenue_pence), 0),
       netPence: marginRows.reduce((s, r) => s + Number(r.margin_pence), 0),
+      adPence: Array.from(adsByStore.values()).reduce((s, a) => s + a.costPence, 0),
       overheadPence: Math.round(allocation.totalPence),
       unallocatedPence: Math.round(allocation.unallocatedPence),
     })
@@ -186,7 +205,7 @@ export default function ChannelOverviewPage() {
     <div style={pageStyle}>
       <p style={eyebrow}>Dashboards</p>
       <h1 style={pageTitle}>Channel Overview</h1>
-      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s share of overheads. Gross sales is what customers paid (including VAT and delivery); net sales takes off the VAT for VAT-registered stores, and margins are worked out from net sales. Refunds are taken off in the period they happened.</p>
+      <p style={pageIntro}>Sales and margin for each store over the dates you choose, with each store&apos;s ad spend (ACOS = ad spend ÷ ad sales, TACOS = ad spend ÷ all gross sales) and share of overheads. Gross sales is what customers paid (including VAT and delivery); net sales takes off the VAT for VAT-registered stores, and margins are worked out from net sales. Refunds are taken off in the period they happened.</p>
 
       <DateRangeBar
         from={rangeFrom}
@@ -204,23 +223,31 @@ export default function ChannelOverviewPage() {
         </select>
       </div>
 
-      {!loading && totals && totals.overheadPence > 0 && (
+      {!loading && totals && (totals.overheadPence > 0 || totals.adPence > 0) && (
         <div style={{ ...cardStyle, display: 'flex', gap: '32px', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <div>
             <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net profit · all stores</p>
             <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(totals.netPence)}</p>
           </div>
+          {totals.adPence > 0 && (
+            <div>
+              <p style={{ ...cardTitle, margin: '0 0 6px' }}>Ad spend in period</p>
+              <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(-totals.adPence)}</p>
+            </div>
+          )}
+          {totals.overheadPence > 0 && (
+            <div>
+              <p style={{ ...cardTitle, margin: '0 0 6px' }}>Overheads in period</p>
+              <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(-totals.overheadPence)}</p>
+            </div>
+          )}
           <div>
-            <p style={{ ...cardTitle, margin: '0 0 6px' }}>Overheads in period</p>
-            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(-totals.overheadPence)}</p>
-          </div>
-          <div>
-            <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net after overheads</p>
-            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: totals.netPence - totals.overheadPence < 0 ? red : green }}>
-              {pounds(totals.netPence - totals.overheadPence)}
+            <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net after {[totals.adPence > 0 && 'ads', totals.overheadPence > 0 && 'overheads'].filter(Boolean).join(' & ')}</p>
+            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: totals.netPence - totals.adPence - totals.overheadPence < 0 ? red : green }}>
+              {pounds(totals.netPence - totals.adPence - totals.overheadPence)}
               {totals.revenuePence > 0 && (
                 <span style={{ fontSize: '14px', marginLeft: '8px' }}>
-                  {(((totals.netPence - totals.overheadPence) / totals.revenuePence) * 100).toFixed(1)}%
+                  {(((totals.netPence - totals.adPence - totals.overheadPence) / totals.revenuePence) * 100).toFixed(1)}%
                 </span>
               )}
             </p>
@@ -263,10 +290,17 @@ export default function ChannelOverviewPage() {
               {row('Gross profit', pounds(c.grossProfitPence), text, true)}
               {row('Net profit', pounds(c.netProfitPence), c.netProfitPence < 0 ? red : green)}
               {row('Refunds', c.refundedUnits > 0 ? `${c.refundedUnits} units · ${percent(c.refundRatePercent)}` : 'None', text, true)}
+              {c.adCostPence > 0 && (
+                <>
+                  {row('Ad spend', pounds(-c.adCostPence), text, true)}
+                  {row('ACOS · TACOS', `${percent(c.acosPercent)} · ${percent(c.tacosPercent)}`)}
+                  {row('Net after ads', `${pounds(c.netAfterAdsPence)}${c.netAfterAdsPercent !== null ? ` · ${c.netAfterAdsPercent}%` : ''}`, marginColor(c.netAfterAdsPercent))}
+                </>
+              )}
               {c.overheadPence > 0 && (
                 <>
-                  {row('Share of overheads', pounds(-c.overheadPence))}
-                  {row('Net after overheads', `${pounds(c.netAfterOverheadsPence)}${c.netAfterOverheadsPercent !== null ? ` · ${c.netAfterOverheadsPercent}%` : ''}`, marginColor(c.netAfterOverheadsPercent), true)}
+                  {row('Share of overheads', pounds(-c.overheadPence), text, c.adCostPence === 0)}
+                  {row(c.adCostPence > 0 ? 'Net after ads & overheads' : 'Net after overheads', `${pounds(c.netAfterOverheadsPence)}${c.netAfterOverheadsPercent !== null ? ` · ${c.netAfterOverheadsPercent}%` : ''}`, marginColor(c.netAfterOverheadsPercent), true)}
                 </>
               )}
             </div>

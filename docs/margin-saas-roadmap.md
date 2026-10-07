@@ -127,6 +127,8 @@ Steps:
 
 **Advertising (ad spend in margin)**
 
+- ✅ **Amazon Sponsored Products (done 2026-10-07):** `/amazon-ads-import` reads the Amazon Ads "advertised product" report (new reporting suite: required columns Advertised product SKU, Total cost, and Date or Month + Day of Month; optional Sales, Units sold, Purchases, marketplace, currency). One row per store SKU per day per ad type in `ad_spend` (spend ex. VAT + 20% VAT rate; re-uploads replace the day). The `ad_spend_lines` view applies the store's dated VAT status. Taken off at reporting time (`lib/adSpend.ts`, not in `order_margins`): "After ads" pills on Margins, ad spend / ACOS / TACOS / Net after ads on Channel Overview and SKU Detail. **Still to do:** Sponsored Brands and Sponsored Display spend not tied to one SKU (needs sharing across the store's sales, like overheads), the per-sale `advertising` fees in `order_line_fees` (OnBuy Boost, TikTok) moved into the same "after ads" figure, Trends, a way to view / delete imported ad spend, confirm Amazon Ads UK charges 20% VAT.
+
 Ads are often the single biggest cost after the product itself, and a SKU can look healthy on Net margin while losing money once its ad spend is counted. Scope is strictly *what ads do to margin*: no campaign management, bidding or keyword tools (the homepage promises "No PPC bidding").
 
 - **Two kinds of ad cost (updated 2026-10-06).** Both must end up in one "ads" figure per SKU × store, kept apart from selling fees:
@@ -139,7 +141,8 @@ Ads are often the single biggest cost after the product itself, and a SKU can lo
 - **Sources, one importer each (reusing `lib/readSpreadsheet.ts`):**
   - Amazon Sponsored Products / Brands: the "Advertised product" report (spend and sales per SKU per day)
   - TikTok Shop ads (GMV Max, Promote). Creator affiliate commission is already counted in TikTok fees, so it mustn't be counted again here.
-  - Retail media where the Mirakl retailers offer it, plus Google / Meta ads for Shopify and other own-site stores
+  - Retail media for the Mirakl retailers (B&Q, The Range, Debenhams, Tesco, Argos). **Sharing Mirakl for orders doesn't mean sharing an ad platform:** each retailer can run its own retail media (e.g. Mirakl Ads on some, the retailer's own or a partner's platform on others, Tesco possibly via dunnhumby: to confirm per retailer), so expect one ads importer per ad platform, not one "Mirakl ads" importer. Get an example report from each retailer the user advertises on before building; the retailer picker (`integration_type = 'mirakl'`) still decides the store.
+  - Google / Meta ads for Shopify and other own-site stores
   - Manual entry for anything else (e.g. a one-off influencer fee)
   - **OnBuy PPC ads** report (separate from Boost, which is already in the order data)
   - eBay Promoted Listings **Advanced** (cost per click) report
@@ -162,7 +165,7 @@ Ads are often the single biggest cost after the product itself, and a SKU can lo
   - **OnBuy:** Boost is still inside the fee total, but since 2026-10-06 it's split out as `advertising` in `order_line_fees` ("Boost"). "Boost Fee %" (set per SKU, e.g. 20%) is worth showing next to the SKU. OnBuy PPC ads come from their own report. OnBuy orders imported before 2026-10-06 need re-importing to split Boost out.
   - **TikTok:** split since 2026-10-06: Smart Promotion fee (3.5% on the tested order, VAT charged), Campaign resource / service fee and GMV Max ad fee → `advertising`; affiliate columns → `affiliate` (see the affiliate decision above); commission, shipping service fee and managed service plan stay selling fees. Ads billed outside the statement come from the ads report (check they aren't already in the statement's GMV Max column).
   - **Amazon:** settlement fees (ItemFees) don't include Sponsored Products / Brands spend: import it from the Advertised product report.
-  - **Mirakl retailers (B&Q, The Range, Debenhams, Tesco):** commission only today, no ad cost in the transaction report. Add retail media spend if/when used.
+  - **Mirakl retailers (B&Q, The Range, Debenhams, Tesco):** commission only today, no ad cost in the transaction report. Retail media spend comes from each retailer's own ad platform (they differ per retailer, see Sources above), imported into `ad_spend` against that retailer's store.
   - **eBay:** Promoted Listings Standard is a per-sale fee like OnBuy Boost. In the transaction report it's an "Other fee" row (not handled yet: need an example row; save it as `advertising` linked to its order line). Promoted Listings Advanced (cost per click) comes from the advertising report.
   - **CSV / Excel upload (Argos, Shopify, others):** no ad cost column today. Shopify / own-site ads come from Google / Meta reports or manual entry.
 - **Pricing:** included on every plan, like everything else.

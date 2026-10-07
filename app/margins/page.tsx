@@ -41,6 +41,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const get = (k: string) => (typeof params[k] === 'string' ? (params[k] as string) : '')
 
   const includeOverheads = get('overheads') === '1'
+  const includeAds = get('ads') === '1' // take ad spend (Amazon Sponsored Products) off too
   const perUnit = get('per') !== 'total' // £ per unit sold (default) or total £ for the period
   const sort = get('sort') || 'name' // 'name', 'all' or a store id
   const by = get('by') === 'gbp' ? 'gbp' : 'pct'
@@ -53,16 +54,16 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const db = await createServerSupabase()
   const ranges = await loadMarginRanges(db)
   const legend = marginLegend(ranges)
-  const result = await loadSkuStoreMargins(includeOverheads, range, db)
+  const result = await loadSkuStoreMargins(includeOverheads, range, db, includeAds)
   if ('error' in result) {
     return <div style={{ ...pageStyle, color: red }}>Error: {result.error}</div>
   }
-  const { stores, overheadNote, cell, total, notListed } = result
+  const { stores, overheadNote, adNote, cell, total, notListed } = result
 
   // Links keep every other setting and change just the ones given
   const current: Record<string, string> = {
     period: custom ? 'custom' : period!.key, from: custom ? range!.from : '', to: custom ? range!.to : '',
-    overheads: includeOverheads ? '1' : '', per: perUnit ? '' : 'total', sort: sort === 'name' ? '' : sort, by: by === 'pct' ? '' : by, dir: dir === 'desc' ? '' : dir,
+    overheads: includeOverheads ? '1' : '', ads: includeAds ? '1' : '', per: perUnit ? '' : 'total', sort: sort === 'name' ? '' : sort, by: by === 'pct' ? '' : by, dir: dir === 'desc' ? '' : dir,
   }
   const href = (changes: Record<string, string>) => {
     const merged = { ...current, ...changes }
@@ -160,18 +161,21 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <Link href={href({ ads: '' })} style={pill(!includeAds)}>Before ads</Link>
+        <Link href={href({ ads: '1' })} style={pill(includeAds)}>After ads</Link>
+        <span style={{ width: '12px' }} />
         <Link href={href({ overheads: '' })} style={pill(!includeOverheads)}>Before overheads</Link>
         <Link href={href({ overheads: '1' })} style={pill(includeOverheads)}>After overheads</Link>
         <span style={{ width: '12px' }} />
         <Link href={href({ per: '' })} style={pill(perUnit)}>£ per unit</Link>
         <Link href={href({ per: 'total' })} style={pill(!perUnit)}>£ total</Link>
-        {overheadNote && <span style={{ fontSize: '12px', color: muted }}>{overheadNote}</span>}
+        {(adNote || overheadNote) && <span style={{ fontSize: '12px', color: muted }}>{[adNote, overheadNote].filter(Boolean).join(' ')}</span>}
       </div>
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '8px', marginBottom: '18px' }}>
           <p style={{ ...cardTitle, margin: 0 }}>
-            Net margin % and net profit {perUnit ? 'per unit' : 'total'}{includeOverheads ? ' after overheads' : ''} · {range ? `${ukDate(range.from)} to ${ukDate(range.to)}` : 'all time'}
+            Net margin % and net profit {perUnit ? 'per unit' : 'total'}{includeAds && includeOverheads ? ' after ads and overheads' : includeAds ? ' after ads' : includeOverheads ? ' after overheads' : ''} · {range ? `${ukDate(range.from)} to ${ukDate(range.to)}` : 'all time'}
           </p>
           <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: muted }}>
             <span><span style={{ color: red }}>●</span> {legend[0]}</span>

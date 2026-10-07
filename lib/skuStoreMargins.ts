@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { fetchAll } from './fetchAll'
 import { loadOverheadSetup, allocateOverheads } from './overheads'
+import { loadAdSpend } from './adSpend'
 
 // Net margin per product × store for a date range (or all time), plus which products
 // are listed where. Shared by /margins and /opportunities so the two pages always agree.
@@ -13,6 +14,7 @@ export type SkuStoreMargins = {
   products: { id: string; name: string; sku: string }[] // sorted by name
   stores: { id: string; name: string; platform: string }[] // sorted by platform, then store name
   overheadNote: string
+  adNote: string
   cell: (productId: string, storeId: string) => MarginCell | null // null = no sales in the period
   total: (productId: string) => MarginCell | null // all stores together
   notListed: (productId: string, storeId: string) => boolean
@@ -34,7 +36,8 @@ export function cellPerUnitPence(cell: MarginCell | null): number | null {
 export async function loadSkuStoreMargins(
   includeOverheads: boolean,
   range: { from: string; to: string } | null = null, // null = all time
-  db: SupabaseClient = supabase // server pages pass createServerSupabase()
+  db: SupabaseClient = supabase, // server pages pass createServerSupabase()
+  includeAds = false
 ): Promise<{ error: string } | SkuStoreMargins> {
   const [{ data, error }, { data: listings, error: listingsError }] = await Promise.all([
     fetchAll((from, to) => {
@@ -101,10 +104,28 @@ export async function loadSkuStoreMargins(
     add(totals, row.master_product_id, revenue, margin, units)
   }
 
+  // Optionally take ad spend (per store SKU per day) off the product × store it was spent on.
+  // A product with ad spend but no sales in the period gets a cell with £0 revenue (a loss).
+  let adNote = ''
+  if (includeAds) {
+    const ads = await loadAdSpend(range, db)
+    let adTotal = 0
+    for (const ad of ads) {
+      if (!products.has(ad.master_product_id)) products.set(ad.master_product_id, { name: ad.product_name, sku: ad.standard_sku })
+      add(cells, `${ad.master_product_id}|${ad.store_id}`, 0, -ad.cost_pence, 0)
+      add(totals, ad.master_product_id, 0, -ad.cost_pence, 0)
+      adTotal += ad.cost_pence
+    }
+    adNote = ads.length
+      ? `Includes £${(adTotal / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} of ad spend.`
+      : 'No ad spend imported for this period.'
+  }
+
   return {
     products: Array.from(products, ([id, p]) => ({ id, ...p })).sort((a, b) => a.name.localeCompare(b.name)),
     stores: Array.from(storeNames, ([id, st]) => ({ id, ...st })).sort((a, b) => a.platform.localeCompare(b.platform) || a.name.localeCompare(b.name)),
     overheadNote,
+    adNote,
     cell: (productId, storeId) => cells.get(`${productId}|${storeId}`) ?? null,
     total: (productId) => totals.get(productId) ?? null,
     // Not mapped in this store and no sales there either
