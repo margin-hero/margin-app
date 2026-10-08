@@ -13,7 +13,8 @@ import { supabase } from '@/lib/supabase'
 import Logo from '@/components/Logo'
 import { lime, bg, border, text, muted, dim, font, radius } from '@/lib/theme'
 
-type NavLink = { href: string; label: string; icon: LucideIcon }
+// tip = the hover name when the menu is collapsed to icons (no subheadings then); default = label
+type NavLink = { href: string; label: string; icon: LucideIcon; tip?: string }
 // A group's links can be split into sections with small subheadings.
 // A section without a label (e.g. Settings) just sits below the others.
 type NavSection = { label?: string; links: NavLink[] }
@@ -31,17 +32,23 @@ const NAV_GROUPS: { label: string; sections: NavSection[] }[] = [
   },
   {
     label: 'Import',
-    sections: [{ links: [
-      { href: '/amazon-import', label: 'Amazon', icon: ShoppingCart },
-      { href: '/amazon-ads-import', label: 'Amazon Ads', icon: Megaphone },
-      { href: '/ebay-import', label: 'eBay', icon: Tag },
-      { href: '/mirakl-import', label: 'Mirakl', icon: Building2 },
-      { href: '/onbuy-import', label: 'OnBuy', icon: ShoppingBag },
-      { href: '/shopify-import', label: 'Shopify', icon: ShoppingBasket },
-      { href: '/temu-import', label: 'Temu', icon: Gift },
-      { href: '/tiktok-import', label: 'TikTok', icon: Music2 },
-      { href: '/upload', label: 'CSV / Excel', icon: FileUp },
-    ] }],
+    sections: [
+      // Each channel's sales report (orders, fees, refunds, labels)
+      { label: 'Sales', links: [
+        { href: '/amazon-import', label: 'Amazon', icon: ShoppingCart, tip: 'Amazon sales' },
+        { href: '/ebay-import', label: 'eBay', icon: Tag, tip: 'eBay sales' },
+        { href: '/mirakl-import', label: 'Mirakl', icon: Building2, tip: 'Mirakl sales' },
+        { href: '/onbuy-import', label: 'OnBuy', icon: ShoppingBag, tip: 'OnBuy sales' },
+        { href: '/shopify-import', label: 'Shopify', icon: ShoppingBasket, tip: 'Shopify sales' },
+        { href: '/temu-import', label: 'Temu', icon: Gift, tip: 'Temu sales' },
+        { href: '/tiktok-import', label: 'TikTok', icon: Music2, tip: 'TikTok sales' },
+        { href: '/upload', label: 'CSV / Excel', icon: FileUp, tip: 'Sales from any CSV / Excel' },
+      ] },
+      // Each channel's ad report, named after its ad product (e.g. TikTok Ads, eBay Promoted Listings)
+      { label: 'Advertising', links: [
+        { href: '/amazon-ads-import', label: 'Amazon Ads', icon: Megaphone },
+      ] },
+    ],
   },
   {
     label: 'Manage',
@@ -145,12 +152,11 @@ export default function Nav() {
         <Logo size={24} showText={!collapsed} />
       </Link>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '22px', flex: 1 }}>
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label}>
-            {collapsed ? (
-              <div style={{ borderTop: `1px solid ${border}`, margin: '0 10px 10px' }} />
-            ) : (
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '18px', flex: 1 }}>
+        {NAV_GROUPS.map((group, groupIndex) => (
+          // A thin line between the main groups (Dashboards / Import / Manage)
+          <div key={group.label} style={groupIndex > 0 ? { borderTop: `1px solid ${border}`, paddingTop: '18px' } : undefined}>
+            {collapsed ? null : (
               <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: dim, margin: '0 0 8px', padding: '0 12px' }}>
                 {group.label}
               </p>
@@ -171,7 +177,7 @@ export default function Nav() {
                         <Link
                           key={link.href}
                           href={link.href}
-                          title={collapsed ? link.label : undefined}
+                          title={collapsed ? link.tip ?? link.label : undefined}
                           className={active ? undefined : 'hover:bg-[#1B1C19] hover:!text-[#EBEEE0]'}
                           style={{
                             display: 'flex',
