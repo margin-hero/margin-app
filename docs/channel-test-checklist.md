@@ -35,9 +35,9 @@ Update this file as each case is tested (date + what was checked).
 | **Do Amazon's fees include 20% UK VAT?** | ⬜ ASSUMED (1/6 reclaimed). Check a monthly Amazon fee invoice (VAT charged by Amazon UK, or reverse charge?) |
 | Shipping label purchase | ✅ 2026-10-04 (£5.83 inc VAT) |
 | Full refund + RefundCommission + return label | ✅ 2026-10-06 (LL-1, −£18.84 refund line) |
-| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
+| Multi-item order | ✅ 2026-10-08 (203-6590993-7588331: one £5.83 label split £1.66 / £4.17 by price, £1.38 / £3.48 ex. VAT) |
 | Quantity 2+ | 🟡 in the August file (1,600+ lines). Check COGS × qty on /order-lines |
-| Partial refund | 🟡 in the August file: Amazon shows qty 1 even on partial refunds, so units come from the refunded price. Check one |
+| Partial refund | ✅ 2026-10-08 (026-3389302-3336324: £25.01 back on £103.95 → 0 units, £0 product cost; Amazon's qty 1 ignored) |
 | **Promotions** ("promotional rebates") | 🟡 547 in August, all free-delivery discounts: taken off postage charged (any excess off the item price). Item-price promotions untested |
 | **Shipping charged to the buyer** ("postage credits") | 🟡 now imported as shipping revenue (637 in August) |
 | Gift wrap | 🟡 one in August, added to the sale price |
@@ -64,7 +64,7 @@ Update this file as each case is tested (date + what was checked).
 | Affiliate commission | 🟡 split out as `affiliate` |
 | Refund on the same row (netted into Net sales) | 🟡 |
 | Refund-only row (refund after the sale) | ⬜ currently skipped. Need an example |
-| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
+| Multi-item order | ✅ 2026-10-08 (203-6590993-7588331: one £5.83 label split £1.66 / £4.17 by price, £1.38 / £3.48 ex. VAT) |
 | Multi-store (two TikTok shops, SKU ID catalog per store) | 🟡 |
 
 ### Mirakl (B&Q, The Range, Debenhams, Tesco, Argos)
@@ -74,7 +74,7 @@ Update this file as each case is tested (date + what was checked).
 | Argos single-line sale | 🟡 waiting on your shipping + VAT check |
 | Order-level seller fees shared across lines (The Range) | 🟡 |
 | Shipping charges + shipping tax | 🟡 |
-| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
+| Multi-item order | ✅ 2026-10-08 (203-6590993-7588331: one £5.83 label split £1.66 / £4.17 by price, £1.38 / £3.48 ex. VAT) |
 | Refund ("Order amount refund", "Commission refund"...) | ⬜ currently skipped. Need an example |
 | Tesco single-line sale | ✅ 2026-10-06 (MPS-3: no tax rows, so Order amount is gross and VAT comes from the product; commission 15% of the gross price) |
 
@@ -83,7 +83,7 @@ Update this file as each case is tested (date + what was checked).
 |---|---|
 | Single-line sale | ✅ 2026-10-03 |
 | Boost fee split out as advertising | 🟡 need a row with Boost |
-| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
+| Multi-item order | ✅ 2026-10-08 (203-6590993-7588331: one £5.83 label split £1.66 / £4.17 by price, £1.38 / £3.48 ex. VAT) |
 | Deemed Supplier TAX filled (OnBuy collects VAT) | 🟡 |
 | Refund | ⬜ currently skipped. Need an example |
 
@@ -118,7 +118,7 @@ Update this file as each case is tested (date + what was checked).
 | Seller discount / platform discount | ⬜ need an example (platform discount isn't used yet) |
 | Platform incentive (+ shipping, tax), Others | ⬜ need an example (flagged, not used yet) |
 | Shipping charged to the buyer | 🟡 |
-| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
+| Multi-item order | ✅ 2026-10-08 (203-6590993-7588331: one £5.83 label split £1.66 / £4.17 by price, £1.38 / £3.48 ex. VAT) |
 | Refund | ⬜ need an example |
 
 ### CSV / Excel upload (any other channel)
