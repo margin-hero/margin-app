@@ -104,16 +104,19 @@ export default async function OrderLinesPage({ searchParams }: PageProps<'/order
     rows.push(...(data ?? []))
   }
   const productIds = Array.from(new Set(rows.map((r) => r.master_product_id as string)))
-  const { data: products, error: productsError } = productIds.length
-    ? await db.from('master_products').select('id, standard_sku').in('id', productIds)
-    : { data: [], error: null }
-  error = error || productsError?.message || null
+  const listingIds = Array.from(new Set(rows.map((r) => r.platform_listing_id as string).filter(Boolean)))
+  const [{ data: products, error: productsError }, { data: listings, error: listingsError }] = await Promise.all([
+    productIds.length ? db.from('master_products').select('id, standard_sku').in('id', productIds) : Promise.resolve({ data: [], error: null }),
+    listingIds.length ? db.from('platform_listings').select('id, platform_sku').in('id', listingIds) : Promise.resolve({ data: [], error: null }),
+  ])
+  error = error || productsError?.message || listingsError?.message || null
 
   if (error) {
     return <div style={{ ...pageStyle, color: red }}>Error: {error}</div>
   }
 
   const skuOf = new Map((products ?? []).map((p) => [p.id, p.standard_sku as string]))
+  const storeSkuOf = new Map((listings ?? []).map((l) => [l.id, l.platform_sku as string]))
   const storeOf = new Map(stores.map((s) => [s.id, s]))
   const rowOf = new Map(rows.map((r) => [`${r.line_type === 'refund'}|${r.order_line_item_id}`, r]))
 
@@ -129,6 +132,7 @@ export default async function OrderLinesPage({ searchParams }: PageProps<'/order
       channel: store?.platforms?.name ?? '',
       store: store?.name ?? (row.channel as string),
       sku: skuOf.get(row.master_product_id as string) ?? '',
+      storeSku: storeSkuOf.get(row.platform_listing_id as string) ?? '',
       product: row.product_name as string,
       qty: Number(row.qty),
       salePence: Number(row.sale_price_pence),

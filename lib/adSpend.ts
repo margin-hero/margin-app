@@ -9,6 +9,7 @@ import { fetchAll } from './fetchAll'
 
 export type AdSpendLine = {
   store_id: string
+  platform_listing_id: string // the store SKU the spend is for
   master_product_id: string
   product_name: string
   standard_sku: string
@@ -25,7 +26,7 @@ export async function loadAdSpend(range: { from: string; to: string } | null, db
   const { data } = await fetchAll((from, to) => {
     let q = db
       .from('ad_spend_lines')
-      .select('store_id, master_product_id, product_name, standard_sku, spend_date, spend_pence, cost_pence, attributed_sales_pence')
+      .select('store_id, platform_listing_id, master_product_id, product_name, standard_sku, spend_date, spend_pence, cost_pence, attributed_sales_pence')
     if (range) q = q.gte('spend_date', range.from).lte('spend_date', range.to)
     return q.order('id').range(from, to)
   })

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { pounds, ukDate } from '@/lib/format'
-import { lime, muted, red, thStyle, tdStyle, primaryButton, linkButton, statusColor, marginTier, MarginRanges } from '@/lib/theme'
+import { lime, muted, text, red, thStyle, tdStyle, primaryButton, linkButton, statusColor, marginTier, MarginRanges } from '@/lib/theme'
 
 export type OrderLine = {
   id: string
@@ -14,7 +14,8 @@ export type OrderLine = {
   date: string
   channel: string // platform, e.g. OnBuy
   store: string
-  sku: string
+  sku: string // your product SKU
+  storeSku: string // the channel's SKU (store SKU) the line was sold under
   product: string
   qty: number
   salePence: number
@@ -98,7 +99,7 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
         {status && <span style={{ fontSize: '13px', fontWeight: 600, color: statusColor(status) }}>{status}</span>}
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '1500px' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '1620px' }}>
           <thead>
             <tr>
               <th style={thStyle}>
@@ -109,6 +110,7 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
               <th style={thStyle}>Channel</th>
               <th style={thStyle}>Store</th>
               <th style={thStyle}>SKU</th>
+              <th style={thStyle}>Store SKU</th>
               <th style={thStyle}>Product</th>
               <th style={numHead}>Qty</th>
               <th style={numHead}>Sale price</th>
@@ -139,6 +141,7 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
                 <td style={tdStyle}>{l.channel}</td>
                 <td style={tdStyle}>{l.store}</td>
                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{l.sku}</td>
+                <td style={{ ...tdStyle, whiteSpace: 'nowrap', color: l.storeSku === l.sku ? muted : text }}>{l.storeSku}</td>
                 <td style={tdStyle}>{l.product}</td>
                 <td style={num}>{l.qty}</td>
                 <td style={num}>{pounds(l.salePence)}</td>
