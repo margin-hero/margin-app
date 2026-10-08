@@ -89,6 +89,9 @@ export default function ProductsPage() {
         Your products. Open one to set up everything about it in order: its store SKUs, costs and shipping.
         To add many at once, use <Link href="/catalog-import" style={{ color: lime, fontWeight: 700 }}>Catalog Import</Link> and{' '}
         <Link href="/cost-import" style={{ color: lime, fontWeight: 700 }}>Cost Import</Link>.
+        A product is the thing you sell (your SKU); each channel&apos;s name for it is a store SKU, and one product can have many.
+        If an import made a product for every store SKU, group them with{' '}
+        <Link href="/tidy-products" style={{ color: lime, fontWeight: 700 }}>Tidy Products</Link>.
       </p>
 
       <section style={cardStyle}>

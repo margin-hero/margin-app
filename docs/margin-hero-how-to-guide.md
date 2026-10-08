@@ -70,6 +70,28 @@ Catalog Import **only adds**. It never changes or deletes existing products or m
 
 ---
 
+## Tidying products: grouping store SKUs
+
+**Page:** Manage → **Tidy Products**
+
+A **product** is the thing you sell: your own SKU (e.g. `LL-1`), with its costs and shipping. A **store SKU** is what one channel calls it, and one product can have many: `LL-1` on Amazon, `LL-1-FBA` in your FBA store, a different code on eBay. Margins add up per product, so each product's store SKUs need to sit under it.
+
+If you ticked **Create new products for SKUs that aren't mapped yet** on an import, you get one product per store SKU, which often means the same item several times (listed twice on Amazon, an FBA copy, Amazon's own codes like `1V-1T5U-UG0L`, resale SKUs starting `amzn.gr.`). To group them:
+
+1. Click **Download spreadsheet**. There's one row per store SKU with the product it's on now, and a **suggested_product_sku** that groups store SKUs that look like the same product (ignoring capitals and `+ _ -` or spaces, FBA copies and Amazon resale SKUs). Rows in a group sit together.
+2. Fill in **product_sku** for each row: rows with the same product_sku become one product. Copy the suggestion across where you agree, or type your own clean SKU. **product_name** is optional. Leave the other columns as they are.
+3. Upload it. The preview shows how many store SKUs will move, which products get a new SKU, which are created and which are removed. Nothing changes until you click **Apply these changes**.
+
+**What happens:**
+- A product_sku that already exists: the store SKUs join that product, and its costs stay.
+- A new product_sku: if all of one product's store SKUs move to it together, that product just takes the new SKU (so its costs stay). Otherwise a new product is created.
+- Sales belong to their store SKU, so they move with it. Nothing needs importing again, and every dashboard regroups straight away.
+- Products left with no store SKUs are removed, unless they have costs or shipping set up. Those are listed for you to check, so nothing you've entered is ever deleted without you seeing it.
+
+Uploading the same spreadsheet again is safe: rows already done are skipped.
+
+---
+
 ## Adding costs in bulk: Cost Import
 
 **Page:** Manage → **Costs Import**

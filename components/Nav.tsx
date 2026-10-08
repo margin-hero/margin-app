@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
   FileUp, ShoppingCart, ShoppingBag, ShoppingBasket, Music2, Building2,
-  Tag, Gift, Megaphone, ListChecks, Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
+  Tag, Gift, Megaphone, Combine, ListChecks, Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
   type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -60,6 +60,7 @@ const NAV_GROUPS: { label: string; sections: NavSection[] }[] = [
         { href: '/stores', label: 'Stores', icon: Store },
         { href: '/products', label: 'Products', icon: Package },
         { href: '/mappings', label: 'Store SKUs', icon: Link2 },
+        { href: '/tidy-products', label: 'Tidy Products', icon: Combine },
         { href: '/catalog-import', label: 'Catalog Import', icon: ListPlus },
       ] },
       { label: 'Shipping', links: [

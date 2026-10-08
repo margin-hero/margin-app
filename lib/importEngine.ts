@@ -432,7 +432,12 @@ export function importResultSummary(result: ImportResult, store: Store): ImportS
     },
     {
       title: 'New products',
-      items: result.createdProducts.length ? [`${count(result.createdProducts.length)} created: add their costs on Products`] : [],
+      items: result.createdProducts.length
+        ? [
+            `${count(result.createdProducts.length)} created, one per new store SKU`,
+            'If several are really the same product (e.g. an FBA copy, or the same item listed twice), group them on Manage → Tidy Products, then add their costs',
+          ]
+        : [],
     },
   ]
   return {
