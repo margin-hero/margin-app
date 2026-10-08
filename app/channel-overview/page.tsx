@@ -195,9 +195,10 @@ export default function ChannelOverviewPage() {
   const oneLine: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
 
   const row = (label: string, value: React.ReactNode, color: string = text, divider = false) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '7px 0', borderTop: divider ? `1px solid ${border}` : 'none' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: '12px', fontSize: '13px', padding: '7px 0', borderTop: divider ? `1px solid ${border}` : 'none' }}>
       <span style={{ color: muted }}>{label}</span>
-      <span style={{ color, fontWeight: 700 }}>{value}</span>
+      {/* a long value (e.g. seven figures and a %) drops under its label rather than being cut off */}
+      <span style={{ color, fontWeight: 700, marginLeft: 'auto', whiteSpace: 'nowrap' }}>{value}</span>
     </div>
   )
 
@@ -265,25 +266,26 @@ export default function ChannelOverviewPage() {
       ) : cards.length === 0 ? (
         <div style={cardStyle}><p style={{ color: muted, margin: 0 }}>No orders in this date range.</p></div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px', marginTop: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px', marginTop: '20px' }}>
           {sortedCards.map((c) => (
             <div key={c.storeId} style={{ ...cardStyle, marginTop: 0 }}>
               {/* Every heading line is kept to one line (long names are cut short with "…") so the
                   rows below line up across cards */}
               <p style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: text, ...oneLine }} title={c.platform || c.storeName}>{c.platform || c.storeName}</p>
               <p style={{ ...cardTitle, margin: '2px 0 12px', ...oneLine }} title={c.storeName}>{c.platform ? c.storeName : ' '}</p>
-              <div style={{ display: 'flex', gap: '20px', margin: '0 0 4px' }}>
-                <div style={{ minWidth: 0 }}>
+              {/* Side by side when both fit, one under the other when they don't (six / seven figures) */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: '20px', rowGap: '8px', margin: '0 0 4px' }}>
+                <div>
                   <p style={{ fontSize: '11px', color: muted, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gross sales</p>
-                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, ...oneLine }}>{pounds(c.grossSalesPence)}</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}>{pounds(c.grossSalesPence)}</p>
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div>
                   <p style={{ fontSize: '11px', color: muted, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Net sales</p>
-                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, ...oneLine }}>{pounds(c.totalSalesPence)}</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}>{pounds(c.totalSalesPence)}</p>
                 </div>
               </div>
-              <p style={{ fontSize: '12px', color: dim, margin: '6px 0 14px', ...oneLine }}>
-                {c.orderCount} orders · {c.totalQty} units · {pounds(c.aovPence)} avg order
+              <p style={{ fontSize: '12px', color: dim, margin: '6px 0 14px' }}>
+                {c.orderCount.toLocaleString('en-GB')} orders · {c.totalQty.toLocaleString('en-GB')} units · {pounds(c.aovPence)} avg order
               </p>
               {row('Gross margin', percent(c.grossMarginPercent), marginColor(c.grossMarginPercent), true)}
               {row('Net margin', percent(c.netMarginPercent), marginColor(c.netMarginPercent))}
