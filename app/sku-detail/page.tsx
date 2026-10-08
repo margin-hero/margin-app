@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fetchAll } from '@/lib/fetchAll'
+import { fetchAll, fetchAllById } from '@/lib/fetchAll'
 import { loadStores, storeLabel } from '@/lib/stores'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { marginTier, red, green, muted, dim, text, lime, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
@@ -108,14 +108,12 @@ export default function SkuDetailPage() {
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
 
-    const { data: rows } = await fetchAll((from, to) =>
+    const { data: rows } = await fetchAllById('order_line_item_id', () =>
       supabase
         .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
-        .select('master_product_id, product_name, channel, store_id, platform_listing_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
+        .select('order_line_item_id, master_product_id, product_name, channel, store_id, platform_listing_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
-        .order('order_line_item_id')
-        .range(from, to)
     )
 
     const { data: products } = await fetchAll((from, to) =>

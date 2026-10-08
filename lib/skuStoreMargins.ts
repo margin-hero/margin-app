@@ -1,7 +1,7 @@
 import { ukDate } from './format'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { fetchAll } from './fetchAll'
+import { fetchAll, fetchAllById } from './fetchAll'
 import { loadOverheadSetup, allocateOverheads } from './overheads'
 import { loadAdSpend } from './adSpend'
 
@@ -40,12 +40,12 @@ export async function loadSkuStoreMargins(
   includeAds = false
 ): Promise<{ error: string } | SkuStoreMargins> {
   const [{ data, error }, { data: listings, error: listingsError }] = await Promise.all([
-    fetchAll((from, to) => {
+    fetchAllById('order_line_item_id', () => {
       let q = db
         .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
-        .select('master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence, line_type')
+        .select('order_line_item_id, master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence, line_type')
       if (range) q = q.gte('order_date', range.from).lte('order_date', range.to)
-      return q.order('order_line_item_id').range(from, to)
+      return q
     }),
     // Which products are listed in which stores, so "not listed" can be told apart from "listed, no sales"
     fetchAll((from, to) =>

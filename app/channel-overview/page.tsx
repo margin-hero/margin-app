@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fetchAll } from '@/lib/fetchAll'
+import { fetchAllById } from '@/lib/fetchAll'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { marginTier, red, green, amber, muted, dim, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle } from '@/lib/theme'
 import { pounds, percent } from '@/lib/format'
@@ -85,14 +85,12 @@ export default function ChannelOverviewPage() {
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
     // Sales plus refunds (negative rows, on their refund date), so the figures are net of refunds
-    const [{ data: rows }, overheadSetup, stores] = await Promise.all([fetchAll((from, to) =>
+    const [{ data: rows }, overheadSetup, stores] = await Promise.all([fetchAllById('order_line_item_id', () =>
       supabase
         .from('margin_lines')
         .select('order_line_item_id, channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
         .gte('order_date', dateFrom)
         .lte('order_date', dateTo)
-        .order('order_line_item_id')
-        .range(from, to)
     ), loadOverheadSetup(), loadStores()])
     const adsByStore = sumAdSpend(await loadAdSpend({ from: dateFrom, to: dateTo }), (l) => l.store_id)
 

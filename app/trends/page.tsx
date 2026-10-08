@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fetchAll } from '@/lib/fetchAll'
+import { fetchAllById } from '@/lib/fetchAll'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { pounds, ukMonth } from '@/lib/format'
 import {
@@ -32,12 +32,10 @@ export default function TrendsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: rows, error } = await fetchAll((from, to) =>
+      const { data: rows, error } = await fetchAllById('order_line_item_id', () =>
         supabase
           .from('margin_lines')
-          .select('product_name, order_date, revenue_pence, margin_pence, line_type') // sales and refunds
-          .order('order_line_item_id')
-          .range(from, to)
+          .select('order_line_item_id, product_name, order_date, revenue_pence, margin_pence, line_type') // sales and refunds
       )
 
       if (error) {
