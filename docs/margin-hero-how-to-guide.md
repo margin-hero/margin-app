@@ -27,7 +27,7 @@ Each set-up page ends with a **Next step** link to the following one.
 
 **Always check the preview before you confirm.** After you pick a file, Margin Hero shows you the first 20 orders it found. Nothing is saved until you click **Confirm Import**. When you confirm, *all* the orders in the file are imported, not just the 20 in the preview.
 
-**Refunds: Amazon only so far.** Amazon refunds are imported from the same settlement report as your sales (see the Amazon section). For every other channel, refunds are still skipped for now, so those margins show what you made on sales, before any refunds. Reimbursements (such as Amazon SAFE-T claims) aren't imported yet either.
+**Refunds: Amazon only so far.** Amazon refunds are imported from the same Transaction report as your sales (see the Amazon section). For every other channel, refunds are still skipped for now, so those margins show what you made on sales, before any refunds. Reimbursements (such as Amazon SAFE-T claims) aren't imported yet either.
 
 **How refunds count.** A refund is taken off in the period it happened (its refund date), not the period of the original sale. It takes off the refunded price, the change in fees, and any return postage you paid. The item is assumed to go back into stock, so its product cost comes back too. The dashboards show a **refund rate** (units refunded ÷ units sold) for each store on Channel Overview and for each product on SKU Detail. A high refund rate is the flag that a product has a problem.
 
@@ -117,7 +117,7 @@ Leave the last band's "to" quantity empty to mean "and above". The page warns yo
 **Store exceptions:** on a product's page (step 4, Shipping) you can use a different profile in one store, or choose **No shipping cost** for a store where you don't pay shipping (e.g. Amazon FBA).
 
 **What wins when more than one applies:**
-1. The real label cost, if the channel reports it (Amazon "Shipping label purchase").
+1. The real label cost, if the channel reports it (Amazon delivery labels).
 2. An exact-price shipping rule on the product, for that exact quantity (optional, for one-off exceptions).
 3. The product's shipping profile (a store exception first, then the all-stores profile).
 4. Nothing: the order shows £0 shipping and is flagged on the **Cost Check** page.
@@ -159,40 +159,45 @@ This is a management view to show your true margin. It isn't a replacement for y
 ## Amazon
 
 **Page:** Import → **Amazon**
-**File type:** the settlement report as Amazon gives it (tab-separated .txt), or saved as CSV or Excel (.xlsx). If you open it in Excel, check long numbers (such as SKUs with leading zeros) survive before saving.
+**File type:** the Transaction report as Amazon gives it (CSV). Excel (.xlsx) works too, but uploading the CSV untouched is safest.
 
 ### What you need
-Your **settlement report** from Amazon Seller Central, downloaded in the "flat file" format. In Seller Central this is usually under **Reports → Payments → All Statements**, where you can download each settlement period.
+Your **Transaction report** from Amazon Seller Central: go to **Reports → Payments → Reports Repository**, choose **Transaction** as the report type, pick your dates (any range, even years back, so it's the easy way to load your history) and download it. Not the settlement statements: those date sales about a week late, when Amazon releases the money.
 
 ### Steps
 1. Go to **Import → Amazon**.
-2. Click the file button and choose your settlement report CSV.
+2. Choose your store(s), then click the file button and choose the report.
 3. Wait a moment. Big reports can take a few seconds to read.
-4. Check the preview. You'll see each product sold, the date, quantity, sale price and Amazon's fees. The message above it also says how many refunds were found.
+4. Check the preview. You'll see each product sold, the date, quantity, sale price, postage charged, Amazon's fees, the label cost and who shipped it. The message above it says how many refunds were found and lists anything not imported yet.
 5. Click **Confirm Import**.
-6. Read the message at the end. It tells you how many orders and refunds were imported and how many were skipped because you'd already imported them. Settlement reports overlap, so uploading the same report twice is safe: nothing is counted twice.
+6. Read the message at the end. It tells you how many orders and refunds were imported and how many were skipped because you'd already imported them. Uploading overlapping dates is safe: nothing is counted twice.
 
 ### Amazon FBA
 Set up FBA as **its own store**, so you can compare FBA with orders you ship yourself, product by product:
 1. In **Manage → Stores**, add a store such as **Amazon UK FBA** on the Amazon platform, with **Fulfilled by the channel** ticked. Its orders then have no shipping cost of your own: Amazon's fulfilment fee is counted in its fees.
 2. Map your FBA SKUs to your products in that store (on the product's page, Store SKUs). An FBA SKU that's your SKU plus "FBA" (e.g. `LL-1-FBA`) is linked to `LL-1` automatically when you import.
 3. Add any FBA-only costs on the product's page with **Only Amazon UK FBA** chosen, e.g. prep, labelling, or inbound freight to Amazon's warehouse.
-4. On **Import → Amazon**, choose both stores ("Store (you ship)" and "FBA store (Amazon ships)") and upload the settlement as usual. Each order goes to the right store automatically; the preview shows who shipped each one.
+4. On **Import → Amazon**, choose both stores ("Store (you ship)" and "FBA store (Amazon ships)") and upload the report as usual. Each order goes to the right store automatically (Amazon's "fulfilment" column); the preview shows who shipped each one. **Seller Fulfilled Prime** orders are shipped by you, so they go to your own-shipping store.
 
-FBA storage fees and other account-level charges aren't imported yet; the import message lists them.
+FBA storage fees, reimbursements (including SAFE-T) and other account-level charges aren't imported yet; the import message lists them.
 
 ### What Margin Hero takes from the report
-- **Sale price:** what the customer paid for the item, including VAT.
-- **Fees:** all of Amazon's fees for that item (referral fee, FBA fees and so on).
-- **Shipping cost:** if you bought a shipping label through Amazon, Margin Hero uses what you actually paid. If not, it uses the shipping costs you've set up for that product.
-- **Refunds:** the refunded price and VAT, the fees Amazon gives back (e.g. Commission) less the refund fee it keeps (RefundCommission), and any return label you bought through Amazon ("Shipping label purchase for return").
+- **Date:** the report's date/time (when the order was processed, shown in UK time).
+- **Sale price:** what the customer paid for the item, including VAT ("product sales" + its tax).
+- **Postage charged:** "postage credits" + tax, less any delivery promotions ("promotional rebates").
+- **Fees:** "selling fees" (referral fee), "fba fees" (FBA fulfilment, delivery chargebacks) and "other transaction fees" (Digital Services Fee).
+- **Shipping cost:** if you bought a delivery label through Amazon, Margin Hero uses what you actually paid (all labels on the order, plus the carrier's adjustments in the same file). If not, it uses the shipping costs you've set up for that product.
+- **Refunds:** the refunded price and VAT (plus any goodwill payment), the fees Amazon gives back less the refund fee it keeps, and any return label you bought through Amazon ("ReturnPostageBilling").
+- **Never taken:** the buyer's town and postcode, which are in the report but aren't needed.
+- **Skipped on purpose:** "Cost of Advertising" (import ad spend on **Import → Amazon Ads** instead, so it isn't counted twice) and transfers to your bank.
 
 ### Good to know
-- Amazon splits one order into lots of rows (price, tax, each fee). Margin Hero adds these back together into one line for each item sold.
 - Margin Hero assumes Amazon's fees include 20% VAT.
-- A refund doesn't need its original sale to be imported first. It's matched to the product by SKU straight away, and links to the original sale automatically whenever that sale is imported (Amazon's "order-item-code" connects them).
-- Amazon doesn't say how many units were refunded, so Margin Hero works it out from the refunded amount compared with the original sale's price. A refund of less than half the item's price (for example a goodwill partial refund) counts as no units returned. If the original sale isn't imported yet, it counts 1 unit until it is.
+- **Multi-item orders:** delivery labels belong to the whole order, so the label cost is shared across the order's items by price. An order you combined into one parcel is charged one label, not one per item.
+- A refund doesn't need its original sale to be imported first. It's matched to the product by SKU straight away, and links to the original sale (by order number) whenever that sale is imported.
+- Amazon shows a quantity on every refund, even partial and goodwill ones, so Margin Hero works the units out from the refunded amount compared with the original sale's price instead. A refund of less than half the item's price counts as no units returned. If the original sale isn't imported yet, it counts 1 unit until it is.
 - A return label is matched to its refund by order number, so it needs to be in the same file as the refund. If it isn't, the import message warns you.
+- **Late label corrections:** carriers sometimes adjust or refund a label weeks after the sale. When that sale was in an earlier file, the correction can't be added to it yet; the import message shows the total.
 
 ### Amazon advertising (Sponsored Products)
 Margin Hero can take your Sponsored Products spend off each product's profit, so you see the margin **after ads**.

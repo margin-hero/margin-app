@@ -30,20 +30,23 @@ Update this file as each case is tested (date + what was checked).
 ### Amazon
 | Case | Status |
 |---|---|
-| Single-line sale (MFN) | ✅ 2026-10-04 |
+| **Switched to the Transaction report** (Reports Repository) 2026-10-08 | 🟡 built from the August 2026 test file (10,249 lines, 509 refunds). Figures reconciled with the settlement statements for the 7,482 orders in both. Check: import, then the margin figures on /order-lines |
+| Single-line sale (MFN) | ✅ 2026-10-04 (settlement report) |
 | **Do Amazon's fees include 20% UK VAT?** | ⬜ ASSUMED (1/6 reclaimed). Check a monthly Amazon fee invoice (VAT charged by Amazon UK, or reverse charge?) |
 | Shipping label purchase | ✅ 2026-10-04 (£5.83 inc VAT) |
 | Full refund + RefundCommission + return label | ✅ 2026-10-06 (LL-1, −£18.84 refund line) |
-| Multi-item order | 🟡 |
-| Quantity 2+ | 🟡 |
-| Partial refund | 🟡 |
-| **Promotions** ("Promotion" amount-type rows) | ⬜ currently ignored: a seller-funded discount would overstate revenue. Need an example |
-| **Shipping charged to the buyer** (ItemPrice "Shipping" / "ShippingTax") | ⬜ currently ignored. Need an example |
-| Gift wrap | ⬜ need an example |
+| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
+| Quantity 2+ | 🟡 in the August file (1,600+ lines). Check COGS × qty on /order-lines |
+| Partial refund | 🟡 in the August file: Amazon shows qty 1 even on partial refunds, so units come from the refunded price. Check one |
+| **Promotions** ("promotional rebates") | 🟡 547 in August, all free-delivery discounts: taken off postage charged (any excess off the item price). Item-price promotions untested |
+| **Shipping charged to the buyer** ("postage credits") | 🟡 now imported as shipping revenue (637 in August) |
+| Gift wrap | 🟡 one in August, added to the sale price |
 | FBA sale (routed to the FBA store, fulfilment fee, no shipping cost) | ✅ 2026-10-06 imported to the FBA store, LL-1-FBA auto-linked to LL-1 (£39.95, fees £11.53). Check the margin figures on /order-lines |
 | FBA storage / account-level fees | ⬜ need example rows |
 | Store-specific cost (e.g. FBA prep) | 🟡 |
-| SAFE-T reimbursement | ⬜ |
+| SAFE-T reimbursement | ⬜ listed in the status, not imported |
+| **Late label corrections** (carrier adjustments / refunded labels for sales in an earlier file) | ⬜ can't update imported lines yet: about £1,500 back in August, totalled in the status |
+| Goodwill refund ("other" on a refund) | 🟡 added to the refund, no VAT |
 | **Sponsored Products ad spend** (/amazon-ads-import) | 🟡 built 2026-10-07 from LL-1 / LL-1-FBA / RR87-1m example reports. Check: import, held-back SKUs, re-upload replaces, After ads figures |
 | **Do Amazon Ads charge 20% UK VAT on spend?** | ⬜ ASSUMED. Check an Amazon Ads invoice |
 | Sponsored Brands / Display (not tied to one SKU) | ⬜ not built |
@@ -61,7 +64,7 @@ Update this file as each case is tested (date + what was checked).
 | Affiliate commission | 🟡 split out as `affiliate` |
 | Refund on the same row (netted into Net sales) | 🟡 |
 | Refund-only row (refund after the sale) | ⬜ currently skipped. Need an example |
-| Multi-item order | 🟡 |
+| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
 | Multi-store (two TikTok shops, SKU ID catalog per store) | 🟡 |
 
 ### Mirakl (B&Q, The Range, Debenhams, Tesco, Argos)
@@ -71,7 +74,7 @@ Update this file as each case is tested (date + what was checked).
 | Argos single-line sale | 🟡 waiting on your shipping + VAT check |
 | Order-level seller fees shared across lines (The Range) | 🟡 |
 | Shipping charges + shipping tax | 🟡 |
-| Multi-item order | 🟡 |
+| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
 | Refund ("Order amount refund", "Commission refund"...) | ⬜ currently skipped. Need an example |
 | Tesco single-line sale | ✅ 2026-10-06 (MPS-3: no tax rows, so Order amount is gross and VAT comes from the product; commission 15% of the gross price) |
 
@@ -80,7 +83,7 @@ Update this file as each case is tested (date + what was checked).
 |---|---|
 | Single-line sale | ✅ 2026-10-03 |
 | Boost fee split out as advertising | 🟡 need a row with Boost |
-| Multi-item order | 🟡 |
+| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
 | Deemed Supplier TAX filled (OnBuy collects VAT) | 🟡 |
 | Refund | ⬜ currently skipped. Need an example |
 
@@ -115,7 +118,7 @@ Update this file as each case is tested (date + what was checked).
 | Seller discount / platform discount | ⬜ need an example (platform discount isn't used yet) |
 | Platform incentive (+ shipping, tax), Others | ⬜ need an example (flagged, not used yet) |
 | Shipping charged to the buyer | 🟡 |
-| Multi-item order | 🟡 |
+| Multi-item order | 🟡 129 in the August file: label shared across lines by price (72 combined into one parcel). Check one on /order-lines |
 | Refund | ⬜ need an example |
 
 ### CSV / Excel upload (any other channel)

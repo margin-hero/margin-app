@@ -335,6 +335,72 @@ function completeFeeBreakdown(order: { feesGrossPence: number; feesVatPence: num
   return lines
 }
 
+// A summary shown as a headline plus short grouped lists (components/ImportSummary.tsx).
+// tone: 'ok' = all good, 'warn' = something needs your attention, 'error' = it failed.
+export type ImportSummaryData = {
+  headline: string
+  tone: 'ok' | 'warn' | 'error'
+  sections: { title: string; items: string[]; tone?: 'warn' }[]
+}
+
+const count = (n: number) => n.toLocaleString('en-GB')
+
+// The same result as describeImportResult, as grouped lists (used by the Amazon page so far)
+export function importResultSummary(result: ImportResult, store: Store): ImportSummaryData {
+  if (result.errors.length > 0) {
+    return {
+      headline: `${store.name}: the import stopped with an error`,
+      tone: 'error',
+      sections: [{ title: 'Errors', items: result.errors.slice(0, 5).concat(result.errors.length > 5 ? [`and ${result.errors.length - 5} more`] : []) }],
+    }
+  }
+  const heldBack = result.skippedNoSku.length + result.refundsSkippedNoSku
+  const sections: ImportSummaryData['sections'] = [
+    {
+      title: 'Imported',
+      items: [
+        `${count(result.imported)} new order lines`,
+        result.refundsImported ? `${count(result.refundsImported)} new refunds` : '',
+      ],
+    },
+    {
+      title: 'Already imported (skipped, so nothing is counted twice)',
+      items: [
+        result.skippedDuplicates ? `${count(result.skippedDuplicates)} order lines` : '',
+        result.refundsSkippedDuplicates ? `${count(result.refundsSkippedDuplicates)} refunds` : '',
+      ],
+    },
+    {
+      title: 'Held back',
+      tone: 'warn',
+      items: heldBack
+        ? [
+            result.skippedNoSku.length
+              ? `${count(result.skippedNoSku.length)} order lines, because ${count(result.unmappedSkus.length)} SKUs aren't set up in this store: ${result.unmappedSkus.slice(0, 20).join(', ')}${result.unmappedSkus.length > 20 ? ` and ${result.unmappedSkus.length - 20} more` : ''}`
+              : '',
+            result.refundsSkippedNoSku ? `${count(result.refundsSkippedNoSku)} refunds whose SKU isn't set up in this store` : '',
+            'Add them on Store SKUs (or Catalog Import), then upload the same file again. Already-imported orders won\'t be duplicated.',
+          ]
+        : [],
+    },
+    {
+      title: 'Linked automatically',
+      items: result.autoLinked.length
+        ? [`${count(result.autoLinked.length)} SKUs matched products with the same SKU (or the same SKU plus "FBA"): ${result.autoLinked.slice(0, 10).join(', ')}${result.autoLinked.length > 10 ? '...' : ''}`]
+        : [],
+    },
+    {
+      title: 'New products',
+      items: result.createdProducts.length ? [`${count(result.createdProducts.length)} created: add their costs on Products`] : [],
+    },
+  ]
+  return {
+    headline: `${store.name}: ${count(result.imported)} new order lines${result.refundsImported ? ` and ${count(result.refundsImported)} refunds` : ''} imported`,
+    tone: heldBack ? 'warn' : 'ok',
+    sections: sections.map((s) => ({ ...s, items: s.items.filter(Boolean) })).filter((s) => s.items.length > 0),
+  }
+}
+
 // One consistent summary message for every import page.
 export function describeImportResult(result: ImportResult, store: Store): string {
   if (result.errors.length > 0) {

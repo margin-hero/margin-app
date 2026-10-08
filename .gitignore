@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Real channel reports used for testing (contain buyer locations and business figures)
+/Test Files - Imports/
