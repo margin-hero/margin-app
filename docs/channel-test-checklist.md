@@ -45,7 +45,7 @@ Update this file as each case is tested (date + what was checked).
 | FBA storage / account-level fees | ⬜ need example rows |
 | Store-specific cost (e.g. FBA prep) | 🟡 |
 | SAFE-T reimbursement | ⬜ listed in the status, not imported |
-| **Late label corrections** (carrier adjustments / refunded labels for sales in an earlier file) | ⬜ can't update imported lines yet: about £1,500 back in August, totalled in the status |
+| **Late label corrections** (carrier adjustments / refunded labels for sales in an earlier file) | 🟡 built 2026-10-08: every label row saved in `shipping_label_charges`, added to the original sale. Check: re-upload August (labels saved, nothing doubled), then import July and see its corrections apply |
 | Goodwill refund ("other" on a refund) | 🟡 added to the refund, no VAT |
 | **Sponsored Products ad spend** (/amazon-ads-import) | 🟡 built 2026-10-07 from LL-1 / LL-1-FBA / RR87-1m example reports. Check: import, held-back SKUs, re-upload replaces, After ads figures |
 | **Do Amazon Ads charge 20% UK VAT on spend?** | ⬜ ASSUMED. Check an Amazon Ads invoice |

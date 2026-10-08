@@ -335,6 +335,47 @@ function completeFeeBreakdown(order: { feesGrossPence: number; feesVatPence: num
   return lines
 }
 
+// A delivery label transaction bought through the channel, for one order (Amazon so far).
+// Saved separately from the order lines, so a carrier's later adjustment or refunded label
+// still counts when its sale was imported from an earlier file. order_margins adds up an
+// order's labels (once its purchase is in) and shares them across the order's lines.
+export type NormalizedLabelCharge = {
+  orderRef: string // the channel's order ID, matching the order lines' externalId
+  chargeDate: string // 'YYYY-MM-DD'
+  kind: 'label' | 'adjustment' | 'refund'
+  description: string
+  amountPence: number // inc. VAT; negative = money back
+  sourceKey: string // unique per transaction, so re-uploads are skipped
+}
+
+// Saves label charges for the store that ships the orders; ones already saved are skipped
+export async function importShippingLabelCharges(
+  store: Store,
+  charges: NormalizedLabelCharge[],
+  onProgress?: (message: string) => void
+): Promise<{ added: number; skipped: number; error: string | null }> {
+  let added = 0
+  for (let i = 0; i < charges.length; i += 500) {
+    onProgress?.(`Saving delivery labels (${count(i)} of ${count(charges.length)})...`)
+    const rows = charges.slice(i, i + 500).map((c) => ({
+      store_id: store.id,
+      order_ref: c.orderRef,
+      charge_date: c.chargeDate,
+      kind: c.kind,
+      description: c.description,
+      amount_pence: c.amountPence,
+      source_key: c.sourceKey,
+    }))
+    const { data, error } = await supabase
+      .from('shipping_label_charges')
+      .upsert(rows, { onConflict: 'store_id,source_key', ignoreDuplicates: true })
+      .select('id')
+    if (error) return { added, skipped: i - added, error: error.message }
+    added += data?.length ?? 0
+  }
+  return { added, skipped: charges.length - added, error: null }
+}
+
 // A summary shown as a headline plus short grouped lists (components/ImportSummary.tsx).
 // tone: 'ok' = all good, 'warn' = something needs your attention, 'error' = it failed.
 export type ImportSummaryData = {
@@ -345,7 +386,7 @@ export type ImportSummaryData = {
 
 const count = (n: number) => n.toLocaleString('en-GB')
 
-// The same result as describeImportResult, as grouped lists (used by the Amazon page so far)
+// The result of an import, as grouped lists: one consistent message for every import page
 export function importResultSummary(result: ImportResult, store: Store): ImportSummaryData {
   if (result.errors.length > 0) {
     return {
@@ -399,36 +440,4 @@ export function importResultSummary(result: ImportResult, store: Store): ImportS
     tone: heldBack ? 'warn' : 'ok',
     sections: sections.map((s) => ({ ...s, items: s.items.filter(Boolean) })).filter((s) => s.items.length > 0),
   }
-}
-
-// One consistent summary message for every import page.
-export function describeImportResult(result: ImportResult, store: Store): string {
-  if (result.errors.length > 0) {
-    return `Errors: ${result.errors.slice(0, 3).join(' | ')}${result.errors.length > 3 ? '...' : ''}`
-  }
-  const parts = [
-    `Done. Imported ${result.imported} new order lines into ${store.name}.`,
-    `Skipped ${result.skippedDuplicates} already-imported.`,
-  ]
-  if (result.autoLinked.length) {
-    parts.push(`Linked ${result.autoLinked.length} SKU(s) to existing products with the same SKU (or the same SKU plus "FBA"): ${result.autoLinked.slice(0, 10).join(', ')}.`)
-  }
-  if (result.createdProducts.length) {
-    parts.push(`Created ${result.createdProducts.length} new product(s) — add their costs in Products.`)
-  }
-  if (result.refundsImported || result.refundsSkippedDuplicates) {
-    parts.push(`Imported ${result.refundsImported} new refund(s); skipped ${result.refundsSkippedDuplicates} already-imported.`)
-  }
-  if (result.refundsSkippedNoSku) {
-    parts.push(`HELD BACK ${result.refundsSkippedNoSku} refund(s) whose SKU isn't mapped in this store (map it, then upload again).`)
-  }
-  if (result.unmappedSkus.length) {
-    const shown = result.unmappedSkus.slice(0, 20).join(', ')
-    const more = result.unmappedSkus.length > 20 ? ` and ${result.unmappedSkus.length - 20} more` : ''
-    parts.push(
-      `HELD BACK ${result.skippedNoSku.length} order line(s) because ${result.unmappedSkus.length} SKU(s) aren't mapped in this store: ${shown}${more}. ` +
-      `Map them (Catalog Import or Mappings), then upload the same file again — already-imported orders won't be duplicated.`
-    )
-  }
-  return parts.join(' ')
 }

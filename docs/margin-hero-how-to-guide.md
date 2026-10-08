@@ -186,7 +186,7 @@ FBA storage fees, reimbursements (including SAFE-T) and other account-level char
 - **Sale price:** what the customer paid for the item, including VAT ("product sales" + its tax).
 - **Postage charged:** "postage credits" + tax, less any delivery promotions ("promotional rebates").
 - **Fees:** "selling fees" (referral fee), "fba fees" (FBA fulfilment, delivery chargebacks) and "other transaction fees" (Digital Services Fee).
-- **Shipping cost:** if you bought a delivery label through Amazon, Margin Hero uses what you actually paid (all labels on the order, plus the carrier's adjustments in the same file). If not, it uses the shipping costs you've set up for that product.
+- **Shipping cost:** if you bought a delivery label through Amazon, Margin Hero uses what you actually paid: all labels on the order, plus any later carrier adjustments or refunded labels. If not, it uses the shipping costs you've set up for that product.
 - **Refunds:** the refunded price and VAT (plus any goodwill payment), the fees Amazon gives back less the refund fee it keeps, and any return label you bought through Amazon ("ReturnPostageBilling").
 - **Never taken:** the buyer's town and postcode, which are in the report but aren't needed.
 - **Skipped on purpose:** "Cost of Advertising" (import ad spend on **Import → Amazon Ads** instead, so it isn't counted twice) and transfers to your bank.
@@ -197,7 +197,7 @@ FBA storage fees, reimbursements (including SAFE-T) and other account-level char
 - A refund doesn't need its original sale to be imported first. It's matched to the product by SKU straight away, and links to the original sale (by order number) whenever that sale is imported.
 - Amazon shows a quantity on every refund, even partial and goodwill ones, so Margin Hero works the units out from the refunded amount compared with the original sale's price instead. A refund of less than half the item's price counts as no units returned. If the original sale isn't imported yet, it counts 1 unit until it is.
 - A return label is matched to its refund by order number, so it needs to be in the same file as the refund. If it isn't, the import message warns you.
-- **Late label corrections:** carriers sometimes adjust or refund a label weeks after the sale. When that sale was in an earlier file, the correction can't be added to it yet; the import message shows the total.
+- **Late label corrections:** carriers sometimes adjust or refund a label weeks after the sale, so the correction is in a later report. Margin Hero keeps every label charge and adds the correction to the original sale automatically, whichever file you import first. That sale's margin then updates, so a past month's shipping cost can change slightly after a later import.
 
 ### Amazon advertising (Sponsored Products)
 Margin Hero can take your Sponsored Products spend off each product's profit, so you see the margin **after ads**.

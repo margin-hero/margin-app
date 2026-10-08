@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
-import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, importResultSummary, NormalizedOrder } from '@/lib/importEngine'
+import ConfirmImport from '@/components/ConfirmImport'
 import { Store } from '@/lib/stores'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
-import { lime, red, muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton } from '@/lib/theme'
+import { lime, red, muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle } from '@/lib/theme'
 
 type ParsedRow = {
   external_id: string
@@ -69,18 +70,16 @@ export default function UploadPage() {
     )
   }
 
-  async function handleImport() {
+  async function handleImport(progress: (message: string) => void) {
     if (!store) {
-      setStatus('Please choose which store this file is from first.')
-      return
+      return 'Please choose which store this file is from first.'
     }
     if (orders.length === 0) {
-      setStatus('No valid rows to import.')
-      return
+      return 'No valid rows to import.'
     }
 
-    const result = await importOrdersForStore(store, orders, setStatus, { createUnknownSkus })
-    setStatus(describeImportResult(result, store))
+    const result = await importOrdersForStore(store, orders, progress, { createUnknownSkus })
+    return [importResultSummary(result, store)]
   }
 
   return (
@@ -121,9 +120,7 @@ export default function UploadPage() {
               </tbody>
             </table>
           </div>
-          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm import
-          </button>
+          <ConfirmImport label="Confirm import" run={handleImport} resetOn={orders} />
         </div>
       )}
     </div>

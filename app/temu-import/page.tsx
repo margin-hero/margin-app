@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, importResultSummary, NormalizedOrder } from '@/lib/importEngine'
+import ConfirmImport from '@/components/ConfirmImport'
 import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
 import { supabase } from '@/lib/supabase'
 import { fetchAll } from '@/lib/fetchAll'
@@ -10,7 +11,7 @@ import { FeeLine, addFee } from '@/lib/fees'
 import { pounds, ukDate } from '@/lib/format'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
-import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, statusColor } from '@/lib/theme'
 
 const toPence = (value: string | undefined) => Math.round((parseFloat(value || '') || 0) * 100)
 
@@ -135,17 +136,15 @@ export default function TemuImportPage() {
     )
   }
 
-  async function handleImport() {
+  async function handleImport(progress: (message: string) => void) {
     if (allOrders.length === 0) {
-      setStatus('Nothing to import yet: please choose a file first.')
-      return
+      return 'Nothing to import yet: please choose a file first.'
     }
     if (!store) {
-      setStatus('Please select which store this report is from first.')
-      return
+      return 'Please select which store this report is from first.'
     }
-    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus })
-    setStatus(describeImportResult(result, store))
+    const result = await importOrdersForStore(store, allOrders, progress, { createUnknownSkus })
+    return [importResultSummary(result, store)]
   }
 
   return (
@@ -203,9 +202,7 @@ export default function TemuImportPage() {
               </tbody>
             </table>
           </div>
-          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm import (every order line in the file, not just the ones shown)
-          </button>
+          <ConfirmImport run={handleImport} resetOn={allOrders} />
         </div>
       )}
     </div>

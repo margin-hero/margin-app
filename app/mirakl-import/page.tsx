@@ -3,12 +3,13 @@
 import { ukDate } from '@/lib/format'
 import { useState } from 'react'
 import * as XLSX from 'xlsx'
-import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, importResultSummary, NormalizedOrder } from '@/lib/importEngine'
+import ConfirmImport from '@/components/ConfirmImport'
 import { Store } from '@/lib/stores'
 import { FeeLine, FeeType, addFee, feeTotals } from '@/lib/fees'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
-import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, statusColor } from '@/lib/theme'
 
 function parseMiraklDate(dateStr: string): string {
   // "09/07/2026 - 21:45:52" -> "2026-07-09"
@@ -180,17 +181,15 @@ export default function MiraklImportPage() {
     reader.readAsBinaryString(file)
   }
 
-  async function handleImport() {
+  async function handleImport(progress: (message: string) => void) {
     if (allOrders.length === 0) {
-      setStatus('Nothing to import yet: please choose a file first.')
-      return
+      return 'Nothing to import yet: please choose a file first.'
     }
     if (!store) {
-      setStatus('Please select which store this export is from first.')
-      return
+      return 'Please select which store this export is from first.'
     }
-    const result = await importOrdersForStore(store, allOrders, setStatus, { createUnknownSkus })
-    setStatus(describeImportResult(result, store))
+    const result = await importOrdersForStore(store, allOrders, progress, { createUnknownSkus })
+    return [importResultSummary(result, store)]
   }
 
   return (
@@ -239,9 +238,7 @@ export default function MiraklImportPage() {
             </tbody>
           </table>
           </div>
-          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm import (every order line in the file, not just the ones shown)
-          </button>
+          <ConfirmImport run={handleImport} resetOn={allOrders} />
         </div>
       )}
     </div>

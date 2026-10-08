@@ -3,13 +3,17 @@
 import { pounds, ukDate } from '@/lib/format'
 import { useState } from 'react'
 import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
-import { importOrdersForStore, importResultSummary, ImportSummaryData, NormalizedOrder, NormalizedRefund } from '@/lib/importEngine'
+import {
+  importOrdersForStore, importResultSummary, importShippingLabelCharges,
+  ImportSummaryData, NormalizedOrder, NormalizedRefund, NormalizedLabelCharge,
+} from '@/lib/importEngine'
 import { Store } from '@/lib/stores'
 import { FeeLine, addFee, feeTotals, shareVat } from '@/lib/fees'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
 import ImportSummary from '@/components/ImportSummary'
-import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
+import ConfirmImport from '@/components/ConfirmImport'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, statusColor } from '@/lib/theme'
 
 // Amazon's transaction report (Reports Repository → Date Range Reports → Transaction):
 // one row per order line, refund or account-level transaction, with the money already in
@@ -89,12 +93,10 @@ const n = (count: number) => count.toLocaleString('en-GB')
 export default function AmazonImportPage() {
   const [status, setStatus] = useState<string>('')
   const [summary, setSummary] = useState<ImportSummaryData | null>(null) // what's in the file, shown before import
-  const [importing, setImporting] = useState(false) // locks the button so an import can't run twice at once
-  const [importStatus, setImportStatus] = useState('') // progress / problems, shown by the button
-  const [results, setResults] = useState<ImportSummaryData[]>([]) // one per store, shown by the button
   const [preview, setPreview] = useState<AmazonOrder[]>([])
   const [allOrders, setAllOrders] = useState<AmazonOrder[]>([])
   const [allRefunds, setAllRefunds] = useState<AmazonRefund[]>([])
+  const [allLabels, setAllLabels] = useState<NormalizedLabelCharge[]>([])
   const [store, setStore] = useState<Store | null>(null) // fulfilled by you (incl. Seller Fulfilled Prime)
   const [fbaStore, setFbaStore] = useState<Store | null>(null) // fulfilled by Amazon (FBA)
   const [createUnknownSkus, setCreateUnknownSkus] = useState(false)
@@ -104,8 +106,6 @@ export default function AmazonImportPage() {
     if (!file) return
 
     setSummary(null)
-    setResults([])
-    setImportStatus('')
     setStatus('Reading file, this may take a moment for large files...')
 
     let data: AmazonRow[]
@@ -184,16 +184,33 @@ export default function AmazonImportPage() {
       if (!linesByOrderId.has(o.orderId)) linesByOrderId.set(o.orderId, [])
       linesByOrderId.get(o.orderId)!.push(o)
     }
+    // Every label row is also saved as its own record (shipping_label_charges): the carrier's
+    // adjustments and refunded labels can come weeks after the sale, in a later report, and the
+    // margins add them to the sale whenever both are in. Identical rows (same order, time,
+    // description and amount) are numbered, so each one is saved once however often it's uploaded.
+    const labelCharges: NormalizedLabelCharge[] = []
+    const seenLabelRows = new Map<string, number>()
     const labelsByOrderId = new Map<string, number>()
     const purchasedLabel = new Set<string>()
     for (const row of data) {
       if (!isOutboundLabel(row) || !row['order id']) continue
-      labelsByOrderId.set(row['order id'], (labelsByOrderId.get(row['order id']) || 0) - pence(row, 'total'))
+      const amountPence = -pence(row, 'total') // the file shows a cost as negative
+      labelsByOrderId.set(row['order id'], (labelsByOrderId.get(row['order id']) || 0) + amountPence)
       if (/purchased/i.test(row.description)) purchasedLabel.add(row['order id'])
+      const rowKey = `amazon|${row['order id']}|${row['date/time']}|${row.description}|${row.total}`
+      const seen = (seenLabelRows.get(rowKey) || 0) + 1
+      seenLabelRows.set(rowKey, seen)
+      labelCharges.push({
+        orderRef: row['order id'],
+        chargeDate: amazonDate(row['date/time']),
+        kind: /purchased/i.test(row.description) ? 'label' : /refunded/i.test(row.description) ? 'refund' : 'adjustment',
+        description: row.description,
+        amountPence,
+        sourceKey: `${rowKey}|${seen}`,
+      })
     }
-    // Labels are bought on the day of the sale, but carrier adjustments and label refunds can
-    // come weeks later, for sales in an earlier file. Those can't be added to an imported sale
-    // yet, so they're totalled in the status (and an adjustment alone never replaces a profile).
+    // In-file share of each order's labels, for the preview (the margins work it out the same
+    // way from the saved records). Corrections with no purchase in the file are for earlier sales.
     let unmatchedLabels = 0
     let laterCorrections = 0
     let laterCorrectionsPence = 0
@@ -300,6 +317,7 @@ export default function AmazonImportPage() {
     if (badDates > 0) {
       setAllOrders([])
       setAllRefunds([])
+      setAllLabels([])
       setPreview([])
       setStatus(`Error: ${badDates} line(s) have a date/time that couldn't be read. Expected Amazon's format, like 31 Aug 2026 10:12:13 UTC.`)
       return
@@ -307,6 +325,7 @@ export default function AmazonImportPage() {
 
     setAllOrders(normalized)
     setAllRefunds(refunds)
+    setAllLabels(labelCharges)
     setPreview(normalized.slice(0, 20))
     const fbaLines = normalized.filter((o) => o.fba).length + refunds.filter((r) => r.fba).length
     const labelled = normalized.filter((o) => o.actualShippingCostPence !== null).length
@@ -330,9 +349,9 @@ export default function AmazonImportPage() {
         title: 'Good to know',
         items: [
           laterCorrections
-            ? `Carrier adjustments / refunded labels on ${n(laterCorrections)} orders from before these dates aren't counted yet (${laterCorrectionsPence < 0 ? `${pounds(-laterCorrectionsPence)} back to you` : `${pounds(laterCorrectionsPence)} extra`})`
+            ? `Carrier adjustments / refunded labels on ${n(laterCorrections)} orders sold before these dates (${laterCorrectionsPence < 0 ? `${pounds(-laterCorrectionsPence)} back to you` : `${pounds(laterCorrectionsPence)} extra`}): saved, and added to those sales automatically once their dates are imported`
             : '',
-          unmatchedLabels ? `${n(unmatchedLabels)} delivery labels are for sales outside these dates, so they aren't counted` : '',
+          unmatchedLabels ? `${n(unmatchedLabels)} delivery labels are for sales outside these dates: saved, and counted once those dates are imported` : '',
           unmatchedReturnLabels ? `${n(unmatchedReturnLabels)} return labels are for refunds outside these dates, so they aren't counted` : '',
         ],
       },
@@ -345,46 +364,51 @@ export default function AmazonImportPage() {
     setStatus('')
   }
 
-  // Progress and results are shown by the button (where you are when you click it), and the
-  // button is locked while it runs: a second click mid-import could save the same orders twice.
-  async function handleImport() {
-    if (importing) return
+  // Progress and results are shown by the Confirm button (components/ConfirmImport.tsx)
+  async function handleImport(progress: (message: string) => void) {
     if (allOrders.length === 0 && allRefunds.length === 0) {
-      setImportStatus('Nothing to import yet: please choose a file first.')
-      return
+      return 'Nothing to import yet: please choose a file first.'
     }
-    const hasOwn = allOrders.some((o) => !o.fba) || allRefunds.some((r) => !r.fba)
+    // Delivery labels are for orders you ship, so they need that store too
+    const hasOwn = allOrders.some((o) => !o.fba) || allRefunds.some((r) => !r.fba) || allLabels.length > 0
     const hasFba = allOrders.some((o) => o.fba) || allRefunds.some((r) => r.fba)
     if (hasOwn && !store) {
-      setImportStatus('Missing store: choose your Amazon store (you ship) at the top of the page first.')
-      return
+      return 'Missing store: choose your Amazon store (you ship) at the top of the page first.'
     }
     if (hasFba && !fbaStore) {
-      setImportStatus(
+      return (
         'Missing FBA store: this file has orders fulfilled by Amazon (FBA). Choose your FBA store at the top of the page, or add one on the Stores page ' +
         '(e.g. "Amazon UK FBA", with "Fulfilled by the channel" ticked), then try again.'
       )
-      return
     }
 
-    setImporting(true)
-    setResults([])
+    setSummary(null)
     const done: ImportSummaryData[] = []
-    try {
-      for (const [target, fba] of [[store, false], [fbaStore, true]] as const) {
-        const orders = allOrders.filter((o) => o.fba === fba)
-        const refunds = allRefunds.filter((r) => r.fba === fba)
-        if (!target || (orders.length === 0 && refunds.length === 0)) continue
-        const result = await importOrdersForStore(target, orders, (msg) => setImportStatus(`${target.name}: ${msg}`), { createUnknownSkus, refunds })
-        done.push(importResultSummary(result, target))
-        setResults([...done])
+    for (const [target, fba] of [[store, false], [fbaStore, true]] as const) {
+      // The label cost isn't saved on the line: it comes from the saved label records instead
+      const orders = allOrders.filter((o) => o.fba === fba).map((o) => ({ ...o, actualShippingCostPence: null }))
+      const refunds = allRefunds.filter((r) => r.fba === fba)
+      const labels = fba ? [] : allLabels
+      if (!target || (orders.length === 0 && refunds.length === 0 && labels.length === 0)) continue
+      const onProgress = (msg: string) => progress(`${target.name}: ${msg}`)
+      const result = await importOrdersForStore(target, orders, onProgress, { createUnknownSkus, refunds })
+      const summary = importResultSummary(result, target)
+      if (labels.length > 0) {
+        const saved = await importShippingLabelCharges(target, labels, onProgress)
+        summary.sections.push({
+          title: 'Delivery labels',
+          tone: saved.error ? 'warn' : undefined,
+          items: [
+            `${n(saved.added)} new label charges saved (purchases, carrier adjustments and refunded labels)`,
+            saved.skipped && !saved.error ? `${n(saved.skipped)} already saved, so not counted twice` : '',
+            saved.error ? `Saving labels stopped: ${saved.error}. Upload the same file again to finish: nothing is counted twice.` : '',
+          ].filter(Boolean),
+        })
+        if (saved.error && summary.tone === 'ok') summary.tone = 'warn'
       }
-      setImportStatus('')
-    } catch (err) {
-      setImportStatus(`Error: the import stopped: ${err instanceof Error ? err.message : String(err)}. Uploading the same file again is safe: already-imported orders are skipped.`)
-    } finally {
-      setImporting(false)
+      done.push(summary)
     }
+    return done
   }
 
   return (
@@ -477,19 +501,11 @@ export default function AmazonImportPage() {
               </p>
             </>
           )}
-          <button
-            onClick={handleImport}
-            disabled={importing}
-            style={{ ...primaryButton, marginTop: '18px', ...(importing ? { opacity: 0.6, cursor: 'wait' } : {}) }}
-          >
-            {importing ? 'Importing, please wait...' : 'Confirm import (every order line and refund in the file, not just the ones shown)'}
-          </button>
-          {importStatus && (
-            <p style={{ color: importing ? muted : statusColor(importStatus), fontSize: '14px', fontWeight: 600, margin: '14px 0 0', lineHeight: 1.5 }}>
-              {importStatus}
-            </p>
-          )}
-          {results.map((r) => <ImportSummary key={r.headline} summary={r} />)}
+          <ConfirmImport
+            label="Confirm import (every order line and refund in the file, not just the ones shown)"
+            run={handleImport}
+            resetOn={allOrders}
+          />
         </div>
       )}
     </div>

@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { importOrdersForStore, describeImportResult, NormalizedOrder } from '@/lib/importEngine'
+import { importOrdersForStore, importResultSummary, NormalizedOrder } from '@/lib/importEngine'
+import ConfirmImport from '@/components/ConfirmImport'
 import { readSpreadsheet, toIsoDate } from '@/lib/readSpreadsheet'
 import { Store } from '@/lib/stores'
 import { pounds, ukDate } from '@/lib/format'
 import StorePicker from '@/components/StorePicker'
 import CreateProductsToggle from '@/components/CreateProductsToggle'
-import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, primaryButton, statusColor } from '@/lib/theme'
+import { muted, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, thStyle, tdStyle, statusColor } from '@/lib/theme'
 
 type Row = Record<string, string>
 type Parsed = NormalizedOrder & { shopifyTotalPence: number; orderTotalOk: boolean }
@@ -190,17 +191,15 @@ export default function ShopifyImportPage() {
       ' Review below, then confirm.'
   }
 
-  async function handleImport() {
+  async function handleImport(progress: (message: string) => void) {
     if (!result || result.parsed.length === 0) {
-      setImportStatus('Nothing to import yet: please choose the orders file first.')
-      return
+      return 'Nothing to import yet: please choose the orders file first.'
     }
     if (!store) {
-      setImportStatus('Please select which store this export is from first.')
-      return
+      return 'Please select which store this export is from first.'
     }
-    const outcome = await importOrdersForStore(store, result.parsed, setImportStatus, { createUnknownSkus })
-    setImportStatus(describeImportResult(outcome, store))
+    const outcome = await importOrdersForStore(store, result.parsed, progress, { createUnknownSkus })
+    return [importResultSummary(outcome, store)]
   }
 
   const fileInput = { color: muted, fontSize: '14px', marginTop: '8px', display: 'block' }
@@ -266,9 +265,7 @@ export default function ShopifyImportPage() {
               </tbody>
             </table>
           </div>
-          <button onClick={handleImport} style={{ ...primaryButton, marginTop: '18px' }}>
-            Confirm import (every order line in the file, not just the ones shown)
-          </button>
+          <ConfirmImport run={handleImport} resetOn={result} />
         </div>
       )}
     </div>
