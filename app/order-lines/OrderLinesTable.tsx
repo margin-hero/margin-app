@@ -1,14 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { pounds, ukDate } from '@/lib/format'
-import { muted, red, thStyle, tdStyle, primaryButton, linkButton, statusColor, marginTier, MarginRanges } from '@/lib/theme'
+import { lime, muted, red, thStyle, tdStyle, primaryButton, linkButton, statusColor, marginTier, MarginRanges } from '@/lib/theme'
 
 export type OrderLine = {
   id: string
   isRefund: boolean // refund rows are negative and live in order_refunds
+  orderRef: string // the channel's order number (a refund's: its sale's)
   date: string
   channel: string // platform, e.g. OnBuy
   store: string
@@ -21,6 +23,7 @@ export type OrderLine = {
   productCostPence: number
   feesPence: number
   shippingPence: number
+  shippingSource: string | null // label / rule / profile / none / missing (sales only)
   otherCostPence: number
   netProfitPence: number
   marginPercent: number | null
@@ -82,7 +85,7 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
     <>
       <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', margin: '0 0 12px' }}>
         <span style={{ fontSize: '13px', color: muted }}>
-          {lines.length.toLocaleString('en-GB')} order lines{selected.size > 0 ? ` · ${selected.size} selected` : ''}
+          {selected.size > 0 ? `${selected.size} selected` : 'Tick lines to delete test orders'}
         </span>
         {selected.size > 0 && (
           <>
@@ -95,13 +98,14 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
         {status && <span style={{ fontSize: '13px', fontWeight: 600, color: statusColor(status) }}>{status}</span>}
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '1300px' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '1500px' }}>
           <thead>
             <tr>
               <th style={thStyle}>
                 <input type="checkbox" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(lines.map((l) => l.id)))} aria-label="Select all" />
               </th>
               <th style={thStyle}>Date</th>
+              <th style={thStyle}>Order</th>
               <th style={thStyle}>Channel</th>
               <th style={thStyle}>Store</th>
               <th style={thStyle}>SKU</th>
@@ -113,6 +117,7 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
               <th style={numHead}>Product cost</th>
               <th style={numHead}>Fees</th>
               <th style={numHead}>Shipping</th>
+              <th style={thStyle}>Shipping from</th>
               <th style={numHead}>Other costs</th>
               <th style={numHead}>Net profit</th>
               <th style={numHead}>Net margin</th>
@@ -128,6 +133,9 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
                   {ukDate(l.date)}
                   {l.isRefund && <span style={{ color: red, fontWeight: 700, marginLeft: '8px' }}>Refund</span>}
                 </td>
+                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                  {l.orderRef ? <Link href={`/order-lines?q=${encodeURIComponent(l.orderRef)}`} style={{ color: lime }}>{l.orderRef}</Link> : '—'}
+                </td>
                 <td style={tdStyle}>{l.channel}</td>
                 <td style={tdStyle}>{l.store}</td>
                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{l.sku}</td>
@@ -139,6 +147,7 @@ export default function OrderLinesTable({ lines, ranges }: { lines: OrderLine[];
                 <td style={num}>{pounds(l.productCostPence)}</td>
                 <td style={num}>{pounds(l.feesPence)}</td>
                 <td style={num}>{pounds(l.shippingPence)}</td>
+                <td style={{ ...tdStyle, color: l.shippingSource === 'missing' ? red : muted }}>{l.isRefund ? 'return label' : l.shippingSource ?? '—'}</td>
                 <td style={num}>{pounds(l.otherCostPence)}</td>
                 <td style={{ ...num, fontWeight: 700 }}>{pounds(l.netProfitPence)}</td>
                 <td style={{ ...num, fontWeight: 800, color: marginTier(l.marginPercent, ranges).fg }}>{l.marginPercent === null ? '—' : `${l.marginPercent}%`}</td>
