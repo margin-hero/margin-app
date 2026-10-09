@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { fetchAllById } from '@/lib/fetchAll'
+import { loadMarginSummary, type SummaryRow } from '@/lib/marginSummary'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { marginTier, red, green, amber, muted, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle } from '@/lib/theme'
 import { pounds, wholePounds, wholePercent } from '@/lib/format'
@@ -11,18 +10,6 @@ import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 import { loadStores } from '@/lib/stores'
 import { loadAdSpend, sumAdSpend, acosPercent, tacosPercent } from '@/lib/adSpend'
 
-type MarginRow = {
-  order_line_item_id: string
-  channel: string
-  store_id: string
-  effective_qty: number
-  revenue_pence: number
-  product_cost_pence: number
-  margin_pence: number
-  line_type: string // 'sale' | 'refund' (refund rows are negative)
-  refunded_units: number
-  gross_sales_pence: number
-}
 
 type ChannelCard = {
   storeId: string
@@ -86,23 +73,22 @@ export default function ChannelOverviewPage() {
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
     // Sales plus refunds (negative rows, on their refund date), so the figures are net of refunds
-    const [{ data: rows }, overheadSetup, stores] = await Promise.all([fetchAllById('order_line_item_id', () =>
-      supabase
-        .from('margin_lines')
-        .select('order_line_item_id, channel, store_id, effective_qty, revenue_pence, product_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
-        .gte('order_date', dateFrom)
-        .lte('order_date', dateTo)
-    ), loadOverheadSetup(), loadStores()])
+    // (added up in the database: one total per store × product × store SKU × month)
+    const [{ data: rows }, overheadSetup, stores] = await Promise.all([
+      loadMarginSummary({ from: dateFrom, to: dateTo }),
+      loadOverheadSetup(),
+      loadStores(),
+    ])
     const adsByStore = sumAdSpend(await loadAdSpend({ from: dateFrom, to: dateTo }), (l) => l.store_id)
 
     // Share the overheads falling in this date range across these sales
-    const marginRows = (rows || []) as MarginRow[]
+    const marginRows = rows
     const allocation = allocateOverheads(marginRows, overheadSetup, dateFrom, dateTo)
     const overheadByStore = new Map<string, number>()
     marginRows.forEach((r, i) => overheadByStore.set(r.store_id, (overheadByStore.get(r.store_id) || 0) + allocation.shares[i]))
 
     // One card per store (by id, so two stores with the same name stay separate)
-    const byStore = new Map<string, MarginRow[]>()
+    const byStore = new Map<string, SummaryRow[]>()
     for (const row of marginRows) {
       if (!byStore.has(row.store_id)) byStore.set(row.store_id, [])
       byStore.get(row.store_id)!.push(row)
@@ -119,7 +105,7 @@ export default function ChannelOverviewPage() {
       const totalNetProfit = groupRows.reduce((s, r) => s + Number(r.margin_pence), 0)
       // Orders, units and average order are about sales; refunds are shown separately
       const totalQty = sales.reduce((s, r) => s + r.effective_qty, 0)
-      const orderCount = sales.length
+      const orderCount = sales.reduce((s, r) => s + r.lines, 0)
       const salesRevenue = sales.reduce((s, r) => s + Number(r.revenue_pence), 0)
       const refundedUnits = groupRows.reduce((s, r) => s + r.refunded_units, 0)
       const refunds = groupRows.filter((r) => r.line_type === 'refund').reduce((s, r) => s - Number(r.gross_sales_pence), 0)

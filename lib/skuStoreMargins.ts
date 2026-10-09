@@ -1,7 +1,8 @@
 import { ukDate } from './format'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { fetchAll, fetchAllById } from './fetchAll'
+import { fetchAll } from './fetchAll'
+import { loadMarginSummary } from './marginSummary'
 import { loadOverheadSetup, allocateOverheads } from './overheads'
 import { loadAdSpend } from './adSpend'
 
@@ -39,14 +40,10 @@ export async function loadSkuStoreMargins(
   db: SupabaseClient = supabase, // server pages pass createServerSupabase()
   includeAds = false
 ): Promise<{ error: string } | SkuStoreMargins> {
-  const [{ data, error }, { data: listings, error: listingsError }] = await Promise.all([
-    fetchAllById('order_line_item_id', () => {
-      let q = db
-        .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
-        .select('order_line_item_id, master_product_id, product_name, channel, store_id, order_date, effective_qty, revenue_pence, margin_pence, line_type')
-      if (range) q = q.gte('order_date', range.from).lte('order_date', range.to)
-      return q
-    }),
+  // Everything is fetched at once (none of it depends on the rest)
+  const [{ data, error }, { data: listings, error: listingsError }, overheadSetup, ads] = await Promise.all([
+    // Sales and refunds (negative), added up in the database per product × store SKU × month
+    loadMarginSummary(range, db),
     // Which products are listed in which stores, so "not listed" can be told apart from "listed, no sales"
     fetchAll((from, to) =>
       db
@@ -55,6 +52,8 @@ export async function loadSkuStoreMargins(
         .order('id')
         .range(from, to)
     ),
+    includeOverheads ? loadOverheadSetup(db) : null,
+    includeAds ? loadAdSpend(range, db) : [],
   ])
   if (error || listingsError) return { error: (error || listingsError)!.message }
 
@@ -77,10 +76,9 @@ export async function loadSkuStoreMargins(
   let overheadNote = ''
   let overheadShares: number[] = []
   if (includeOverheads && data.length > 0) {
-    const dates = data.map((r) => r.order_date).sort()
-    const from = range?.from ?? dates[0]
-    const to = range?.to ?? dates[dates.length - 1]
-    const allocation = allocateOverheads(data, await loadOverheadSetup(db), from, to)
+    const from = range?.from ?? data.map((r) => r.first_date).sort()[0]
+    const to = range?.to ?? data.map((r) => r.last_date).sort()[data.length - 1]
+    const allocation = allocateOverheads(data, overheadSetup!, from, to)
     overheadShares = allocation.shares
     overheadNote = `Includes £${(allocation.totalPence / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })} of overheads from ${ukDate(from)} to ${ukDate(to)}, shared across sales.`
   }
@@ -108,7 +106,6 @@ export async function loadSkuStoreMargins(
   // A product with ad spend but no sales in the period gets a cell with £0 revenue (a loss).
   let adNote = ''
   if (includeAds) {
-    const ads = await loadAdSpend(range, db)
     let adTotal = 0
     for (const ad of ads) {
       if (!products.has(ad.master_product_id)) products.set(ad.master_product_id, { name: ad.product_name, sku: ad.standard_sku })

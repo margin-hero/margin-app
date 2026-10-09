@@ -2,30 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fetchAll, fetchAllById } from '@/lib/fetchAll'
+import { fetchAll } from '@/lib/fetchAll'
+import { loadMarginSummary, type SummaryRow } from '@/lib/marginSummary'
 import { loadStores, storeLabel } from '@/lib/stores'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { marginTier, red, green, muted, dim, text, lime, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, thStyle, tdStyle } from '@/lib/theme'
 import { pounds, percent } from '@/lib/format'
 import DateRangeBar from '@/components/DateRangeBar'
 import { loadAdSpend, sumAdSpend, acosPercent, tacosPercent, AdTotals } from '@/lib/adSpend'
-
-type MarginRow = {
-  master_product_id: string
-  product_name: string
-  channel: string
-  store_id: string
-  platform_listing_id: string // the store SKU
-  order_date: string
-  effective_qty: number
-  revenue_pence: number
-  product_cost_pence: number
-  total_cost_pence: number
-  margin_pence: number
-  line_type: string // 'sale' | 'refund' (refund rows are negative)
-  refunded_units: number
-  gross_sales_pence: number
-}
 
 type ChannelStats = {
   key: string
@@ -51,7 +35,7 @@ type ChannelStats = {
 
 // The figures for a set of sale / refund rows (and their ad spend). Totals first, then the
 // percentages from the totals, never averaged.
-function stats(key: string, label: string, rows: MarginRow[], ads: AdTotals | undefined): ChannelStats {
+function stats(key: string, label: string, rows: SummaryRow[], ads: AdTotals | undefined): ChannelStats {
   const totalRevenue = rows.reduce((s, r) => s + Number(r.revenue_pence), 0)
   const totalProductCost = rows.reduce((s, r) => s + Number(r.product_cost_pence), 0)
   const totalNetProfit = rows.reduce((s, r) => s + Number(r.margin_pence), 0)
@@ -108,13 +92,8 @@ export default function SkuDetailPage() {
   async function load(dateFrom: string = rangeFrom, dateTo: string = rangeTo) {
     setLoading(true)
 
-    const { data: rows } = await fetchAllById('order_line_item_id', () =>
-      supabase
-        .from('margin_lines') // sales and refunds (negative rows), so figures are net of refunds
-        .select('order_line_item_id, master_product_id, product_name, channel, store_id, platform_listing_id, order_date, effective_qty, revenue_pence, product_cost_pence, total_cost_pence, margin_pence, line_type, refunded_units, gross_sales_pence')
-        .gte('order_date', dateFrom)
-        .lte('order_date', dateTo)
-    )
+    // Sales and refunds (negative), added up in the database per product × store SKU × month
+    const { data: rows } = await loadMarginSummary({ from: dateFrom, to: dateTo })
 
     const { data: products } = await fetchAll((from, to) =>
       supabase.from('master_products').select('id, standard_sku').order('id').range(from, to)
@@ -132,8 +111,8 @@ export default function SkuDetailPage() {
     const adsByStoreSku = sumAdSpend(adLines, (l) => `${l.master_product_id}|${l.store_id}|${l.platform_listing_id}`)
     const adProductNames = new Map(adLines.map((l) => [l.master_product_id, l.product_name]))
 
-    const byProductChannel = new Map<string, MarginRow[]>()
-    for (const row of (rows || []) as MarginRow[]) {
+    const byProductChannel = new Map<string, SummaryRow[]>()
+    for (const row of rows) {
       // By store, not store name: two stores can share a name on different platforms
       const key = `${row.master_product_id}|${row.store_id}`
       if (!byProductChannel.has(key)) byProductChannel.set(key, [])
@@ -150,7 +129,7 @@ export default function SkuDetailPage() {
 
       // Each store SKU's own figures, when the product has more than one in this store
       // (e.g. an Amazon resale SKU next to the FBA one, or the same item listed twice)
-      const rowsBySku = new Map<string, MarginRow[]>()
+      const rowsBySku = new Map<string, SummaryRow[]>()
       for (const r of groupRows) {
         if (!rowsBySku.has(r.platform_listing_id)) rowsBySku.set(r.platform_listing_id, [])
         rowsBySku.get(r.platform_listing_id)!.push(r)

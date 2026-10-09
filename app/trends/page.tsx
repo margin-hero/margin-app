@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { fetchAllById } from '@/lib/fetchAll'
+import { loadMarginSummary, type SummaryRow } from '@/lib/marginSummary'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
 import { pounds, ukMonth } from '@/lib/format'
 import {
@@ -11,20 +10,12 @@ import {
 } from '@/lib/theme'
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, LabelList } from 'recharts'
 
-type MarginRow = {
-  product_name: string
-  order_date: string
-  revenue_pence: number
-  margin_pence: number
-  line_type: string
-}
-
 const axisTick = { fill: muted, fontSize: 12 }
 const shortPounds = (value: number) => `£${Math.round(value).toLocaleString('en-GB')}`
 
 export default function TrendsPage() {
   const ranges = useMarginRanges()
-  const [data, setData] = useState<MarginRow[]>([])
+  const [data, setData] = useState<SummaryRow[]>([])
   const [products, setProducts] = useState<string[]>([])
   const [selectedProduct, setSelectedProduct] = useState<string>('All')
   const [loading, setLoading] = useState(true)
@@ -32,11 +23,8 @@ export default function TrendsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: rows, error } = await fetchAllById('order_line_item_id', () =>
-        supabase
-          .from('margin_lines')
-          .select('order_line_item_id, product_name, order_date, revenue_pence, margin_pence, line_type') // sales and refunds
-      )
+      // Sales and refunds, all time, added up in the database per product × store SKU × month
+      const { data: rows, error } = await loadMarginSummary(null)
 
       if (error) {
         setError(error.message)
@@ -56,11 +44,11 @@ export default function TrendsPage() {
   // Group by month (YYYY-MM): sum pence first, convert to pounds for the chart last
   const byMonth = new Map<string, { revenuePence: number; profitPence: number; count: number }>()
   for (const row of filtered) {
-    const month = row.order_date.slice(0, 7) // "2026-08"
+    const month = row.month // "2026-08"
     const entry = byMonth.get(month) || { revenuePence: 0, profitPence: 0, count: 0 }
     entry.revenuePence += Number(row.revenue_pence) || 0
     entry.profitPence += Number(row.margin_pence) || 0
-    if (row.line_type === 'sale') entry.count += 1 // refunds aren't order lines
+    if (row.line_type === 'sale') entry.count += row.lines // refunds aren't order lines
     byMonth.set(month, entry)
   }
 
