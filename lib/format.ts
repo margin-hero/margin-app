@@ -9,6 +9,21 @@ export function percent(value: number | null): string {
   return value === null ? '—' : `${value}%`
 }
 
+// £1,235 / −£12: headline totals rounded to the nearest pound (calculations stay in pence)
+export function wholePounds(pence: number): string {
+  const value = Math.round(Math.abs(pence) / 100)
+  return `${pence < 0 && value > 0 ? '−' : ''}£${value.toLocaleString('en-GB')}`
+}
+
+// 12% rounded to the nearest whole point; "<1%" so a small positive figure (e.g. a 0.3%
+// refund rate) doesn't look like none at all
+export function wholePercent(value: number | null): string {
+  if (value === null) return '—'
+  const rounded = Math.round(value)
+  if (rounded === 0 && value > 0) return '<1%'
+  return `${rounded === 0 ? 0 : rounded}%`
+}
+
 // Costs are entered inc. VAT. Explains what gets counted, e.g. for a product cost
 // that applies to several stores with different VAT registration. null until both are filled in.
 export function vatSplitNote(amountText: string, vatRateText: string): string | null {

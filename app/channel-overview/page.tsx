@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { fetchAllById } from '@/lib/fetchAll'
 import { useMarginRanges } from '@/hooks/useMarginRanges'
-import { marginTier, red, green, amber, muted, dim, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle } from '@/lib/theme'
-import { pounds, percent } from '@/lib/format'
+import { marginTier, red, green, amber, muted, text, border, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle } from '@/lib/theme'
+import { pounds, wholePounds, wholePercent } from '@/lib/format'
 import DateRangeBar from '@/components/DateRangeBar'
 import { loadOverheadSetup, allocateOverheads } from '@/lib/overheads'
 import { loadStores } from '@/lib/stores'
@@ -33,6 +33,7 @@ type ChannelCard = {
   totalQty: number // units sold
   orderCount: number
   refundedUnits: number
+  refundsPence: number // what customers got back, inc. VAT and delivery (like gross sales)
   refundRatePercent: number | null // refunded units ÷ units sold
   aovPence: number
   grossProfitPence: number
@@ -121,6 +122,7 @@ export default function ChannelOverviewPage() {
       const orderCount = sales.length
       const salesRevenue = sales.reduce((s, r) => s + Number(r.revenue_pence), 0)
       const refundedUnits = groupRows.reduce((s, r) => s + r.refunded_units, 0)
+      const refunds = groupRows.filter((r) => r.line_type === 'refund').reduce((s, r) => s - Number(r.gross_sales_pence), 0)
       const grossProfit = totalRevenue - totalProductCost
       const ads = adsByStore.get(storeId)
       const adCost = ads?.costPence ?? 0
@@ -138,6 +140,7 @@ export default function ChannelOverviewPage() {
         totalQty,
         orderCount,
         refundedUnits,
+        refundsPence: refunds,
         refundRatePercent: totalQty > 0 ? Math.round((refundedUnits / totalQty) * 1000) / 10 : null,
         aovPence: orderCount > 0 ? Math.round(salesRevenue / orderCount) : 0,
         grossProfitPence: grossProfit,
@@ -186,8 +189,9 @@ export default function ChannelOverviewPage() {
   }
   const sortedCards = [...cards].sort((a, b) => SORTS[sortBy].compare(a, b) || a.storeName.localeCompare(b.storeName))
 
+  // Coloured on the whole-number % that's shown, so e.g. 9.6% (shown as 10%) isn't red beside a 10% cut-off
   function marginColor(pct: number | null) {
-    return marginTier(pct, ranges).fg
+    return marginTier(pct === null ? null : Math.round(pct), ranges).fg
   }
 
   const oneLine: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
@@ -226,27 +230,27 @@ export default function ChannelOverviewPage() {
         <div style={{ ...cardStyle, display: 'flex', gap: '32px', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <div>
             <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net profit · all stores</p>
-            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(totals.netPence)}</p>
+            <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{wholePounds(totals.netPence)}</p>
           </div>
           {totals.adPence > 0 && (
             <div>
               <p style={{ ...cardTitle, margin: '0 0 6px' }}>Ad spend in period</p>
-              <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(-totals.adPence)}</p>
+              <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{wholePounds(-totals.adPence)}</p>
             </div>
           )}
           {totals.overheadPence > 0 && (
             <div>
               <p style={{ ...cardTitle, margin: '0 0 6px' }}>Overheads in period</p>
-              <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{pounds(-totals.overheadPence)}</p>
+              <p style={{ fontSize: '22px', fontWeight: 800, margin: 0 }}>{wholePounds(-totals.overheadPence)}</p>
             </div>
           )}
           <div>
             <p style={{ ...cardTitle, margin: '0 0 6px' }}>Net after {[totals.adPence > 0 && 'ads', totals.overheadPence > 0 && 'overheads'].filter(Boolean).join(' & ')}</p>
             <p style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: totals.netPence - totals.adPence - totals.overheadPence < 0 ? red : green }}>
-              {pounds(totals.netPence - totals.adPence - totals.overheadPence)}
+              {wholePounds(totals.netPence - totals.adPence - totals.overheadPence)}
               {totals.revenuePence > 0 && (
                 <span style={{ fontSize: '14px', marginLeft: '8px' }}>
-                  {(((totals.netPence - totals.adPence - totals.overheadPence) / totals.revenuePence) * 100).toFixed(1)}%
+                  {wholePercent(((totals.netPence - totals.adPence - totals.overheadPence) / totals.revenuePence) * 100)}
                 </span>
               )}
             </p>
@@ -271,36 +275,40 @@ export default function ChannelOverviewPage() {
                   rows below line up across cards */}
               <p style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: text, ...oneLine }} title={c.platform || c.storeName}>{c.platform || c.storeName}</p>
               <p style={{ ...cardTitle, margin: '2px 0 12px', ...oneLine }} title={c.storeName}>{c.platform ? c.storeName : ' '}</p>
-              {/* Side by side when both fit, one under the other when they don't (six / seven figures) */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: '20px', rowGap: '8px', margin: '0 0 4px' }}>
+              {/* Net sales under gross sales */}
+              <div style={{ display: 'flex', flexDirection: 'column', rowGap: '8px', margin: '0 0 12px' }}>
                 <div>
                   <p style={{ fontSize: '11px', color: muted, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Gross sales</p>
-                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}>{pounds(c.grossSalesPence)}</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}>{wholePounds(c.grossSalesPence)}</p>
                 </div>
                 <div>
                   <p style={{ fontSize: '11px', color: muted, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Net sales</p>
-                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}>{pounds(c.totalSalesPence)}</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, margin: 0, whiteSpace: 'nowrap' }}>{wholePounds(c.totalSalesPence)}</p>
                 </div>
               </div>
-              <p style={{ fontSize: '12px', color: dim, margin: '6px 0 14px' }}>
-                {c.orderCount.toLocaleString('en-GB')} orders · {c.totalQty.toLocaleString('en-GB')} units · {pounds(c.aovPence)} avg order
-              </p>
-              {row('Gross margin', percent(c.grossMarginPercent), marginColor(c.grossMarginPercent), true)}
-              {row('Net margin', percent(c.netMarginPercent), marginColor(c.netMarginPercent))}
-              {row('Gross profit', pounds(c.grossProfitPence), text, true)}
-              {row('Net profit', pounds(c.netProfitPence), c.netProfitPence < 0 ? red : green)}
-              {row('Refunds', c.refundedUnits > 0 ? `${c.refundedUnits} units · ${percent(c.refundRatePercent)}` : 'None', text, true)}
+              {/* Groups, each starting with a divider; refunds always shown so the cards line up */}
+              {row('Gross margin', wholePercent(c.grossMarginPercent), marginColor(c.grossMarginPercent), true)}
+              {row('Net margin', wholePercent(c.netMarginPercent), marginColor(c.netMarginPercent))}
+              {row('Gross profit', wholePounds(c.grossProfitPence), text, true)}
+              {row('Net profit', wholePounds(c.netProfitPence), c.netProfitPence < 0 ? red : green)}
+              {row('Orders', c.orderCount.toLocaleString('en-GB'), text, true)}
+              {row('Units', c.totalQty.toLocaleString('en-GB'))}
+              {row('Avg order value', pounds(c.aovPence))}
+              {row('Refunds', wholePounds(-c.refundsPence), text, true)}
+              {row('Refunded units', c.refundedUnits.toLocaleString('en-GB'))}
+              {row('Refund rate', wholePercent(c.refundRatePercent))}
               {c.adCostPence > 0 && (
                 <>
-                  {row('Ad spend', pounds(-c.adCostPence), text, true)}
-                  {row('ACOS · TACOS', `${percent(c.acosPercent)} · ${percent(c.tacosPercent)}`)}
-                  {row('Net after ads', `${pounds(c.netAfterAdsPence)}${c.netAfterAdsPercent !== null ? ` · ${c.netAfterAdsPercent}%` : ''}`, marginColor(c.netAfterAdsPercent))}
+                  {row('Ad spend', wholePounds(-c.adCostPence), text, true)}
+                  {row('ACOS', wholePercent(c.acosPercent))}
+                  {row('TACOS', wholePercent(c.tacosPercent))}
+                  {row('Net after ads', `${wholePounds(c.netAfterAdsPence)}${c.netAfterAdsPercent !== null ? ` · ${wholePercent(c.netAfterAdsPercent)}` : ''}`, marginColor(c.netAfterAdsPercent))}
                 </>
               )}
               {c.overheadPence > 0 && (
                 <>
-                  {row('Share of overheads', pounds(-c.overheadPence), text, c.adCostPence === 0)}
-                  {row(c.adCostPence > 0 ? 'Net after ads & overheads' : 'Net after overheads', `${pounds(c.netAfterOverheadsPence)}${c.netAfterOverheadsPercent !== null ? ` · ${c.netAfterOverheadsPercent}%` : ''}`, marginColor(c.netAfterOverheadsPercent), true)}
+                  {row('Share of overheads', wholePounds(-c.overheadPence), text, c.adCostPence === 0)}
+                  {row(c.adCostPence > 0 ? 'Net after ads & overheads' : 'Net after overheads', `${wholePounds(c.netAfterOverheadsPence)}${c.netAfterOverheadsPercent !== null ? ` · ${wholePercent(c.netAfterOverheadsPercent)}` : ''}`, marginColor(c.netAfterOverheadsPercent), true)}
                 </>
               )}
             </div>
