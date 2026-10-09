@@ -9,6 +9,8 @@ import { lime, bg, panel, border, amber, green, red, muted, dim, text, pageStyle
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
 // Quick periods. Quarters are calendar quarters (Jan–Mar, Apr–Jun, ...).
+// The page opens on DEFAULT_PERIOD (All time works out every line ever imported, so it's slower).
+const DEFAULT_PERIOD = '90d'
 const PERIODS: { key: string; label: string; range: () => { from: string; to: string } | null }[] = [
   { key: 'all', label: 'All time', range: () => null },
   { key: 'ytd', label: 'YTD', range: () => ({ from: `${new Date().getUTCFullYear()}-01-01`, to: iso(new Date()) }) },
@@ -46,15 +48,15 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const sort = get('sort') || 'name' // 'name', 'all' or a store id
   const by = get('by') === 'gbp' ? 'gbp' : 'pct'
   const dir = get('dir') === 'asc' ? 'asc' : 'desc'
+  const showAll = get('show') === 'all' // also products with no sales (or ad spend) in the period
 
   const custom = get('period') === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(get('from')) && /^\d{4}-\d{2}-\d{2}$/.test(get('to'))
-  const period = custom ? null : PERIODS.find((p) => p.key === get('period')) ?? PERIODS[0]
+  const period = custom ? null : PERIODS.find((p) => p.key === (get('period') || DEFAULT_PERIOD)) ?? PERIODS.find((p) => p.key === DEFAULT_PERIOD)!
   const range = custom ? { from: get('from'), to: get('to') } : period!.range()
 
   const db = await createServerSupabase()
-  const ranges = await loadMarginRanges(db)
+  const [ranges, result] = await Promise.all([loadMarginRanges(db), loadSkuStoreMargins(includeOverheads, range, db, includeAds)])
   const legend = marginLegend(ranges)
-  const result = await loadSkuStoreMargins(includeOverheads, range, db, includeAds)
   if ('error' in result) {
     return <div style={{ ...pageStyle, color: red }}>Error: {result.error}</div>
   }
@@ -63,11 +65,11 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   // Links keep every other setting and change just the ones given
   const current: Record<string, string> = {
     period: custom ? 'custom' : period!.key, from: custom ? range!.from : '', to: custom ? range!.to : '',
-    overheads: includeOverheads ? '1' : '', ads: includeAds ? '1' : '', per: perUnit ? '' : 'total', sort: sort === 'name' ? '' : sort, by: by === 'pct' ? '' : by, dir: dir === 'desc' ? '' : dir,
+    show: showAll ? 'all' : '', overheads: includeOverheads ? '1' : '', ads: includeAds ? '1' : '', per: perUnit ? '' : 'total', sort: sort === 'name' ? '' : sort, by: by === 'pct' ? '' : by, dir: dir === 'desc' ? '' : dir,
   }
   const href = (changes: Record<string, string>) => {
     const merged = { ...current, ...changes }
-    if (merged.period === 'all') merged.period = ''
+    if (merged.period === DEFAULT_PERIOD) merged.period = ''
     const qs = new URLSearchParams(Object.entries(merged).filter(([, v]) => v)).toString()
     return qs ? `/margins?${qs}` : '/margins'
   }
@@ -75,8 +77,12 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const profitPence = (c: MarginCell | null) => (perUnit ? cellPerUnitPence(c) : c ? Math.round(c.marginPence) : null)
   const sortValue = (c: MarginCell | null) => (by === 'pct' ? cellPercent(c) : profitPence(c))
 
+  // Only products with sales or refunds (or ad spend, when ads are on) in the period, unless
+  // "Show all": a few hundred empty rows make the page slow and bury the ones that sold
+  const allProducts = result.products
+  const products = showAll ? [...allProducts] : allProducts.filter((p) => total(p.id) !== null)
+
   // Sort rows: by name, or by one column's % or £. Products with no figure go to the bottom.
-  const products = [...result.products]
   if (sort !== 'name') {
     const value = (productId: string) => sortValue(sort === 'all' ? total(productId) : cell(productId, sort))
     products.sort((a, b) => {
@@ -183,6 +189,11 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
             <span><span style={{ color: green }}>●</span> {legend[2]}</span>
           </div>
         </div>
+        <p style={{ fontSize: '12px', color: muted, margin: '-8px 0 14px' }}>
+          {showAll
+            ? <>Showing all {allProducts.length} products. <Link href={href({ show: '' })} style={{ color: lime }}>Only products with sales in this period</Link></>
+            : <>Showing {products.length} of {allProducts.length} products: those with sales in this period{includeAds ? ' or ad spend' : ''}. <Link href={href({ show: 'all' })} style={{ color: lime }}>Show all products</Link></>}
+        </p>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'separate', borderSpacing: `${GAP}px`, tableLayout: 'fixed', width: `${tableWidth}px` }}>
             <colgroup>

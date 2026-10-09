@@ -9,10 +9,9 @@ export default async function OpportunitiesPage() {
   // Render on every visit so the list shows live data, not a snapshot from build time
   await connection()
   const db = await createServerSupabase()
-  const ranges = await loadMarginRanges(db)
 
   // Before overheads: overheads are mostly fixed, so listing in another store doesn't add to them
-  const result = await loadSkuStoreMargins(false, null, db)
+  const [ranges, result] = await Promise.all([loadMarginRanges(db), loadSkuStoreMargins(false, null, db)])
   if ('error' in result) {
     return <div style={{ ...pageStyle, color: red }}>Error: {result.error}</div>
   }
