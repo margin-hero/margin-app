@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabaseServer'
 import { loadMarginRanges } from '@/lib/marginRanges'
 import { loadSkuStoreMargins, cellPercent, cellPerUnitPence, MarginCell } from '@/lib/skuStoreMargins'
 import { pounds, ukDate } from '@/lib/format'
-import { lime, bg, panel, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend, radius } from '@/lib/theme'
+import { lime, bg, panel, panelRaised, border, amber, green, red, muted, dim, text, pageStyle, eyebrow, pageTitle, pageIntro, cardStyle, cardTitle, inputStyle, primaryButton, marginTier, marginLegend, radius } from '@/lib/theme'
 
 const iso = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -49,6 +49,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const by = get('by') === 'gbp' ? 'gbp' : 'pct'
   const dir = get('dir') === 'asc' ? 'asc' : 'desc'
   const showAll = get('show') === 'all' // also products with no sales (or ad spend) in the period
+  const search = get('q').trim()
 
   const custom = get('period') === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(get('from')) && /^\d{4}-\d{2}-\d{2}$/.test(get('to'))
   const period = custom ? null : PERIODS.find((p) => p.key === (get('period') || DEFAULT_PERIOD)) ?? PERIODS.find((p) => p.key === DEFAULT_PERIOD)!
@@ -65,7 +66,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   // Links keep every other setting and change just the ones given
   const current: Record<string, string> = {
     period: custom ? 'custom' : period!.key, from: custom ? range!.from : '', to: custom ? range!.to : '',
-    show: showAll ? 'all' : '', overheads: includeOverheads ? '1' : '', ads: includeAds ? '1' : '', per: perUnit ? '' : 'total', sort: sort === 'name' ? '' : sort, by: by === 'pct' ? '' : by, dir: dir === 'desc' ? '' : dir,
+    q: search, show: showAll ? 'all' : '', overheads: includeOverheads ? '1' : '', ads: includeAds ? '1' : '', per: perUnit ? '' : 'total', sort: sort === 'name' ? '' : sort, by: by === 'pct' ? '' : by, dir: dir === 'desc' ? '' : dir,
   }
   const href = (changes: Record<string, string>) => {
     const merged = { ...current, ...changes }
@@ -80,7 +81,10 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   // Only products with sales or refunds (or ad spend, when ads are on) in the period, unless
   // "Show all": a few hundred empty rows make the page slow and bury the ones that sold
   const allProducts = result.products
-  const products = showAll ? [...allProducts] : allProducts.filter((p) => total(p.id) !== null)
+  const withSales = showAll ? allProducts : allProducts.filter((p) => total(p.id) !== null)
+  // Search: SKU or product name containing the text (any case)
+  const needle = search.toLowerCase()
+  const products = needle ? withSales.filter((p) => p.sku.toLowerCase().includes(needle) || p.name.toLowerCase().includes(needle)) : [...withSales]
 
   // Sort rows: by name, or by one column's % or £. Products with no figure go to the bottom.
   if (sort !== 'name') {
@@ -100,10 +104,19 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
   const PRODUCT_COL = 240
   const STORE_COL = 96
   const GAP = 6
-  const tableWidth = PRODUCT_COL + (stores.length + 1) * STORE_COL + (stores.length + 3) * GAP
+  // A zero-width column after "All stores" leaves a double gap, with a line down the middle
+  const tableWidth = PRODUCT_COL + (stores.length + 1) * STORE_COL + (stores.length + 4) * GAP
+  const separatorLeft = 3 * GAP + PRODUCT_COL + STORE_COL - 1
   const oneLine: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+  // Headings show just the channel; the store name only when two columns share a channel
+  // (e.g. Amazon UK and Amazon UK FBA). Hovering always shows both.
+  const platformCount = new Map<string, number>()
+  for (const st of stores) platformCount.set(st.platform, (platformCount.get(st.platform) || 0) + 1)
+  const needsStoreName = (st: { platform: string }) => !st.platform || (platformCount.get(st.platform) || 0) > 1
   const pinned: React.CSSProperties = { position: 'sticky', left: 0, zIndex: 1, background: panel }
-  const headStyle: React.CSSProperties = { fontSize: '11px', color: muted, fontWeight: 600, padding: '4px 2px', textAlign: 'center', verticalAlign: 'bottom', overflow: 'hidden' }
+  // The heading row stays at the top while scrolling down the table; the shadow fills the
+  // gaps between heading cells so rows don't show through them
+  const headStyle: React.CSSProperties = { fontSize: '11px', color: muted, fontWeight: 600, padding: '4px 2px', textAlign: 'center', verticalAlign: 'bottom', position: 'sticky', top: 0, zIndex: 2, background: panel, boxShadow: `0 0 0 ${GAP}px ${panel}` }
   const cellStyle = (bgColour: string, fg: string, outlined = false): React.CSSProperties => ({
     background: bgColour,
     color: fg,
@@ -189,31 +202,58 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
             <span><span style={{ color: green }}>●</span> {legend[2]}</span>
           </div>
         </div>
-        <p style={{ fontSize: '12px', color: muted, margin: '-8px 0 14px' }}>
-          {showAll
-            ? <>Showing all {allProducts.length} products. <Link href={href({ show: '' })} style={{ color: lime }}>Only products with sales in this period</Link></>
-            : <>Showing {products.length} of {allProducts.length} products: those with sales in this period{includeAds ? ' or ad spend' : ''}. <Link href={href({ show: 'all' })} style={{ color: lime }}>Show all products</Link></>}
-        </p>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'separate', borderSpacing: `${GAP}px`, tableLayout: 'fixed', width: `${tableWidth}px` }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', margin: '-8px 0 14px' }}>
+          <form action="/margins" method="get" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {Object.entries(current).filter(([k, v]) => v && k !== 'q').map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+            <input type="search" name="q" defaultValue={search} placeholder="Search SKU or product" aria-label="Search SKU or product" style={{ ...inputStyle, width: '240px', maxWidth: '100%' }} />
+            {search && <Link href={href({ q: '' })} style={{ color: muted, fontSize: '12px' }}>Clear</Link>}
+          </form>
+          <p style={{ fontSize: '12px', color: muted, margin: 0 }}>
+            {search
+              ? <>{products.length} {products.length === 1 ? 'product matches' : 'products match'} &ldquo;{search}&rdquo;{showAll ? '' : ` among those with sales in this period${includeAds ? ' or ad spend' : ''}`}. </>
+              : showAll
+                ? <>Showing all {allProducts.length} products. </>
+                : <>Showing {products.length} of {allProducts.length} products: those with sales in this period{includeAds ? ' or ad spend' : ''}. </>}
+            {showAll
+              ? <Link href={href({ show: '' })} style={{ color: lime }}>Only products with sales in this period</Link>
+              : <Link href={href({ show: 'all' })} style={{ color: lime }}>Show all products</Link>}
+          </p>
+        </div>
+        {/* Scrolls inside its own box (both ways) so the heading row can stay in view */}
+        <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 160px)', scrollbarWidth: 'thin', scrollbarColor: `${border} transparent` }}>
+          <div style={{ position: 'relative', width: `${tableWidth}px` }}>
+          <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${separatorLeft}px`, width: '2px', background: border }} />
+          <table style={{ position: 'relative', borderCollapse: 'separate', borderSpacing: `${GAP}px`, tableLayout: 'fixed', width: `${tableWidth}px` }}>
             <colgroup>
               <col style={{ width: `${PRODUCT_COL}px` }} />
-              {[{ id: 'all' }, ...stores].map((c) => <col key={c.id} style={{ width: `${STORE_COL}px` }} />)}
+              <col style={{ width: `${STORE_COL}px` }} />
+              <col style={{ width: 0 }} />
+              {stores.map((c) => <col key={c.id} style={{ width: `${STORE_COL}px` }} />)}
             </colgroup>
             <thead>
               <tr>
-                <th style={{ ...headStyle, ...pinned, textAlign: 'left', fontSize: '12px' }}>
-                  <Link href={href({ sort: '', by: '', dir: '' })} style={{ color: sort === 'name' ? lime : muted, textDecoration: 'none' }}>SKU · Product{sort === 'name' ? ' (A–Z)' : ''}</Link>
+                <th style={{ ...headStyle, ...pinned, zIndex: 3, textAlign: 'left', fontSize: '12px' }}>
+                  <Link href={href({ sort: '', by: '', dir: '' })} style={{ color: sort === 'name' ? lime : muted, textDecoration: 'none' }}>SKU / Product{sort === 'name' ? ' (A–Z)' : ''}</Link>
                 </th>
                 <th style={{ ...headStyle, color: text }}>
                   <div style={{ ...oneLine, fontWeight: 800, fontSize: '12px' }}>All stores</div>
                   <div>{' '}</div>
                   {sortLinks('all')}
                 </th>
+                <th style={{ ...headStyle, padding: 0 }} />
                 {stores.map((store) => (
-                  <th key={store.id} style={headStyle} title={store.platform ? `${store.platform}: ${store.name}` : store.name}>
-                    <div style={{ ...oneLine, color: text, fontWeight: 800, fontSize: '12px' }}>{store.platform || store.name}</div>
-                    <div style={oneLine}>{store.platform ? store.name : ' '}</div>
+                  <th key={store.id} style={headStyle}>
+                    {/* Names too long for the column are cut short; hovering shows them in full */}
+                    <div className="group" style={{ position: 'relative', cursor: 'default' }}>
+                      <div style={{ ...oneLine, color: text, fontWeight: 800, fontSize: '12px' }}>{store.platform || store.name}</div>
+                      {store.platform && needsStoreName(store) && <div style={oneLine}>{store.name}</div>}
+                      <div className="invisible group-hover:visible" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 4, marginTop: '4px', width: 'max-content', maxWidth: '220px', background: panelRaised, border: `1px solid ${border}`, borderRadius: '8px', padding: '6px 10px', color: text, fontSize: '12px', fontWeight: 700, textAlign: 'center', whiteSpace: 'normal' }}>
+                        {store.platform && <div>{store.platform}</div>}
+                        <div style={{ color: muted, fontWeight: 600 }}>{store.name}</div>
+                      </div>
+                    </div>
                     {sortLinks(store.id)}
                   </th>
                 ))}
@@ -226,13 +266,12 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
                 return (
                   <tr key={product.id}>
                     <td style={{ ...pinned, padding: '4px', fontSize: '14px', fontWeight: 800, color: text }} title={`${product.sku} ${product.name}`}>
-                      {/* Up to two lines, then cut short with "…" */}
-                      <div style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3 }}>
-                        {product.sku && <span style={{ color: muted, fontWeight: 700, marginRight: '8px' }}>{product.sku}</span>}
-                        {product.name}
-                      </div>
+                      {/* SKU, then the product name under it (cut short with "…" if too long) */}
+                      {product.sku && <div style={{ ...oneLine, color: muted, fontSize: '12px', fontWeight: 700, lineHeight: 1.3 }}>{product.sku}</div>}
+                      <div style={{ ...oneLine, lineHeight: 1.3 }}>{product.name}</div>
                     </td>
                     {figureCell('all', total(product.id), false)}
+                    <td style={{ padding: 0 }} />
                     {stores.map((store) => {
                       if (notListed(product.id, store.id)) {
                         return (
@@ -248,6 +287,7 @@ export default async function MarginsPage({ searchParams }: PageProps<'/margins'
               })}
             </tbody>
           </table>
+          </div>
         </div>
         <p style={{ fontSize: '12px', color: dim, margin: '12px 0 0' }}>
           Each cell: net margin % (total profit ÷ total revenue for the period) over net profit £ {perUnit ? 'per unit sold' : 'for the period'}. Click % or £ under a column to sort.
