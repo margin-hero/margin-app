@@ -21,7 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Nav />
       <main style={{ flex: 1, minWidth: 0 }}>
         {/* key = re-check on every dashboard visit, so it clears once costs are fixed */}
-        {DASHBOARDS.includes(pathname) && <MissingCostsBanner key={pathname} />}
+        {(DASHBOARDS.includes(pathname) || pathname.startsWith('/dashboards/')) &&<MissingCostsBanner key={pathname} />}
         {children}
       </main>
     </div>

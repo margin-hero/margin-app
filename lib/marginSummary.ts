@@ -24,6 +24,9 @@ export type SummaryRow = {
   total_cost_pence: number
   margin_pence: number
   gross_sales_pence: number
+  // null until 20261011120000_margin_summary_cost_split.sql has been run
+  fees_pence: number | null
+  shipping_pence: number | null
 }
 
 // null dates = no limit (all time)
@@ -44,6 +47,8 @@ export async function loadMarginSummary(
     total_cost_pence: Number(r.total_cost_pence),
     margin_pence: Number(r.margin_pence),
     gross_sales_pence: Number(r.gross_sales_pence),
+    fees_pence: r.fees_pence == null ? null : Number(r.fees_pence),
+    shipping_pence: r.shipping_pence == null ? null : Number(r.shipping_pence),
   })) as SummaryRow[]
   return { data: rows, error: null }
 }

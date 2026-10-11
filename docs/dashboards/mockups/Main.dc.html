@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Profit Overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,200..900&amp;display=swap">
+<style>
+body{margin:0;background:#1B1C19}
+a{color:#D2FF00}a:hover{color:#EBEEE0}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1B1C19; color: #EBEEE0; font-family: 'Mona Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<header style="border-bottom: 1px solid #363731; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px">
+<div style="font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; font-size: 20px; color: #D2FF00">MARGIN HERO</div>
+<nav aria-label="Dashboards" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto">
+<a href="Main.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #D2FF00; color: #1B1C19; text-decoration: none; font-weight: 700">Overview</a>
+<a href="Channels.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Channels</a>
+<a href="Grid.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Grid</a>
+<a href="SkuDetail.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Detail</a>
+<a href="Alerts.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Alerts <span style="background: #FF4D5E; color: #1B1C19; border-radius: 10px; padding: 1px 7px; font-size: 12px; font-weight: 800">4</span></a>
+</nav>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">Last 30 days · 10 Sep – 9 Oct</button>
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">vs prior 30 days</button>
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">All channels</button>
+</div>
+</header>
+
+<main style="max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px">
+<div>
+<div style="font-size: 13px; color: #A3A69A; text-transform: uppercase; letter-spacing: 0.08em">Level 0 · Home</div>
+<h1 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; text-transform: uppercase">Profit overview</h1>
+</div>
+<div style="font-size: 13px; color: #A3A69A">Sample data · VAT registered (net figures)</div>
+</div>
+
+<section aria-label="Headline KPIs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+<div style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; color: #A3A69A">{{k.label}}</div>
+<div style="font-size: 30px; font-weight: 800; font-stretch: 110%; letter-spacing: -0.01em; color: {{k.color}}">{{k.value}}</div>
+<div style="font-size: 13px; color: {{k.deltaColor}}">{{k.delta}}</div>
+</div>
+</sc-for>
+</section>
+
+<section aria-label="Alerts" style="background: #2A1E20; border: 1px solid #5A2A31; border-radius: 14px; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px">
+<div style="font-weight: 800; color: #FF4D5E">4 alerts need attention</div>
+<div style="flex: 1 1 400px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px">
+<span>3 SKUs selling at a loss on Temu</span>
+<span>PB-3 FBA margin down 4.2 pts</span>
+<span>12 orders missing COGS</span>
+</div>
+<a href="Alerts.dc.html" style="font-weight: 700">Review alerts →</a>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<section aria-label="Profit bridge" style="flex: 1 1 520px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<h2 style="margin: 0 0 4px; font-size: 18px">Where the money goes</h2>
+<div style="font-size: 13px; color: #A3A69A; margin-bottom: 16px">Net revenue → net profit, as % of revenue</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{bridge}}" as="b" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 130px minmax(0, 1fr) 120px; align-items: center; gap: 12px">
+<div style="font-size: 14px">{{b.label}}</div>
+<div style="height: 22px; background: #1B1C19; border-radius: 4px; position: relative; overflow: hidden">
+<div style="{{b.bar}}"></div>
+</div>
+<div style="font-size: 14px; text-align: right; font-variant-numeric: tabular-nums">{{b.value}} <span style="color: #A3A69A">{{b.pct}}</span></div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Net profit trend" style="flex: 1 1 420px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px; display: flex; flex-direction: column">
+<h2 style="margin: 0 0 4px; font-size: 18px">Net profit · 12 weeks</h2>
+<div style="font-size: 13px; color: #A3A69A; margin-bottom: 16px">Weekly £, latest week highlighted</div>
+<div role="img" aria-label="Weekly net profit rising from about £2.1k to £3.0k over 12 weeks" style="flex: 1; min-height: 220px; display: flex; align-items: flex-end; gap: 6px; border-bottom: 1px solid #363731; padding-bottom: 4px">
+<sc-for list="{{trend}}" as="t" hint-placeholder-count="12">
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%">
+<div style="font-size: 11px; color: #A3A69A">{{t.label}}</div>
+<div style="{{t.bar}}"></div>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #A3A69A; margin-top: 6px"><span>wk 29</span><span>wk 40</span></div>
+</section>
+</div>
+
+<section aria-label="Profit by channel" style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 16px">
+<h2 style="margin: 0; font-size: 18px">Profit by channel</h2>
+<a href="Channels.dc.html" style="font-weight: 700">Channel overview →</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{channels}}" as="c" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 120px minmax(0, 1fr) 90px 70px; align-items: center; gap: 12px">
+<div style="font-size: 14px">{{c.name}}</div>
+<div style="height: 18px; background: #1B1C19; border-radius: 4px; overflow: hidden"><div style="{{c.bar}}"></div></div>
+<div style="font-size: 14px; text-align: right; font-variant-numeric: tabular-nums">{{c.profit}}</div>
+<div style="font-size: 13px; text-align: center; border-radius: 6px; padding: 2px 0; font-weight: 700; {{c.tier}}">{{c.margin}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<section aria-label="Top SKUs" style="flex: 1 1 420px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<h2 style="margin: 0 0 12px; font-size: 18px">Top 5 SKUs · net profit £</h2>
+<sc-for list="{{top}}" as="s" hint-placeholder-count="5">
+<a href="SkuDetail.dc.html" style="display: grid; grid-template-columns: 80px minmax(0, 1fr) 80px 64px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #363731; color: #EBEEE0; text-decoration: none; min-height: 24px">
+<span style="font-weight: 700">{{s.sku}}</span><span style="color: #A3A69A; font-size: 13px">{{s.units}}</span><span style="text-align: right; font-variant-numeric: tabular-nums">{{s.profit}}</span><span style="text-align: right; font-size: 13px; color: #D2FF00">{{s.margin}}</span>
+</a>
+</sc-for>
+</section>
+<section aria-label="Weakest SKUs" style="flex: 1 1 420px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<h2 style="margin: 0 0 12px; font-size: 18px">Weakest 5 SKUs · net margin %</h2>
+<sc-for list="{{bottom}}" as="s" hint-placeholder-count="5">
+<a href="SkuDetail.dc.html" style="display: grid; grid-template-columns: 80px minmax(0, 1fr) 80px 64px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #363731; color: #EBEEE0; text-decoration: none">
+<span style="font-weight: 700">{{s.sku}}</span><span style="color: #A3A69A; font-size: 13px">{{s.units}}</span><span style="text-align: right; font-variant-numeric: tabular-nums">{{s.profit}}</span><span style="text-align: right; font-size: 13px; color: #FF4D5E">{{s.margin}}</span>
+</a>
+</sc-for>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var up = '#D2FF00', down = '#FF4D5E', muted = '#A3A69A';
+    var kpis = [
+      { label: 'Net profit', value: '£12,480', delta: '▲ 8.2% vs prior', deltaColor: up, color: '#D2FF00' },
+      { label: 'Net margin', value: '18.4%', delta: '▼ 1.1 pts', deltaColor: down, color: '#EBEEE0' },
+      { label: 'Net revenue', value: '£67,830', delta: '▲ 14.6% · 3,214 units', deltaColor: up, color: '#EBEEE0' },
+      { label: 'Gross margin', value: '46.2%', delta: '▲ 0.4 pts', deltaColor: up, color: '#EBEEE0' },
+      { label: 'Profit per unit', value: '£3.88', delta: '▼ £0.21', deltaColor: down, color: '#EBEEE0' },
+      { label: 'TACOS', value: '6.1%', delta: 'Ad spend £4,120', deltaColor: muted, color: '#EBEEE0' }
+    ];
+    var rev = 67830;
+    var bridgeRaw = [
+      ['Net revenue', 67830, 'base'], ['Product cost (COGS)', -36490], ['Marketplace fees', -9870],
+      ['Shipping', -3140], ['Pick & pack', -1730], ['Advertising', -4120], ['Net profit', 12480, 'net']
+    ];
+    var running = rev;
+    var bridge = bridgeRaw.map(function (r) {
+      var v = Math.abs(r[1]); var w = (v / rev * 100).toFixed(1); var left;
+      var colour = '#FF4D5E';
+      if (r[2] === 'base') { left = 0; colour = '#5C5F55'; }
+      else if (r[2] === 'net') { left = 0; colour = '#D2FF00'; }
+      else { running -= v; left = (running / rev * 100).toFixed(1); }
+      return {
+        label: r[0],
+        value: (r[1] < 0 ? '−' : '') + '£' + v.toLocaleString('en-GB'),
+        pct: (v / rev * 100).toFixed(1) + '%',
+        bar: 'position: absolute; top: 0; bottom: 0; left: ' + left + '%; width: ' + w + '%; background: ' + colour + '; border-radius: 3px'
+      };
+    });
+    var tv = [2.1, 2.4, 2.2, 2.6, 2.9, 2.7, 3.0, 2.8, 3.1, 2.9, 3.2, 3.0];
+    var trend = tv.map(function (v, i) {
+      return { label: '£' + v.toFixed(1) + 'k', bar: 'width: 100%; height: ' + Math.round(v / 3.2 * 170) + 'px; border-radius: 4px 4px 0 0; background: ' + (i === tv.length - 1 ? '#D2FF00' : '#5C5F55') };
+    });
+    function tier(m) {
+      if (m < 10) return 'background: #FF4D5E; color: #1B1C19';
+      if (m < 18) return 'background: #FFB020; color: #1B1C19';
+      return 'background: #D2FF00; color: #1B1C19';
+    }
+    var ch = [['Amazon FBA', 4920, 23.0], ['TikTok Shop', 2310, 21.2], ['Amazon FBM', 1840, 16.4], ['eBay', 1560, 18.8], ['OnBuy', 720, 16.7], ['B&Q', 640, 13.3], ['Temu', 490, 7.1]];
+    var channels = ch.map(function (c) {
+      return { name: c[0], profit: '£' + c[1].toLocaleString('en-GB'), margin: c[2].toFixed(1) + '%', tier: tier(c[2]), bar: 'height: 100%; width: ' + (c[1] / 4920 * 100).toFixed(1) + '%; background: #D2FF00; border-radius: 3px' };
+    });
+    var top = [
+      { sku: 'LL-1', units: '612 units', profit: '£1,823', margin: '24.4%' },
+      { sku: 'PB-3', units: '540 units', profit: '£1,610', margin: '19.6%' },
+      { sku: 'AGB', units: '488 units', profit: '£1,380', margin: '22.1%' },
+      { sku: 'KT-12', units: '301 units', profit: '£1,120', margin: '20.4%' },
+      { sku: 'DS-4', units: '276 units', profit: '£940', margin: '17.9%' }
+    ];
+    var bottom = [
+      { sku: 'GV-2', units: '84 units', profit: '−£112', margin: '−4.6%' },
+      { sku: 'MT-7', units: '131 units', profit: '£38', margin: '1.2%' },
+      { sku: 'RB-1', units: '96 units', profit: '£71', margin: '3.4%' },
+      { sku: 'HX-5', units: '210 units', profit: '£190', margin: '5.1%' },
+      { sku: 'PB-6', units: '144 units', profit: '£166', margin: '6.0%' }
+    ];
+    return { kpis: kpis, bridge: bridge, trend: trend, channels: channels, top: top, bottom: bottom };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SKU by Channel Grid</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,200..900&amp;display=swap">
+<style>
+body{margin:0;background:#1B1C19}
+a{color:#D2FF00}a:hover{color:#EBEEE0}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1B1C19; color: #EBEEE0; font-family: 'Mona Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<header style="border-bottom: 1px solid #363731; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px">
+<div style="font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; font-size: 20px; color: #D2FF00">MARGIN HERO</div>
+<nav aria-label="Dashboards" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto">
+<a href="Main.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Overview</a>
+<a href="Channels.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Channels</a>
+<a href="Grid.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #D2FF00; color: #1B1C19; text-decoration: none; font-weight: 700">SKU Grid</a>
+<a href="SkuDetail.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Detail</a>
+<a href="Alerts.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Alerts <span style="background: #FF4D5E; color: #1B1C19; border-radius: 10px; padding: 1px 7px; font-size: 12px; font-weight: 800">4</span></a>
+</nav>
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">Last 30 days · 10 Sep – 9 Oct</button>
+</header>
+
+<main style="max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<div>
+<div style="font-size: 13px; color: #A3A69A; text-transform: uppercase; letter-spacing: 0.08em">Level 1b · The hub — which SKU, on which channel?</div>
+<h1 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; text-transform: uppercase">SKU × channel</h1>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+<div role="group" aria-label="Metric" style="display: flex; flex-wrap: wrap; background: #252622; border: 1px solid #363731; border-radius: 10px; padding: 4px; gap: 4px">
+<sc-for list="{{metrics}}" as="m" hint-placeholder-count="3">
+<button onClick="{{m.pick}}" style="{{m.style}}">{{m.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px 16px; font-size: 13px; align-items: center">
+<sc-for list="{{legend}}" as="l" hint-placeholder-count="4">
+<span style="display: flex; align-items: center; gap: 6px"><span style="{{l.swatch}}"></span>{{l.label}}</span>
+</sc-for>
+</div>
+</div>
+
+<div style="overflow-x: auto; background: #252622; border: 1px solid #363731; border-radius: 14px">
+<table style="border-collapse: separate; border-spacing: 4px; width: 100%; min-width: 900px; font-variant-numeric: tabular-nums">
+<thead>
+<tr>
+<th scope="col" style="text-align: left; padding: 10px 12px; font-size: 13px; color: #A3A69A; font-weight: 600">SKU</th>
+<sc-for list="{{channels}}" as="c" hint-placeholder-count="7">
+<th scope="col" style="padding: 10px 6px; font-size: 13px; color: #A3A69A; font-weight: 600">{{c}}</th>
+</sc-for>
+<th scope="col" style="padding: 10px 6px; font-size: 13px; color: #EBEEE0; font-weight: 800">All</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+<tr>
+<th scope="row" style="text-align: left; padding: 8px 12px; font-weight: 800; white-space: nowrap">{{r.sku}}</th>
+<sc-for list="{{r.cells}}" as="cell" hint-placeholder-count="7">
+<td style="padding: 0"><a href="SkuDetail.dc.html" style="{{cell.style}}">{{cell.text}}</a></td>
+</sc-for>
+<td style="padding: 0"><a href="SkuDetail.dc.html" style="{{r.total.style}}">{{r.total.text}}</a></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="font-size: 13px; color: #A3A69A">Tap any cell to open that SKU's detail. “—” = not listed on that channel. Totals sum £ first, then derive %.</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { metric: 'net' }; }
+  renderVals() {
+    var self = this;
+    var metric = this.state.metric;
+    var channels = ['Amz FBA', 'Amz FBM', 'TikTok', 'eBay', 'OnBuy', 'B&Q', 'Temu'];
+    // SKU, unit price £, net margin % per channel (null = not listed)
+    var data = [
+      ['LL-1', 14.99, [27.1, 21.4, 25.0, 23.8, null, 19.2, 12.5]],
+      ['PB-3', 12.49, [16.2, 18.9, 22.4, 20.1, 17.0, null, 8.4]],
+      ['AGB', 9.99, [24.5, null, 23.1, 19.6, 18.0, null, 11.2]],
+      ['KT-12', 18.50, [22.0, 19.1, null, 18.7, 20.3, 16.4, null]],
+      ['DS-4', 11.25, [19.8, 15.2, 18.4, 16.9, null, 12.1, 6.2]],
+      ['HX-5', 7.99, [9.1, 4.8, 7.6, 6.0, null, null, -2.1]],
+      ['PB-6', 21.00, [8.0, 6.4, null, 7.1, 5.2, 3.9, null]],
+      ['RB-1', 6.49, [5.5, 2.0, 6.1, null, null, null, -1.4]],
+      ['MT-7', 5.99, [3.2, -0.8, 2.6, 1.1, null, null, -3.9]],
+      ['GV-2', 4.49, [-2.4, -5.1, null, -3.0, null, null, -8.2]]
+    ];
+    function tierBg(m) {
+      if (m < 0) return '#FF4D5E';
+      if (m < 10) return '#FFB020';
+      if (m < 18) return '#7A9400';
+      return '#D2FF00';
+    }
+    function cellStyle(bg) {
+      return 'display: flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 14px; color: #1B1C19; background: ' + bg;
+    }
+    function fmt(m, price) {
+      if (metric === 'net') return m.toFixed(1) + '%';
+      if (metric === 'gross') return (m + 26).toFixed(1) + '%';
+      var v = price * m / 100;
+      return (v < 0 ? '−£' : '£') + Math.abs(v).toFixed(2);
+    }
+    var rows = data.map(function (d) {
+      var listed = d[2].filter(function (v) { return v !== null; });
+      var avg = listed.reduce(function (a, b) { return a + b; }, 0) / listed.length;
+      return {
+        sku: d[0],
+        cells: d[2].map(function (m) {
+          if (m === null) return { text: '—', style: cellStyle('transparent') + '; color: #5C5F55; font-weight: 400' };
+          return { text: fmt(m, d[1]), style: cellStyle(tierBg(m)) };
+        }),
+        total: { text: fmt(avg, d[1]), style: cellStyle(tierBg(avg)) + '; outline: 2px solid #EBEEE0; outline-offset: -2px' }
+      };
+    });
+    var opts = [['net', 'Net margin %'], ['gross', 'Gross margin %'], ['ppu', 'Net profit / unit']];
+    var metrics = opts.map(function (o) {
+      var on = o[0] === metric;
+      return {
+        label: o[1],
+        pick: function () { self.setState({ metric: o[0] }); },
+        style: 'font: inherit; font-size: 14px; border: 0; border-radius: 7px; padding: 10px 14px; min-height: 44px; cursor: pointer; ' + (on ? 'background: #D2FF00; color: #1B1C19; font-weight: 800' : 'background: transparent; color: #EBEEE0')
+      };
+    });
+    var legend = [['#FF4D5E', 'Loss'], ['#FFB020', 'Thin < 10%'], ['#7A9400', 'OK 10–18%'], ['#D2FF00', 'Strong 18%+']].map(function (l) {
+      return { label: l[1], swatch: 'width: 14px; height: 14px; border-radius: 3px; background: ' + l[0] };
+    });
+    return { channels: channels, rows: rows, metrics: metrics, legend: legend };
+  }
+}
+</script>
+</body>
+</html>

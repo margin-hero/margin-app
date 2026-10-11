@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Channel Overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,200..900&amp;display=swap">
+<style>
+body{margin:0;background:#1B1C19}
+a{color:#D2FF00}a:hover{color:#EBEEE0}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1B1C19; color: #EBEEE0; font-family: 'Mona Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<header style="border-bottom: 1px solid #363731; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px">
+<div style="font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; font-size: 20px; color: #D2FF00">MARGIN HERO</div>
+<nav aria-label="Dashboards" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto">
+<a href="Main.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Overview</a>
+<a href="Channels.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #D2FF00; color: #1B1C19; text-decoration: none; font-weight: 700">Channels</a>
+<a href="Grid.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Grid</a>
+<a href="SkuDetail.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Detail</a>
+<a href="Alerts.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Alerts <span style="background: #FF4D5E; color: #1B1C19; border-radius: 10px; padding: 1px 7px; font-size: 12px; font-weight: 800">4</span></a>
+</nav>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">Last 30 days · 10 Sep – 9 Oct</button>
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">Split FBA / FBM: On</button>
+</div>
+</header>
+
+<main style="max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+<div>
+<div style="font-size: 13px; color: #A3A69A; text-transform: uppercase; letter-spacing: 0.08em">Level 1a · Which channel earns its keep?</div>
+<h1 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; text-transform: uppercase">Channel overview</h1>
+</div>
+
+<section aria-label="Channel cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="7">
+<a href="Grid.dc.html" style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; color: #EBEEE0; text-decoration: none">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+<div style="font-size: 18px; font-weight: 800">{{c.name}}</div>
+<div style="font-size: 13px; font-weight: 800; border-radius: 6px; padding: 3px 8px; {{c.tier}}">{{c.margin}} net</div>
+</div>
+<div style="display: flex; align-items: baseline; gap: 10px">
+<div style="font-size: 30px; font-weight: 800; font-stretch: 110%; color: #D2FF00">{{c.profit}}</div>
+<div style="font-size: 13px; color: #A3A69A">net profit</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; font-size: 13px">
+<div><div style="color: #A3A69A">Revenue</div><div style="font-weight: 700">{{c.rev}}</div></div>
+<div><div style="color: #A3A69A">Gross margin</div><div style="font-weight: 700">{{c.gross}}</div></div>
+<div><div style="color: #A3A69A">Fees</div><div style="font-weight: 700">{{c.fees}}</div></div>
+<div><div style="color: #A3A69A">Units</div><div style="font-weight: 700">{{c.units}}</div></div>
+<div><div style="color: #A3A69A">Profit / unit</div><div style="font-weight: 700">{{c.ppu}}</div></div>
+<div><div style="color: #A3A69A">TACOS</div><div style="font-weight: 700">{{c.tacos}}</div></div>
+</div>
+</a>
+</sc-for>
+</section>
+
+<section aria-label="Cost stack by channel" style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<h2 style="margin: 0 0 4px; font-size: 18px">Cost stack by channel</h2>
+<div style="font-size: 13px; color: #A3A69A; margin-bottom: 14px">Each £1 of net revenue, split into where it goes</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; margin-bottom: 16px">
+<sc-for list="{{legend}}" as="l" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 6px"><span style="{{l.swatch}}"></span>{{l.name}}</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{stacks}}" as="s" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 12px">
+<div style="font-size: 14px">{{s.name}}</div>
+<div style="display: flex; height: 28px; border-radius: 4px; overflow: hidden; gap: 2px">
+<sc-for list="{{s.parts}}" as="p" hint-placeholder-count="6">
+<div style="{{p.style}}">{{p.label}}</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1380}}'>
+class Component extends DCLogic {
+  renderVals() {
+    function tier(m) {
+      if (m < 10) return 'background: #FF4D5E; color: #1B1C19';
+      if (m < 18) return 'background: #FFB020; color: #1B1C19';
+      return 'background: #D2FF00; color: #1B1C19';
+    }
+    function gbp(v) { return '£' + v.toLocaleString('en-GB'); }
+    // name, revenue, profit, gross %, units, cost stack [cogs, fees, ship, pickpack, ads]
+    var raw = [
+      ['Amazon FBA', 21400, 4920, 48.0, 950, [52, 21, 0, 0, 4]],
+      ['TikTok Shop', 10900, 2310, 47.0, 640, [53, 9, 7, 3, 6.8]],
+      ['eBay', 8300, 1560, 46.0, 380, [54, 12.8, 7.5, 3, 3.9]],
+      ['OnBuy', 4300, 720, 42.0, 170, [58, 10, 8, 3.3, 4]],
+      ['Amazon FBM', 11200, 1840, 46.0, 530, [54, 15.3, 7, 3, 4.3]],
+      ['B&Q', 4830, 640, 45.0, 150, [55, 15, 10, 3.7, 3]],
+      ['Temu', 6900, 490, 40.0, 394, [60, 15, 10, 4.9, 3]]
+    ];
+    var colours = ['#5C5F55', '#8A8D80', '#B9BCAE', '#E3E6D6', '#FFB020', '#D2FF00'];
+    var names = ['Product cost', 'Marketplace fees', 'Shipping', 'Pick & pack', 'Advertising', 'Net profit'];
+    var cards = raw.map(function (r) {
+      var m = r[2] / r[1] * 100;
+      return {
+        name: r[0], profit: gbp(r[2]), margin: m.toFixed(1) + '%', tier: tier(m),
+        rev: gbp(r[1]), gross: r[3].toFixed(1) + '%', fees: r[5][1].toFixed(1) + '%',
+        units: r[4].toLocaleString('en-GB'), ppu: '£' + (r[2] / r[4]).toFixed(2), tacos: r[5][4].toFixed(1) + '%'
+      };
+    });
+    var stacks = raw.map(function (r) {
+      var net = r[2] / r[1] * 100;
+      var vals = r[5].concat([net]);
+      return {
+        name: r[0],
+        parts: vals.map(function (v, idx) { return { v: v, idx: idx }; }).filter(function (o) { return o.v > 0; }).map(function (o) {
+          var v = o.v, idx = o.idx;
+          var dark = idx >= 2;
+          return {
+            label: v >= 6 ? Math.round(v) + '%' : '',
+            style: 'flex: ' + v + ' 0 0; background: ' + colours[idx] + '; color: ' + (dark ? '#1B1C19' : '#EBEEE0') + '; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden'
+          };
+        })
+      };
+    });
+    var legend = names.map(function (n, i) {
+      return { name: n, swatch: 'width: 12px; height: 12px; border-radius: 3px; background: ' + colours[i] };
+    });
+    return { cards: cards, stacks: stacks, legend: legend };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alerts and Actions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,200..900&amp;display=swap">
+<style>
+body{margin:0;background:#1B1C19}
+a{color:#D2FF00}a:hover{color:#EBEEE0}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1B1C19; color: #EBEEE0; font-family: 'Mona Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<header style="border-bottom: 1px solid #363731; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px">
+<div style="font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; font-size: 20px; color: #D2FF00">MARGIN HERO</div>
+<nav aria-label="Dashboards" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto">
+<a href="Main.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Overview</a>
+<a href="Channels.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Channels</a>
+<a href="Grid.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Grid</a>
+<a href="SkuDetail.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Detail</a>
+<a href="Alerts.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #D2FF00; color: #1B1C19; text-decoration: none; font-weight: 700">Alerts <span style="background: #1B1C19; color: #D2FF00; border-radius: 10px; padding: 1px 7px; font-size: 12px; font-weight: 800">4</span></a>
+</nav>
+</header>
+
+<main style="max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 22px">
+
+<div>
+<div style="font-size: 13px; color: #A3A69A; text-transform: uppercase; letter-spacing: 0.08em">Cross-cutting · What should I fix today?</div>
+<h1 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; text-transform: uppercase">Alerts &amp; actions</h1>
+</div>
+
+<section aria-label="Alert summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px">
+<div style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 16px"><div style="font-size: 13px; color: #A3A69A">Losing money</div><div style="font-size: 30px; font-weight: 800; color: #FF4D5E">2</div><div style="font-size: 12px; color: #A3A69A">≈ £180 / month leaking</div></div>
+<div style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 16px"><div style="font-size: 13px; color: #A3A69A">Margin dropping</div><div style="font-size: 30px; font-weight: 800; color: #FFB020">2</div><div style="font-size: 12px; color: #A3A69A">≥ 3 pts vs prior period</div></div>
+<div style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 16px"><div style="font-size: 13px; color: #A3A69A">Data gaps</div><div style="font-size: 30px; font-weight: 800; color: #EBEEE0">3</div><div style="font-size: 12px; color: #A3A69A">numbers may be wrong until fixed</div></div>
+<div style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 16px"><div style="font-size: 13px; color: #A3A69A">Last import</div><div style="font-size: 30px; font-weight: 800; color: #EBEEE0">2 days</div><div style="font-size: 12px; color: #A3A69A">Amazon settlement · TikTok 6 days</div></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+<section aria-label="Alert list" style="flex: 999 1 640px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 8px 20px">
+<sc-for list="{{alerts}}" as="a" hint-placeholder-count="7">
+<div style="display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid #363731">
+<span style="{{a.badge}}">{{a.kind}}</span>
+<div style="flex: 1 1 300px; min-width: 0">
+<div style="font-weight: 700">{{a.title}}</div>
+<div style="font-size: 13px; color: #A3A69A">{{a.detail}}</div>
+</div>
+<div style="font-size: 14px; font-variant-numeric: tabular-nums; min-width: 90px; text-align: right">{{a.impact}}</div>
+<a href="{{a.href}}" style="border: 1px solid #D2FF00; border-radius: 8px; padding: 10px 14px; text-decoration: none; font-weight: 700; white-space: nowrap">{{a.action}}</a>
+</div>
+</sc-for>
+</section>
+
+<section aria-label="Alert rules" style="flex: 1 1 300px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 18px">Alert rules</h2>
+<sc-for list="{{rules}}" as="r" hint-placeholder-count="6">
+<label style="display: flex; gap: 12px; align-items: center; justify-content: space-between; min-height: 44px">
+<span style="font-size: 14px">{{r.label}}<br><span style="font-size: 12px; color: #A3A69A">{{r.sub}}</span></span>
+<input type="checkbox" checked style="width: 22px; height: 22px; accent-color: #D2FF00">
+</label>
+</sc-for>
+<div style="font-size: 12px; color: #A3A69A">Push + email digest come with the mobile app (roadmap).</div>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    function badge(bg, fg) { return 'font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 6px; padding: 4px 8px; background: ' + bg + '; color: ' + fg + '; white-space: nowrap'; }
+    var red = badge('#FF4D5E', '#1B1C19'), amber = badge('#FFB020', '#1B1C19'), grey = badge('#3A3B35', '#EBEEE0');
+    var alerts = [
+      { kind: 'Loss', badge: red, title: 'GV-2 loses money on 4 channels', detail: 'Net −4.6% overall · worst on Temu (−8.2%)', impact: '−£112 / mo', action: 'Open SKU', href: 'SkuDetail.dc.html' },
+      { kind: 'Loss', badge: red, title: '3 SKUs selling at a loss on Temu', detail: 'HX-5, RB-1, MT-7 · fees + shipping exceed margin', impact: '−£68 / mo', action: 'View grid', href: 'Grid.dc.html' },
+      { kind: 'Drop', badge: amber, title: 'PB-3 FBA margin down 4.2 pts', detail: 'FBA fulfilment fee rose from 1 Oct', impact: '−£95 / mo', action: 'Open SKU', href: 'SkuDetail.dc.html' },
+      { kind: 'Ads', badge: amber, title: 'DS-4 ACOS above break-even', detail: 'ACOS 21% vs break-even 18% on Amazon', impact: '−£40 / mo', action: 'Open SKU', href: 'SkuDetail.dc.html' },
+      { kind: 'Data', badge: grey, title: '12 orders missing product cost', detail: '5 new SKUs auto-created on import with no COGS', impact: 'Margin overstated', action: 'Add costs', href: 'SkuDetail.dc.html' },
+      { kind: 'Data', badge: grey, title: '78 TikTok SKU IDs unmatched', detail: 'Upload a fresh TikTok catalog to map them', impact: '251 lines', action: 'Fix mappings', href: 'Grid.dc.html' },
+      { kind: 'Data', badge: grey, title: 'TikTok data is 6 days old', detail: 'Last settlement import 4 Oct', impact: '—', action: 'Import', href: 'Main.dc.html' }
+    ];
+    var rules = [
+      { label: 'Listing net margin below 0%', sub: 'any SKU on any channel' },
+      { label: 'Net margin drops 3+ pts', sub: 'vs prior period, same SKU × channel' },
+      { label: 'ACOS above break-even', sub: 'break-even = margin before ads' },
+      { label: 'Fee rate changes', sub: 'marketplace or fulfilment fee per unit' },
+      { label: 'Orders missing costs', sub: 'COGS or shipping rule not found' },
+      { label: 'Import older than 7 days', sub: 'per channel' }
+    ];
+    return { alerts: alerts, rules: rules };
+  }
+}
+</script>
+</body>
+</html>

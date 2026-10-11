@@ -24,6 +24,16 @@ export const display: CSSProperties = { fontFamily: font, fontStretch: '125%', f
 // separation, contrast) with the dataviz validator. Not the margin tier colours.
 export const chartRevenue = '#3987E5'
 export const chartProfit = '#839F00'
+// Cost stack segments, in this order after net profit (validated as a set on the panel, with
+// profit first so it always sits next to product cost whichever toggles are on)
+export const chartCosts = {
+  product: '#3987E5',
+  fees: '#D95926',
+  shipping: '#199E70',
+  other: '#C98500',
+  ads: '#D55181',
+  overheads: '#9085E9',
+}
 
 // ---- Shared app page styles ----
 

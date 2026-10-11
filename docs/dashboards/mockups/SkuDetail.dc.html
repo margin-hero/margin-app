@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SKU Detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,200..900&amp;display=swap">
+<style>
+body{margin:0;background:#1B1C19}
+a{color:#D2FF00}a:hover{color:#EBEEE0}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #1B1C19; color: #EBEEE0; font-family: 'Mona Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<header style="border-bottom: 1px solid #363731; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px">
+<div style="font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; font-size: 20px; color: #D2FF00">MARGIN HERO</div>
+<nav aria-label="Dashboards" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto">
+<a href="Main.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Overview</a>
+<a href="Channels.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Channels</a>
+<a href="Grid.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">SKU Grid</a>
+<a href="SkuDetail.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #D2FF00; color: #1B1C19; text-decoration: none; font-weight: 700">SKU Detail</a>
+<a href="Alerts.dc.html" style="padding: 8px 12px; border-radius: 8px; color: #EBEEE0; text-decoration: none">Alerts <span style="background: #FF4D5E; color: #1B1C19; border-radius: 10px; padding: 1px 7px; font-size: 12px; font-weight: 800">4</span></a>
+</nav>
+<button style="font: inherit; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px">Last 30 days · 10 Sep – 9 Oct</button>
+</header>
+
+<main style="max-width: 1240px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 22px">
+
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div>
+<div style="font-size: 13px; color: #A3A69A; text-transform: uppercase; letter-spacing: 0.08em">Level 2 · Why is this SKU making (or losing) money?</div>
+<h1 style="margin: 4px 0 0; font-size: 34px; font-weight: 900; font-stretch: 125%; letter-spacing: -0.01em; text-transform: uppercase">LL-1 <span style="font-weight: 500; font-stretch: 100%; text-transform: none; font-size: 22px; color: #A3A69A">[Product name]</span></h1>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<label style="display: flex; flex-direction: column; font-size: 12px; color: #A3A69A; gap: 4px">Find SKU
+<input type="search" value="LL-1" style="font: inherit; font-size: 15px; background: #252622; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 9px 12px; min-height: 44px; box-sizing: border-box; width: 200px">
+</label>
+<button style="align-self: flex-end; font: inherit; background: transparent; color: #EBEEE0; border: 1px solid #363731; border-radius: 8px; padding: 10px 12px; min-height: 44px">Edit costs</button>
+</div>
+</div>
+
+<section aria-label="SKU KPIs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+<div style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 14px 16px">
+<div style="font-size: 13px; color: #A3A69A">{{k.label}}</div>
+<div style="font-size: 26px; font-weight: 800; font-stretch: 110%; color: {{k.color}}">{{k.value}}</div>
+<div style="font-size: 12px; color: #A3A69A">{{k.sub}}</div>
+</div>
+</sc-for>
+</section>
+
+<section aria-label="Per-channel comparison" style="background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<h2 style="margin: 0 0 4px; font-size: 18px">By channel</h2>
+<div style="font-size: 13px; color: #A3A69A; margin-bottom: 12px">Same product, every listing — totals sum £ first, then derive %</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 960px; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px">
+<thead>
+<tr style="color: #A3A69A; font-size: 12px; text-align: right">
+<th scope="col" style="text-align: left; padding: 8px 10px; font-weight: 600">Channel</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Price</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Units</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Sales (net)</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Gross profit</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Gross %</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Net profit</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Net %</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Profit / unit</th>
+<th scope="col" style="padding: 8px 10px; font-weight: 600">Break-even ACOS</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+<tr style="border-top: 1px solid #363731; text-align: right">
+<th scope="row" style="text-align: left; padding: 12px 10px; font-weight: 700">{{r.name}}</th>
+<td style="padding: 12px 10px">{{r.price}}</td>
+<td style="padding: 12px 10px">{{r.units}}</td>
+<td style="padding: 12px 10px">{{r.sales}}</td>
+<td style="padding: 12px 10px">{{r.gp}}</td>
+<td style="padding: 12px 10px">{{r.gm}}</td>
+<td style="padding: 12px 10px; font-weight: 700">{{r.np}}</td>
+<td style="padding: 8px 10px"><span style="{{r.tier}}">{{r.nm}}</span></td>
+<td style="padding: 12px 10px">{{r.ppu}}</td>
+<td style="padding: 12px 10px">{{r.be}}</td>
+</tr>
+</sc-for>
+<tr style="border-top: 2px solid #EBEEE0; text-align: right; font-weight: 800">
+<th scope="row" style="text-align: left; padding: 12px 10px">All channels</th>
+<td style="padding: 12px 10px"></td>
+<td style="padding: 12px 10px">{{tot.units}}</td>
+<td style="padding: 12px 10px">{{tot.sales}}</td>
+<td style="padding: 12px 10px">{{tot.gp}}</td>
+<td style="padding: 12px 10px">{{tot.gm}}</td>
+<td style="padding: 12px 10px; color: #D2FF00">{{tot.np}}</td>
+<td style="padding: 12px 10px">{{tot.nm}}</td>
+<td style="padding: 12px 10px">{{tot.ppu}}</td>
+<td style="padding: 12px 10px"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<section aria-label="Unit economics" style="flex: 1 1 520px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px">
+<h2 style="margin: 0 0 4px; font-size: 18px">Unit economics · Amazon FBA</h2>
+<div style="font-size: 13px; color: #A3A69A; margin-bottom: 14px">One unit at £14.99, VAT registered</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{unit}}" as="u" hint-placeholder-count="8">
+<div style="display: grid; grid-template-columns: 150px minmax(0, 1fr) 70px; gap: 12px; align-items: center">
+<div style="font-size: 14px">{{u.label}}</div>
+<div style="height: 20px; position: relative; background: #1B1C19; border-radius: 4px; overflow: hidden"><div style="{{u.bar}}"></div></div>
+<div style="text-align: right; font-size: 14px; font-variant-numeric: tabular-nums">{{u.value}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Margin history" style="flex: 1 1 420px; min-width: 0; background: #252622; border: 1px solid #363731; border-radius: 14px; padding: 20px; display: flex; flex-direction: column">
+<h2 style="margin: 0 0 4px; font-size: 18px">Net margin % · 6 months</h2>
+<div style="font-size: 13px; color: #A3A69A; margin-bottom: 14px">Markers show cost or fee changes</div>
+<div role="img" aria-label="Net margin by month, dipping in August after a cost price rise and recovering after a price increase" style="flex: 1; min-height: 220px; display: flex; align-items: flex-end; gap: 10px; border-bottom: 1px solid #363731; padding-bottom: 4px">
+<sc-for list="{{hist}}" as="h" hint-placeholder-count="6">
+<div style="flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px">
+<div style="font-size: 11px; color: #FFB020; text-align: center; min-height: 28px">{{h.event}}</div>
+<div style="font-size: 12px">{{h.v}}</div>
+<div style="{{h.bar}}"></div>
+<div style="font-size: 12px; color: #A3A69A">{{h.m}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var cogs = 4.30;
+    function gbp(v) { return (v < 0 ? '−£' : '£') + Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+    function tier(m) {
+      var bg = m < 0 ? '#FF4D5E' : m < 10 ? '#FFB020' : m < 18 ? '#7A9400' : '#D2FF00';
+      return 'display: inline-block; min-width: 56px; text-align: center; border-radius: 6px; padding: 4px 6px; font-weight: 800; color: #1B1C19; background: ' + bg;
+    }
+    // channel, price inc VAT, units, net margin %, ads % of sales
+    var raw = [
+      ['Amazon FBA', 14.99, 260, 27.1, 4.8], ['TikTok Shop', 13.99, 120, 25.0, 6.0],
+      ['eBay', 14.49, 70, 23.8, 3.0], ['Amazon FBM', 14.99, 110, 21.4, 3.9],
+      ['B&Q', 16.99, 22, 19.2, 0], ['Temu', 11.99, 30, 12.5, 2.5]
+    ];
+    var T = { units: 0, sales: 0, gp: 0, np: 0 };
+    var rows = raw.map(function (r) {
+      var net = r[1] / 1.2, sales = net * r[2], gp = (net - cogs) * r[2], np = sales * r[3] / 100;
+      T.units += r[2]; T.sales += sales; T.gp += gp; T.np += np;
+      return {
+        name: r[0], price: '£' + r[1].toFixed(2), units: r[2], sales: gbp(sales), gp: gbp(gp),
+        gm: (gp / sales * 100).toFixed(1) + '%', np: gbp(np), nm: r[3].toFixed(1) + '%', tier: tier(r[3]),
+        ppu: '£' + (np / r[2]).toFixed(2), be: (r[3] + r[4]).toFixed(1) + '%'
+      };
+    });
+    var tot = {
+      units: T.units, sales: gbp(T.sales), gp: gbp(T.gp), gm: (T.gp / T.sales * 100).toFixed(1) + '%',
+      np: gbp(T.np), nm: (T.np / T.sales * 100).toFixed(1) + '%', ppu: '£' + (T.np / T.units).toFixed(2)
+    };
+    var kpis = [
+      { label: 'Net profit', value: gbp(T.np), sub: 'all channels', color: '#D2FF00' },
+      { label: 'Net margin', value: tot.nm, sub: '▲ 2.3 pts vs prior', color: '#EBEEE0' },
+      { label: 'Gross margin', value: tot.gm, sub: 'after landed cost', color: '#EBEEE0' },
+      { label: 'Profit / unit', value: tot.ppu, sub: T.units + ' units', color: '#EBEEE0' },
+      { label: 'Landed cost', value: '£' + cogs.toFixed(2), sub: 'cost + freight, since 1 Aug', color: '#EBEEE0' },
+      { label: 'Best channel', value: 'FBA', sub: '27.1% net', color: '#EBEEE0' }
+    ];
+    var price = 12.49;
+    var u = [['Price ex VAT', 12.49, 'base'], ['Cost price', -3.90], ['Freight / landed', -0.40], ['Referral fee', -2.25], ['FBA fulfilment fee', -1.96], ['Advertising', -0.60], ['Net profit', 3.38, 'net']];
+    var run = price;
+    var unit = u.map(function (x) {
+      var v = Math.abs(x[1]), w = (v / price * 100).toFixed(1), left = 0, col = '#FF4D5E';
+      if (x[2] === 'base') col = '#5C5F55'; else if (x[2] === 'net') col = '#D2FF00';
+      else { run -= v; left = (run / price * 100).toFixed(1); }
+      return { label: x[0], value: (x[1] < 0 ? '−£' : '£') + v.toFixed(2), bar: 'position: absolute; top: 0; bottom: 0; left: ' + left + '%; width: ' + w + '%; background: ' + col + '; border-radius: 3px' };
+    });
+    var hv = [['May', 24.1, ''], ['Jun', 24.8, ''], ['Jul', 25.2, ''], ['Aug', 19.6, 'Cost ↑ £0.45'], ['Sep', 23.9, 'Price → £14.99'], ['Oct', 24.4, '']];
+    var hist = hv.map(function (h, i) {
+      return { m: h[0], v: h[1].toFixed(1) + '%', event: h[2], bar: 'width: 100%; height: ' + Math.round(h[1] / 26 * 150) + 'px; border-radius: 4px 4px 0 0; background: ' + (i === hv.length - 1 ? '#D2FF00' : h[2] ? '#FFB020' : '#5C5F55') };
+    });
+    return { rows: rows, tot: tot, kpis: kpis, unit: unit, hist: hist };
+  }
+}
+</script>
+</body>
+</html>

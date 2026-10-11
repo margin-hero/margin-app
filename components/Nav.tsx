@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
+  Gauge, Layers, Table2, Microscope, BellRing, LayoutDashboard, Grid3x3, ScanSearch, TrendingUp, Lightbulb,
   FileUp, ShoppingCart, ShoppingBag, ShoppingBasket, Music2, Building2,
   Tag, Gift, Megaphone, Combine, ListChecks, Store, Package, Link2, ListPlus, PoundSterling, FileSpreadsheet, Truck, Boxes, Building, Settings, PanelLeftClose, PanelLeftOpen, LogOut,
   type LucideIcon,
@@ -22,13 +22,24 @@ type NavSection = { label?: string; links: NavLink[] }
 const NAV_GROUPS: { label: string; sections: NavSection[] }[] = [
   {
     label: 'Dashboards',
-    sections: [{ links: [
+    sections: [
+      // The new dashboards, top level first: each one drills down into the next
+      { label: 'Drill-down', links: [
+        { href: '/dashboards/overview', label: '1 Profit Overview', icon: Gauge, tip: 'Profit Overview (new)' },
+        { href: '/dashboards/channels', label: '2 Channels', icon: Layers, tip: 'Channels (new)' },
+        { href: '/dashboards/grid', label: '3 SKU × Channel', icon: Table2, tip: 'SKU × Channel (new)' },
+        { href: '/dashboards/sku', label: '4 SKU Detail', icon: Microscope, tip: 'SKU Detail (new)' },
+        { href: '/dashboards/alerts', label: 'Alerts', icon: BellRing, tip: 'Alerts (new)' },
+      ] },
+      // The original dashboards, kept to compare with the new ones
+      { label: 'Current', links: [
       { href: '/channel-overview', label: 'Channel Overview', icon: LayoutDashboard },
       { href: '/margins', label: 'Margins', icon: Grid3x3 },
       { href: '/sku-detail', label: 'SKU Detail', icon: ScanSearch },
       { href: '/trends', label: 'Trends', icon: TrendingUp },
       { href: '/opportunities', label: 'Opportunities', icon: Lightbulb },
-    ] }],
+      ] },
+    ],
   },
   {
     label: 'Import',
